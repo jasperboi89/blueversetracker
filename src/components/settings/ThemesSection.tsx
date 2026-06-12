@@ -1,22 +1,26 @@
-import { Palette, Sparkles, Check, BookOpen } from "lucide-react";
+import { Palette, Sparkles, Check, BookOpen, Stars } from "lucide-react";
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { setTheme, useTheme } from "@/lib/settings/theme-store";
 import { DiscoveryLogDrawer } from "@/components/quantum-bloom/DiscoveryLogDrawer";
+import {
+  setQbTuning,
+  useQbTuning,
+  type EventFrequency,
+  type ParticleDensity,
+} from "@/lib/settings/qb-tuning-store";
 
-const QB_TOGGLES: { label: string; description: string }[] = [
-  { label: "Quantum Bloom Core",       description: "Adaptive intelligence — learns preferences and active hours." },
-  { label: "Adaptive Learning",         description: "Lets the Core remember your favorite phases and workspaces." },
-  { label: "Cosmic Weather",            description: "Random atmospheric events (showers, auroras, lightning)." },
-  { label: "Ambient Atmosphere",        description: "Subtle ambient soundscape during shift hours." },
-  { label: "Daytime Sleep Mode",        description: "Dim the nebula outside shift hours." },
-];
+const INTENSITY_LABEL = ["", "Whisper", "Gentle", "Balanced", "Vivid", "Radiant"];
 
 export function ThemesSection() {
   const theme = useTheme();
   const [logOpen, setLogOpen] = useState(false);
   const qbActive = theme === "quantum-bloom";
+  const tuning = useQbTuning();
 
   return (
     <section id="themes" className="glass-panel p-4 sm:p-5">
@@ -99,24 +103,102 @@ export function ThemesSection() {
           </Button>
         </div>
 
-        <div className="mt-2 space-y-1">
-          {QB_TOGGLES.map((t) => (
-            <div
-              key={t.label}
-              className="flex items-center justify-between rounded-md px-3 py-2 text-xs opacity-60"
-            >
-              <div>
-                <div className="flex items-center gap-2 font-medium text-foreground">
-                  {t.label}
-                  <span className="rounded-full border border-border/40 px-1.5 py-px text-[9px] uppercase tracking-wider text-muted-foreground">
-                    Coming soon
-                  </span>
-                </div>
-                <div className="text-muted-foreground">{t.description}</div>
-              </div>
-              <Switch checked={false} disabled />
+        <div className="mt-2 flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-2 text-xs">
+          <div>
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <Stars className="h-3.5 w-3.5" />
+              Constellation View
             </div>
-          ))}
+            <div className="text-muted-foreground">
+              Your discovery sky, timeline, and Quantum Bloom Core readouts.
+            </div>
+          </div>
+          {qbActive ? (
+            <Button asChild size="sm" variant="secondary">
+              <Link to="/constellations">Open</Link>
+            </Button>
+          ) : (
+            <Button size="sm" variant="secondary" disabled>Open</Button>
+          )}
+        </div>
+
+        {/* Live tuning controls */}
+        <div className={`mt-3 space-y-3 rounded-md border border-border/30 p-3 ${qbActive ? "" : "opacity-60 pointer-events-none"}`}>
+          <div>
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="font-medium text-foreground">Visual Intensity</span>
+              <span className="text-muted-foreground">{INTENSITY_LABEL[tuning.visualIntensity]}</span>
+            </div>
+            <Slider
+              className="mt-2"
+              min={1}
+              max={5}
+              step={1}
+              value={[tuning.visualIntensity]}
+              onValueChange={(v) => setQbTuning({ visualIntensity: v[0] })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <div>
+              <div className="font-medium text-foreground">Event Frequency</div>
+              <div className="text-muted-foreground">Pace of cosmic weather events.</div>
+            </div>
+            <Select
+              value={tuning.eventFrequency}
+              onValueChange={(v) => setQbTuning({ eventFrequency: v as EventFrequency })}
+            >
+              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="off">Off</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <div>
+              <div className="font-medium text-foreground">Particle Density</div>
+              <div className="text-muted-foreground">Sparkle and burst count.</div>
+            </div>
+            <Select
+              value={tuning.particleDensity}
+              onValueChange={(v) => setQbTuning({ particleDensity: v as ParticleDensity })}
+            >
+              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <div>
+              <div className="font-medium text-foreground">Daytime Sleep Mode</div>
+              <div className="text-muted-foreground">Dim the nebula outside the shift window.</div>
+            </div>
+            <Switch
+              checked={tuning.sleepMode}
+              onCheckedChange={(v) => setQbTuning({ sleepMode: v })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md px-1 py-1 text-xs opacity-60">
+            <div>
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                Ambient Atmosphere
+                <span className="rounded-full border border-border/40 px-1.5 py-px text-[9px] uppercase tracking-wider text-muted-foreground">
+                  Coming soon
+                </span>
+              </div>
+              <div className="text-muted-foreground">Subtle ambient soundscape during shift hours.</div>
+            </div>
+            <Switch checked={false} disabled />
+          </div>
         </div>
       </div>
 

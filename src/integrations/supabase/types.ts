@@ -110,6 +110,36 @@ export type Database = {
         }
         Relationships: []
       }
+      qb_tuning_prefs: {
+        Row: {
+          created_at: string
+          event_frequency: string
+          particle_density: string
+          sleep_mode: boolean
+          updated_at: string
+          user_id: string
+          visual_intensity: number
+        }
+        Insert: {
+          created_at?: string
+          event_frequency?: string
+          particle_density?: string
+          sleep_mode?: boolean
+          updated_at?: string
+          user_id: string
+          visual_intensity?: number
+        }
+        Update: {
+          created_at?: string
+          event_frequency?: string
+          particle_density?: string
+          sleep_mode?: boolean
+          updated_at?: string
+          user_id?: string
+          visual_intensity?: number
+        }
+        Relationships: []
+      }
       user_theme_prefs: {
         Row: {
           created_at: string

@@ -22,6 +22,8 @@ import { NebulaCanvas } from "@/components/quantum-bloom/NebulaCanvas";
 import { EntryOverlay } from "@/components/quantum-bloom/EntryOverlay";
 import { CelebrationLayer } from "@/components/quantum-bloom/CelebrationLayer";
 import { DiscoveryToast } from "@/components/quantum-bloom/DiscoveryToast";
+import { CosmicWeatherLayer } from "@/components/quantum-bloom/CosmicWeatherLayer";
+import { SanctuaryShell } from "@/components/quantum-bloom/SanctuaryShell";
 
 function NotFoundComponent() {
   return (
@@ -151,6 +153,8 @@ function RootComponent() {
       {theme === "quantum-bloom" && <EntryOverlay />}
       {theme === "quantum-bloom" && <CelebrationLayer />}
       {theme === "quantum-bloom" && <DiscoveryToast />}
+      {theme === "quantum-bloom" && <CosmicWeatherLayer />}
+      {theme === "quantum-bloom" && <SanctuaryShell />}
       <Outlet />
       <Toaster />
     </QueryClientProvider>
