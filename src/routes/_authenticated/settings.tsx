@@ -36,7 +36,7 @@ import { useTickets } from "@/lib/tickets-store";
 import { useAccounts } from "@/lib/accounts-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
-import { ticketsStore } from "@/lib/tickets-store";
+import { ticketsStore, recoverRealWorkFromDemo } from "@/lib/tickets-store";
 import { accountsStore } from "@/lib/accounts-store";
 import { dispatchStore } from "@/lib/dispatch-store";
 import { additionalWorkStore } from "@/lib/additional-work-store";
@@ -613,6 +613,24 @@ function DataSection() {
           onClick={() => setResetOpen(true)}
         >
           <Trash2 className="mr-1.5 h-4 w-4" /> Clear all demo data
+        </Button>
+        <Button
+          className="ml-2 mt-2"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            const t = recoverRealWorkFromDemo().tickets;
+            const d = dispatchStore.recoverRealWork();
+            const a = additionalWorkStore.recoverRealWork();
+            const total = t + d + a;
+            toast.success(
+              total === 0
+                ? "No demo records had user work to restore."
+                : `Restored ${total} record${total === 1 ? "" : "s"} as real work.`,
+            );
+          }}
+        >
+          Restore my real work
         </Button>
       </div>
 

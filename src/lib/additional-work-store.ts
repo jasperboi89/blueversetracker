@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { useDemoMode } from "./settings/demo-mode-store";
 
 export type AdditionalWorkStatus = "working" | "completed";
 export type AddWorkIssueClassification = "Scripting Issue" | "Client Change" | "Other";
@@ -58,6 +59,8 @@ export interface AdditionalWork {
   nightPlanItemId?: string;
   snips: AddWorkSnip[];
   notesList: AddWorkNote[];
+  /** Seed/demo flag — hidden when Demo Mode is OFF */
+  isDemo?: boolean;
 }
 
 interface State {
@@ -143,7 +146,7 @@ function seed(): AdditionalWork[] {
       nightPlanItemId: "np-mock-converted",
       updatedAt: now - 3 * h,
     }),
-  ];
+  ].map((w) => ({ ...w, isDemo: true }));
 }
 
 function loadInitial(): State {
@@ -152,10 +155,28 @@ function loadInitial(): State {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (Array.isArray(p?.items)) return p;
+      if (Array.isArray(p?.items)) return runAddWorkDemoMigration(p);
     }
   } catch {}
   return { items: seed() };
+}
+
+const DEMO_MIGRATION_KEY = "aih:addwork:demo-recover:v1";
+function runAddWorkDemoMigration(s: State): State {
+  if (typeof window === "undefined") return s;
+  if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
+  // Stamp every existing item as demo, then recover real ones with user work.
+  const next: State = {
+    items: s.items.map((i) => {
+      const hasUserWork =
+        (i.notesList?.length ?? 0) > 0 ||
+        (i.snips?.length ?? 0) > 0 ||
+        (i.completionFinalNotes?.trim()?.length ?? 0) > 0;
+      return hasUserWork ? { ...i, isDemo: false } : { ...i, isDemo: true };
+    }),
+  };
+  try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}
+  return next;
 }
 
 function ensureLoaded() {
@@ -282,12 +303,31 @@ export const additionalWorkStore = {
     state = { ...state, items: state.items.filter((i) => i.id !== id) };
     persist();
   },
+  recoverRealWork(): number {
+    ensureLoaded();
+    let recovered = 0;
+    const items = state.items.map((i) => {
+      if (!i.isDemo) return i;
+      const hasUserWork =
+        (i.notesList?.length ?? 0) > 0 ||
+        (i.snips?.length ?? 0) > 0 ||
+        (i.completionFinalNotes?.trim()?.length ?? 0) > 0;
+      if (hasUserWork) { recovered++; return { ...i, isDemo: false }; }
+      return i;
+    });
+    state = { ...state, items };
+    persist();
+    return recovered;
+  },
 };
 
 export function useAdditionalWork() {
-  return useSyncExternalStore(
+  const snap = useSyncExternalStore(
     additionalWorkStore.subscribe,
     () => additionalWorkStore.getState(),
     () => ({ items: [] as AdditionalWork[] }),
   );
+  const demo = useDemoMode();
+  if (demo) return snap;
+  return { ...snap, items: snap.items.filter((i) => !i.isDemo) };
 }
