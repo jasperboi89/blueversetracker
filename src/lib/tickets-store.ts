@@ -524,6 +524,8 @@ export const ticketsStore = {
       status?: TicketStatus;
       priority?: Ticket["priority"];
       dueAt?: number;
+      accountNumber?: string;
+      accountName?: string;
       newNotes: FreshdeskNote[];
       newAttachments: FreshdeskAttachment[];
     },
@@ -573,6 +575,14 @@ export const ticketsStore = {
           syncedAt: Date.now(),
           lastSyncFailed: false,
         };
+        // Account number — only overwrite if not manually set
+        if (payload.accountNumber !== undefined && tk.accountSource !== "manual") {
+          if (payload.accountNumber) {
+            next.accountNumber = payload.accountNumber;
+            next.accountName = payload.accountName ?? tk.accountName ?? "Unlinked Account";
+            next.accountSource = "freshdesk";
+          }
+        }
         // Freshdesk due date — set only if user hasn't overridden
         if (payload.dueAt !== undefined && tk.dueSource !== "hub-override") {
           if (next.dueAt !== payload.dueAt) {
