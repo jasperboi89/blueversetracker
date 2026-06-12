@@ -438,6 +438,18 @@ export const ticketsStore = {
     };
     persist();
   },
+  setIssueClassification(ticketId: string, classification: IssueClassification | null) {
+    ensureLoaded();
+    state = {
+      ...state,
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId
+          ? { ...t, issueClassification: classification ?? undefined, updatedAt: Date.now() }
+          : t,
+      ),
+    };
+    persist();
+  },
   createManual(number?: string, accountNumber = "", accountName = "Manual Entry"): Ticket {
     ensureLoaded();
     const n = number?.trim() || String(40000 + Math.floor(Math.random() * 9999));

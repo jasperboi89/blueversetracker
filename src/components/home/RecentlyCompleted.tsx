@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, ClipboardList, PhoneOutgoing, Ticket } from "lucide-react";
-import { mockCompleted, type CompletedKind, type CompletedItem } from "@/lib/mock/completed";
+import { getMockCompleted, type CompletedKind, type CompletedItem } from "@/lib/mock/completed";
 import { formatCentralShort } from "@/lib/shift";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -19,6 +19,11 @@ export function RecentlyCompleted() {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const { tickets } = useTickets();
+  // Lock the base time after mount so SSR (which uses 0) and client agree initially,
+  // then re-render once with the real "now" anchor.
+  const [baseMs, setBaseMs] = useState<number>(0);
+  useEffect(() => setBaseMs(Date.now()), []);
+  const mockCompleted = baseMs > 0 ? getMockCompleted(baseMs) : [];
   const ticketCompleted: CompletedItem[] = tickets
     .filter((t) => t.status === "completed" && t.completedAt)
     .map((t) => ({

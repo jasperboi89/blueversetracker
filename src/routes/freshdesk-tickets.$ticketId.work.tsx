@@ -379,14 +379,7 @@ function WorkspacePage() {
               <Select
                 value={ticket.issueClassification ?? ""}
                 onValueChange={(v) => {
-                  const t = ticket;
-                  // store classification on ticket via session-light update: write to ticket
-                  // (do this through a tiny direct mutation by re-using markCompleted? — simpler: keep here)
-                  ticketsStore.updateSession(ticketId, {});
-                  // Use a tiny inline patch via store internals: re-create through markCompleted is wrong.
-                  // Instead, attach to ticket through a quick helper: not available — store in session via templateOverride suggestion.
-                  // For Phase 2 simplicity, persist classification on ticket using a small inline mutation:
-                  (t as Ticket).issueClassification = v as IssueClassification;
+                  ticketsStore.setIssueClassification(ticketId, v as IssueClassification);
                   update({ templateOverride: null });
                 }}
               >
