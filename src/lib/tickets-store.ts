@@ -670,7 +670,7 @@ export const ticketsStore = {
     const t: Ticket = {
       id: newId("t"),
       number: n,
-      accountNumber: accountNumber || "----",
+      accountNumber: accountNumber || "",
       accountName,
       status: "working",
       updatedAt: Date.now(),
