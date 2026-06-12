@@ -303,6 +303,22 @@ export const additionalWorkStore = {
     state = { ...state, items: state.items.filter((i) => i.id !== id) };
     persist();
   },
+  recoverRealWork(): number {
+    ensureLoaded();
+    let recovered = 0;
+    const items = state.items.map((i) => {
+      if (!i.isDemo) return i;
+      const hasUserWork =
+        (i.notesList?.length ?? 0) > 0 ||
+        (i.snips?.length ?? 0) > 0 ||
+        (i.completionFinalNotes?.trim()?.length ?? 0) > 0;
+      if (hasUserWork) { recovered++; return { ...i, isDemo: false }; }
+      return i;
+    });
+    state = { ...state, items };
+    persist();
+    return recovered;
+  },
 };
 
 export function useAdditionalWork() {

@@ -568,6 +568,25 @@ export const dispatchStore = {
     state = { ...state, sessions: [...additions, ...state.sessions] };
     persist();
   },
+  recoverRealWork(): number {
+    ensureLoaded();
+    let recovered = 0;
+    const sessions = state.sessions.map((s) => {
+      if (!s.isDemo) return s;
+      const hasUserWork =
+        (s.snips?.length ?? 0) > 0 ||
+        (s.summaryNotes?.trim()?.length ?? 0) > 0 ||
+        (s.summaryVersions?.length ?? 0) > 0 ||
+        (s.reasons ?? []).some(
+          (r) => r.changesMade.trim() || r.notes.trim() || r.retests.length > 0,
+        );
+      if (hasUserWork) { recovered++; return { ...s, isDemo: false }; }
+      return s;
+    });
+    state = { ...state, sessions };
+    persist();
+    return recovered;
+  },
 };
 
 export interface Readiness {
