@@ -69,6 +69,7 @@ export function NightPlan() {
   const { items } = useNightPlan();
   const now = useNow(30_000);
   const isMobile = useIsMobile();
+  const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"active" | "completed" | "dismissed" | "converted">("active");
@@ -113,11 +114,19 @@ export function NightPlan() {
       celebKey.current !== `${sk}:${totalForProgress}:${doneCount}`
     ) {
       celebKey.current = `${sk}:${totalForProgress}:${doneCount}`;
-      setCelebrate(true);
-      const t = setTimeout(() => setCelebrate(false), 5000);
-      return () => clearTimeout(t);
+      if (theme === "quantum-bloom") {
+        triggerCelebration({
+          kind: "night_plan",
+          label: "Night plan complete",
+          context: { total: totalForProgress },
+        });
+      } else {
+        setCelebrate(true);
+        const t = setTimeout(() => setCelebrate(false), 5000);
+        return () => clearTimeout(t);
+      }
     }
-  }, [doneCount, totalForProgress]);
+  }, [doneCount, totalForProgress, theme]);
 
   const isEmpty = items.length === 0;
   const allDone = totalForProgress > 0 && doneCount === totalForProgress;
