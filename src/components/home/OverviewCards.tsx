@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { Calendar, FolderOpen, MessageSquare } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import {
-  dueTodayItems,
-  openItemsList,
-  inReviewList,
-  overviewCounts,
-} from "@/lib/mock/overview";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
 
 type CardKey = "due" | "open" | "review";
+interface OverviewItem { id: string; type: string; title: string; reference: string }
+const dueTodayItems: OverviewItem[] = [];
+const openItemsList: OverviewItem[] = [];
+const inReviewList: OverviewItem[] = [];
+const overviewCounts = { due: 0, open: 0, review: 0 };
 
 const cards: {
   key: CardKey;
@@ -20,7 +19,7 @@ const cards: {
   icon: typeof Calendar;
   color: string;
   zero: string;
-  items: typeof dueTodayItems;
+  items: OverviewItem[];
 }[] = [
   {
     key: "due",
@@ -64,7 +63,7 @@ export function OverviewCards() {
     .filter((s) => s.status === "waiting-cs" || s.status === "waiting-prog")
     .map((s) => ({ id: `ds-${s.id}`, type: "Contact Dispatch", title: s.status === "waiting-cs" ? "Waiting on CS review" : "Waiting on Programming review", reference: `${s.accountName} (Account ${s.accountNumber})` }));
 
-  const merged: Record<CardKey, typeof dueTodayItems> = {
+  const merged: Record<CardKey, OverviewItem[]> = {
     due: dueTodayItems,
     open: [...openItemsList, ...dispatchOpen, ...addWorkOpen],
     review: [...inReviewList, ...dispatchReview],

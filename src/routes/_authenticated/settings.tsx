@@ -30,13 +30,12 @@ import {
 } from "@/lib/settings/dropdowns-store";
 import { useShiftSettings, shiftSettingsStore, fmtHour } from "@/lib/settings/shift-settings-store";
 import { useDisplayPrefs, displayPrefsStore } from "@/lib/settings/display-prefs-store";
-import { useDemoMode, setDemoMode } from "@/lib/settings/demo-mode-store";
 import { nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useTickets } from "@/lib/tickets-store";
 import { useAccounts } from "@/lib/accounts-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
-import { ticketsStore, recoverRealWorkFromDemo } from "@/lib/tickets-store";
+import { ticketsStore } from "@/lib/tickets-store";
 import { accountsStore } from "@/lib/accounts-store";
 import { dispatchStore } from "@/lib/dispatch-store";
 import { additionalWorkStore } from "@/lib/additional-work-store";
@@ -590,7 +589,6 @@ function ToggleRow({ label, description, checked, onChange }: { label: string; d
 
 /* ---------------- Data / Cleanup ---------------- */
 function DataSection() {
-  const demo = useDemoMode();
   const { tickets } = useTickets();
   const { sessions } = useDispatch();
   const { items: work } = useAdditionalWork();
@@ -605,9 +603,9 @@ function DataSection() {
       <div className="mb-4 rounded-md border border-[color:oklch(0.72_0.22_25)/40%] bg-[color:oklch(0.72_0.22_25)/8%] p-3">
         <div className="text-sm font-medium text-foreground">Reset Hub Data</div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Permanently delete all seeded demo records — tickets, dispatch sessions, additional work,
-          accounts, and night-plan history — and turn Demo Mode off so seeds don't return on reload.
-          Settings, templates, dropdowns, shift, display, and Freshdesk connection are kept.
+          Permanently delete every ticket, dispatch session, additional work item, account, and
+          night-plan history entry currently in the Hub. Settings, templates, dropdowns, shift,
+          display, and Freshdesk connection are kept.
         </p>
         <Button
           className="mt-2"
@@ -615,34 +613,9 @@ function DataSection() {
           size="sm"
           onClick={() => setResetOpen(true)}
         >
-          <Trash2 className="mr-1.5 h-4 w-4" /> Clear all demo data
-        </Button>
-        <Button
-          className="ml-2 mt-2"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            const t = recoverRealWorkFromDemo().tickets;
-            const d = dispatchStore.recoverRealWork();
-            const a = additionalWorkStore.recoverRealWork();
-            const total = t + d + a;
-            toast.success(
-              total === 0
-                ? "No demo records had user work to restore."
-                : `Restored ${total} record${total === 1 ? "" : "s"} as real work.`,
-            );
-          }}
-        >
-          Restore my real work
+          <Trash2 className="mr-1.5 h-4 w-4" /> Clear all Hub data
         </Button>
       </div>
-
-      <ToggleRow
-        label="Demo Mode"
-        description="Show seeded demo records (Freshdesk tickets, accounts, dispatch sessions, etc). Real Freshdesk pulls are never hidden."
-        checked={demo}
-        onChange={setDemoMode}
-      />
 
       <div className="mt-4 rounded-md border border-border/40 p-3">
         <div className="text-sm font-medium text-foreground">Night Plan Archive</div>
@@ -684,7 +657,7 @@ function DataSection() {
       <ConfirmModal
         open={resetOpen}
         onOpenChange={setResetOpen}
-        title="Clear all demo data?"
+        title="Clear all Hub data?"
         description="This permanently deletes every ticket, dispatch session, additional-work item, account, and night-plan entry currently in the Hub. Settings and Freshdesk connection are kept. This cannot be undone."
         confirmLabel="Clear everything"
         tone="danger"
@@ -694,7 +667,6 @@ function DataSection() {
           additionalWorkStore.clearAll();
           accountsStore.clearAll();
           nightPlanHistory.clearAll();
-          setDemoMode(false);
           setResetOpen(false);
           toast.success("Hub data cleared. Starting fresh.");
         }}

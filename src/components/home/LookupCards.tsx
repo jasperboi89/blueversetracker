@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import { Building2, Search, Ticket } from "lucide-react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { mockAccounts } from "@/lib/mock/accounts";
-import { mockTickets } from "@/lib/mock/tickets";
-import { accountsStore } from "@/lib/accounts-store";
+import { accountsStore, useAccounts } from "@/lib/accounts-store";
+import { useTickets } from "@/lib/tickets-store";
 
 export function LookupCards() {
   return (
@@ -21,20 +20,8 @@ function AccountLookup() {
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
-
-  const results = useMemo(() => {
-    if (!q.trim()) return [];
-    const term = q.toLowerCase();
-    return mockAccounts
-      .filter((a) => (includeArchived ? true : a.status === "active"))
-      .filter((a) => a.number.includes(term) || a.name.toLowerCase().includes(term))
-      .sort((a, b) => {
-        const aExact = a.number === q.trim() ? 0 : 1;
-        const bExact = b.number === q.trim() ? 0 : 1;
-        return aExact - bExact;
-      })
-      .slice(0, 6);
-  }, [q, includeArchived]);
+  useAccounts(); // re-render when accounts change
+  const results = q.trim() ? accountsStore.search(q, { includeArchived }) : [];
 
   return (
     <div className="glass-panel shimmer p-5" style={{ animation: "float-y 6s ease-in-out infinite" }}>
@@ -94,14 +81,14 @@ function AccountLookup() {
 function TicketLookup() {
   const [q, setQ] = useState("");
   const [includeCompleted, setIncludeCompleted] = useState(false);
-
+  const { tickets } = useTickets();
   const results = useMemo(() => {
     if (!q.trim()) return [];
-    return mockTickets
+    return tickets
       .filter((t) => (includeCompleted ? true : t.status !== "completed"))
       .filter((t) => t.number.includes(q.trim()))
       .slice(0, 6);
-  }, [q, includeCompleted]);
+  }, [q, includeCompleted, tickets]);
 
   const noMatch = q.trim().length > 0 && results.length === 0;
 
@@ -143,7 +130,7 @@ function TicketLookup() {
             >
               <span>
                 <span className="tabular-nums text-muted-foreground">#{t.number}</span>{" "}
-                <span className="text-foreground">{t.subject}</span>
+                <span className="text-foreground">{t.details.subject}</span>
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{t.status.replace("-", " ")}</span>
             </button>
