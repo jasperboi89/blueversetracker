@@ -152,7 +152,7 @@ export function AlertCenter() {
             />
           ))}
           {showDismissed &&
-            [...dynamic, ...mockAlerts]
+            [...dynamic, ...seedAlerts]
               .filter((a) => dismissed.has(a.id))
               .map((a) => (
                 <div key={a.id} className="rounded-lg border border-border/40 p-3 text-xs opacity-60">
