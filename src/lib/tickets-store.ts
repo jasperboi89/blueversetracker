@@ -676,6 +676,105 @@ export const ticketsStore = {
     };
     persist();
   },
+  /**
+   * Manually set an account number on a ticket. Validates numeric (3-8 digits),
+   * links to an existing Account or creates a new one in the Accounts table.
+   */
+  setAccountNumber(
+    ticketId: string,
+    rawNumber: string,
+    accountName?: string,
+  ): { ok: boolean; error?: string; created?: boolean } {
+    ensureLoaded();
+    const num = rawNumber.trim();
+    if (!/^\d{3,8}$/.test(num)) {
+      return { ok: false, error: "Account number must be 3–8 digits." };
+    }
+    // Lazy import to avoid circular module init
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { accountsStore } = require("./accounts-store") as typeof import("./accounts-store");
+    let acct = accountsStore.get(num);
+    let created = false;
+    if (!acct) {
+      try {
+        acct = accountsStore.create({ number: num, name: accountName?.trim() || "Unlinked Account" });
+        created = true;
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : "Could not create account." };
+      }
+    }
+    const finalName = acct?.name ?? accountName?.trim() ?? "Unlinked Account";
+    state = {
+      ...state,
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId
+          ? {
+              ...t,
+              accountNumber: num,
+              accountName: finalName,
+              accountSource: "manual",
+              updatedAt: Date.now(),
+              hubHistory: [
+                {
+                  id: newId("hh"),
+                  initials: "LTP",
+                  createdAt: Date.now(),
+                  body: `Account number set manually to ${num} (${finalName})${created ? " — new account created" : ""}.`,
+                  kind: "system",
+                },
+                ...t.hubHistory,
+              ],
+            }
+          : t,
+      ),
+    };
+    persist();
+    return { ok: true, created };
+  },
+  /** Refresh the account number from Freshdesk, overwriting any manual entry. */
+  async refreshAccountFromFreshdesk(ticketId: string): Promise<{ ok: boolean; error?: string; found?: boolean }> {
+    ensureLoaded();
+    const t = state.tickets.find((x) => x.id === ticketId);
+    if (!t) return { ok: false, error: "Ticket not found." };
+    try {
+      const mod = await import("./api/freshdesk.functions");
+      const res = await mod.freshdeskPullTicket({ data: { number: t.number } });
+      if (!res.ok) return { ok: false, error: res.error };
+      const num = res.ticket.accountNumber;
+      if (!num) {
+        return { ok: true, found: false };
+      }
+      const name = res.ticket.accountName ?? res.ticket.companyName ?? "Unlinked Account";
+      state = {
+        ...state,
+        tickets: state.tickets.map((tk) =>
+          tk.id === ticketId
+            ? {
+                ...tk,
+                accountNumber: num,
+                accountName: name,
+                accountSource: "freshdesk",
+                updatedAt: Date.now(),
+                hubHistory: [
+                  {
+                    id: newId("hh"),
+                    initials: "LTP",
+                    createdAt: Date.now(),
+                    body: `Account number refreshed from Freshdesk: ${num} (${name}).`,
+                    kind: "system",
+                  },
+                  ...tk.hubHistory,
+                ],
+              }
+            : tk,
+        ),
+      };
+      persist();
+      return { ok: true, found: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Refresh failed." };
+    }
+  },
   createManual(number?: string, accountNumber = "", accountName = "Manual Entry"): Ticket {
     ensureLoaded();
     const n = number?.trim() || String(40000 + Math.floor(Math.random() * 9999));
