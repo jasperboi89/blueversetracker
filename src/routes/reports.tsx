@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import {
   FileText, Ticket as TicketIcon, PhoneOutgoing, ClipboardList,
@@ -25,18 +24,15 @@ import { useRecurringRows, recurringStore } from "@/lib/reports/recurring-issues
 import { nightPlanHistory, useNightPlanHistory } from "@/lib/reports/night-plan-history";
 
 const reportSchema = z.object({
-  r: fallback(
-    z.enum(["ticket-history","dispatch-status","add-work","account-history","prog-email","recurring","night-plan"]).optional(),
-    undefined,
-  ),
-  window: fallback(z.enum(["current","custom"]).optional(), undefined),
-  from: fallback(z.string().optional(), undefined),
-  to: fallback(z.string().optional(), undefined),
+  r: z.enum(["ticket-history","dispatch-status","add-work","account-history","prog-email","recurring","night-plan"]).optional().catch(undefined),
+  window: z.enum(["current","custom"]).optional().catch(undefined),
+  from: z.string().optional().catch(undefined),
+  to: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports — Account Intel Hub" }] }),
-  validateSearch: zodValidator(reportSchema),
+  validateSearch: (s: Record<string, unknown>) => reportSchema.parse(s),
   component: ReportsPage,
 });
 
