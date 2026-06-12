@@ -27,7 +27,8 @@ export const listDiscoveries = createServerFn({ method: "GET" })
       id: r.id as string,
       kind: r.kind as (typeof KINDS)[number],
       label: r.label as string,
-      context: (r.context ?? {}) as Record<string, unknown>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      context: (r.context ?? {}) as Record<string, any>,
       createdAt: r.created_at as string,
     }));
   });
