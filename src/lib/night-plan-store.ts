@@ -14,6 +14,7 @@ export interface NightPlanItem {
   completedAt?: number;
   dismissedAt?: number;
   convertedAt?: number;
+  additionalWorkId?: string;
 }
 
 interface PlanState {
@@ -89,6 +90,24 @@ export const nightPlanStore = {
     if (status === "dismissed") patch.dismissedAt = Date.now();
     if (status === "converted") patch.convertedAt = Date.now();
     this.update(id, patch);
+  },
+  convertToAdditionalWork(
+    id: string,
+    account?: { number: string; name: string },
+  ): string | undefined {
+    ensureLoaded();
+    const item = state.items.find((i) => i.id === id);
+    if (!item) return;
+    // Lazy import to avoid circular static analysis
+    const { additionalWorkStore } =
+      require("./additional-work-store") as typeof import("./additional-work-store");
+    const work = additionalWorkStore.fromNightPlan(item, account);
+    this.update(id, {
+      status: "converted",
+      convertedAt: Date.now(),
+      additionalWorkId: work.id,
+    });
+    return work.id;
   },
   markCelebrationShown() {
     state = { ...state, celebrationShown: true };
