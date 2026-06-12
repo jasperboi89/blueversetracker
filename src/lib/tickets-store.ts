@@ -757,31 +757,19 @@ export const ticketsStore = {
     return t;
   },
   /** Internal: append seed tickets, dedupe by id. Used by reports demo data. */
-  _seedExtra(items: Ticket[]) {
-    ensureLoaded();
-    const existing = new Set(state.tickets.map((t) => t.id));
-    const additions = items.filter((t) => !existing.has(t.id));
-    if (additions.length === 0) return;
-    state = { ...state, tickets: [...additions, ...state.tickets] };
-    persist();
-  },
 };
 
+/** No-op kept for callers that still reference it after demo-data removal. */
+export function recoverRealWorkFromDemo(): { tickets: number } {
+  return { tickets: 0 };
+}
+
 export function useTickets() {
-  const snap = useSyncExternalStore(
+  return useSyncExternalStore(
     ticketsStore.subscribe,
     () => ticketsStore.getState(),
     () => ({ tickets: [], workSessions: {}, recentIds: {} }),
   );
-  const demo = useDemoMode();
-  if (demo) return snap;
-  const tickets = snap.tickets.filter((t) => !t.isDemo);
-  const allowedIds = new Set(tickets.map((t) => t.id));
-  const recentIds: Record<string, string[]> = {};
-  for (const [k, ids] of Object.entries(snap.recentIds)) {
-    recentIds[k] = ids.filter((id) => allowedIds.has(id));
-  }
-  return { ...snap, tickets, recentIds };
 }
 
 export function isOverdue(t: Ticket, now = Date.now()): boolean {
