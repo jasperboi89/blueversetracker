@@ -308,3 +308,48 @@ html[data-motion="reduced"] *::after {
   top: 50%;
   transform: translate(-50%, -50%);
 }
+
+/* === Quantum Bloom Phase 3 — Cosmic Weather & Sanctuary === */
+@keyframes qb-meteor {
+  0%   { opacity: 0; transform: translate(-10vw, 0) rotate(20deg); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(140vw, 60vh) rotate(20deg); }
+}
+@keyframes qb-comet {
+  0%   { opacity: 0; transform: translate(-30vw, 0) rotate(-10deg); }
+  10%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(140vw, -10vh) rotate(-10deg); }
+}
+@keyframes qb-cosmic-lightning {
+  0%   { opacity: 0; }
+  10%  { opacity: 0.9; }
+  20%  { opacity: 0.2; }
+  30%  { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+@keyframes qb-aurora-ribbon {
+  0%   { opacity: 0; transform: translateY(-20px) scaleY(0.6); }
+  20%  { opacity: 1; transform: translateY(0) scaleY(1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(20px) scaleY(1.3); }
+}
+
+/* Sanctuary mode — dim chrome, slow visuals */
+html[data-qb-sanctuary="on"] [data-sidebar="sidebar"],
+html[data-qb-sanctuary="on"] header.sticky {
+  opacity: 0.15;
+  transition: opacity 600ms ease;
+  pointer-events: none;
+}
+html[data-qb-sanctuary="on"] main {
+  opacity: 0.55;
+  transition: opacity 600ms ease;
+}
+html[data-qb-sanctuary="on"] main:hover {
+  opacity: 0.95;
+}
+html[data-qb-sanctuary="on"] [data-sidebar="sidebar"]:hover,
+html[data-qb-sanctuary="on"] header.sticky:hover {
+  opacity: 1;
+  pointer-events: auto;
+}

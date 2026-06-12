@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { HipaaPill } from "@/components/auth/HipaaPill";
+import { SanctuaryButton } from "@/components/quantum-bloom/SanctuaryButton";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -14,7 +15,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
               BlueVerse Command Deck
             </div>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              <SanctuaryButton />
               <HipaaPill />
             </div>
           </header>
