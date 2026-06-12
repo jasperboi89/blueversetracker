@@ -165,6 +165,11 @@ export const nightPlanHistory = {
     state = { items: state.items.filter((i) => !set.has(i.id)) };
     persist();
   },
+  clearAll() {
+    ensureLoaded();
+    state = { items: [] };
+    persist();
+  },
   linkConverted(id: string, additionalWorkId: string) {
     ensureLoaded();
     state = {

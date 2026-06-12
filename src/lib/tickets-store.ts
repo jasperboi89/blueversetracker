@@ -258,7 +258,13 @@ function loadInitial(): State {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as State;
-      if (parsed?.tickets?.length) return parsed;
+      if (parsed && Array.isArray(parsed.tickets)) {
+        return {
+          tickets: parsed.tickets,
+          workSessions: parsed.workSessions ?? {},
+          recentIds: parsed.recentIds ?? {},
+        };
+      }
     }
   } catch {}
   return { tickets: seed(), workSessions: {}, recentIds: {} };
@@ -309,6 +315,11 @@ export const ticketsStore = {
   getState(): State {
     ensureLoaded();
     return state;
+  },
+  clearAll() {
+    ensureLoaded();
+    state = { tickets: [], workSessions: {}, recentIds: {} };
+    persist();
   },
   getTicket(id: string): Ticket | undefined {
     ensureLoaded();

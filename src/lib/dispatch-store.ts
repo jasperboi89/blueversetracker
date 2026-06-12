@@ -335,7 +335,7 @@ function loadInitial(): State {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (p?.sessions?.length) return p;
+      if (p && Array.isArray(p.sessions)) return p;
     }
   } catch {}
   return { sessions: seed() };
@@ -362,6 +362,12 @@ export const dispatchStore = {
   subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },
   getState(): State { ensureLoaded(); return state; },
   getSession(id: string) { ensureLoaded(); return state.sessions.find((s) => s.id === id); },
+
+  clearAll() {
+    ensureLoaded();
+    state = { sessions: [] };
+    persist();
+  },
 
   start({ accountNumber, accountName, ticketNumber }: { accountNumber: string; accountName: string; ticketNumber?: string }) {
     ensureLoaded();
