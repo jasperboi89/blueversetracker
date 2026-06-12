@@ -173,7 +173,7 @@ export function AlertCenter() {
   );
 }
 
-function AlertRow({ alert, mounted, onDismiss }: { alert: MockAlert; mounted: boolean; onDismiss: () => void }) {
+function AlertRow({ alert, mounted, onDismiss, onOpen }: { alert: MockAlert; mounted: boolean; onDismiss: () => void; onOpen?: () => void }) {
   const s = styles[alert.priority];
   const Icon = s.icon;
   const updatedAt = mounted ? new Date(Date.now() - alert.updatedMinutesAgo * 60_000) : null;
@@ -191,6 +191,15 @@ function AlertRow({ alert, mounted, onDismiss }: { alert: MockAlert; mounted: bo
           </div>
         </div>
         <div className="mt-0.5 text-xs text-muted-foreground">{alert.detail}</div>
+        {onOpen && (
+          <button
+            onClick={onOpen}
+            className="mt-1 text-xs underline-offset-2 hover:underline"
+            style={{ color: "var(--cyan-glow)" }}
+          >
+            Open in Reports
+          </button>
+        )}
       </div>
       <button
         className="rounded-md p-1 text-muted-foreground hover:bg-white/5 hover:text-foreground"
