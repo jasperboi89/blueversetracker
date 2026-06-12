@@ -28,6 +28,8 @@ export interface FreshdeskNote {
   author: string;
   createdAt: number;
   body: string;
+  freshdeskId?: string;
+  source?: "freshdesk" | "hub";
 }
 export interface HubHistoryEntry {
   id: string;
@@ -41,6 +43,10 @@ export interface FreshdeskAttachment {
   name: string;
   createdAt: number;
   size?: string;
+  freshdeskId?: string;
+  url?: string;
+  contentType?: string;
+  source?: "freshdesk" | "hub";
 }
 export interface HubSnip {
   id: string;
@@ -71,6 +77,11 @@ export interface Ticket {
   hubHistory: HubHistoryEntry[];
   freshdeskAttachments: FreshdeskAttachment[];
   hubSnips: HubSnip[];
+  /** Due-date source tracking — Phase 6 */
+  dueSource?: "freshdesk" | "hub-manual" | "hub-override";
+  dueHistory?: Array<{ prev?: number; next?: number; source: NonNullable<Ticket["dueSource"]>; at: number; initials: string }>;
+  /** Seed/demo flag — hidden when Demo Mode is OFF */
+  isDemo?: boolean;
 }
 
 export interface WorkSession {
