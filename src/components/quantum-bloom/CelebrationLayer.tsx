@@ -16,12 +16,12 @@ export function CelebrationLayer() {
   const [active, setActive] = useState<CelebrationEvent | null>(null);
 
   useEffect(() => {
-    return subscribeCelebrations((e) => {
+    const unsub = subscribeCelebrations((e) => {
       if (document.hidden) return;
       setActive(e);
-      const t = setTimeout(() => setActive(null), DURATIONS[e.kind] + 100);
-      return () => clearTimeout(t);
+      setTimeout(() => setActive(null), DURATIONS[e.kind] + 100);
     });
+    return () => { unsub(); };
   }, []);
 
   if (!active) return null;
