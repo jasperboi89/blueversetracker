@@ -595,9 +595,27 @@ function DataSection() {
   const archived = nightPlanHistory.archived().length;
   const cleanup = nightPlanHistory.readyForCleanup().length;
   const [cleanupOpen, setCleanupOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
 
   return (
     <SectionCard id="data" title="Data / Cleanup Settings" icon={Database}>
+      <div className="mb-4 rounded-md border border-[color:oklch(0.72_0.22_25)/40%] bg-[color:oklch(0.72_0.22_25)/8%] p-3">
+        <div className="text-sm font-medium text-foreground">Reset Hub Data</div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Permanently delete all seeded demo records — tickets, dispatch sessions, additional work,
+          accounts, and night-plan history — and turn Demo Mode off so seeds don't return on reload.
+          Settings, templates, dropdowns, shift, display, and Freshdesk connection are kept.
+        </p>
+        <Button
+          className="mt-2"
+          variant="destructive"
+          size="sm"
+          onClick={() => setResetOpen(true)}
+        >
+          <Trash2 className="mr-1.5 h-4 w-4" /> Clear all demo data
+        </Button>
+      </div>
+
       <ToggleRow
         label="Demo Mode"
         description="Show seeded demo records (Freshdesk tickets, accounts, dispatch sessions, etc). Real Freshdesk pulls are never hidden."
@@ -639,6 +657,25 @@ function DataSection() {
           nightPlanHistory.delete(ids);
           setCleanupOpen(false);
           toast.success(`Removed ${ids.length} archived Night Plan items.`);
+        }}
+      />
+
+      <ConfirmModal
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title="Clear all demo data?"
+        description="This permanently deletes every ticket, dispatch session, additional-work item, account, and night-plan entry currently in the Hub. Settings and Freshdesk connection are kept. This cannot be undone."
+        confirmLabel="Clear everything"
+        tone="danger"
+        onConfirm={() => {
+          ticketsStore.clearAll();
+          dispatchStore.clearAll();
+          additionalWorkStore.clearAll();
+          accountsStore.clearAll();
+          nightPlanHistory.clearAll();
+          setDemoMode(false);
+          setResetOpen(false);
+          toast.success("Hub data cleared. Starting fresh.");
         }}
       />
     </SectionCard>
