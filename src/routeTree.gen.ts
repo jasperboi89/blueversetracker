@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as FreshdeskTicketsRouteImport } from './routes/freshdesk-tickets'
 import { Route as ContactDispatchRouteImport } from './routes/contact-dispatch'
 import { Route as AdditionalWorkRouteImport } from './routes/additional-work'
@@ -23,6 +24,11 @@ import { Route as AdditionalWorkWorkIdWorkRouteImport } from './routes/additiona
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FreshdeskTicketsRoute = FreshdeskTicketsRouteImport.update({
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/additional-work'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
+    | '/reports'
     | '/settings'
     | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/additional-work'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
+    | '/reports'
     | '/settings'
     | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/additional-work'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
+    | '/reports'
     | '/settings'
     | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   AdditionalWorkRoute: typeof AdditionalWorkRouteWithChildren
   ContactDispatchRoute: typeof ContactDispatchRouteWithChildren
   FreshdeskTicketsRoute: typeof FreshdeskTicketsRouteWithChildren
+  ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/freshdesk-tickets': {
@@ -287,8 +307,19 @@ const rootRouteChildren: RootRouteChildren = {
   AdditionalWorkRoute: AdditionalWorkRouteWithChildren,
   ContactDispatchRoute: ContactDispatchRouteWithChildren,
   FreshdeskTicketsRoute: FreshdeskTicketsRouteWithChildren,
+  ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
