@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -45,6 +46,7 @@ import { CelebrationOverlay } from "./CelebrationOverlay";
 import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ConvertFromNightPlanModal } from "@/components/additional-work/ConvertFromNightPlanModal";
 
 const priorityMeta: Record<Priority, { label: string; color: string; icon: typeof Star }> = {
   must: { label: "Must Do Tonight", color: "var(--gold-glow)", icon: Star },
@@ -563,14 +565,7 @@ function NightPlanDrawer({
           <TabsContent value="converted" className="mt-3 space-y-2">
             {converted.length === 0 && <Empty text="No converted items." />}
             {converted.map((i) => (
-              <div key={i.id}>
-                <PlanRow item={i} onClick={() => onOpenItem(i.id)} />
-                <div className="mt-1 px-3">
-                  <Button size="sm" variant="ghost" disabled className="text-xs">
-                    Open Additional Work (later phase)
-                  </Button>
-                </div>
-              </div>
+              <ConvertedRow key={i.id} item={i} onOpen={() => onOpenItem(i.id)} />
             ))}
           </TabsContent>
         </Tabs>
@@ -583,12 +578,36 @@ function Empty({ text }: { text: string }) {
   return <div className="rounded-lg border border-dashed border-border/40 p-6 text-center text-sm text-muted-foreground">{text}</div>;
 }
 
+function ConvertedRow({ item, onOpen }: { item: NightPlanItem; onOpen: () => void }) {
+  const nav = useNavigate();
+  return (
+    <div>
+      <PlanRow item={item} onClick={onOpen} />
+      <div className="mt-1 px-3">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-xs"
+          disabled={!item.additionalWorkId}
+          onClick={() =>
+            item.additionalWorkId &&
+            nav({ to: "/additional-work/$workId/work", params: { workId: item.additionalWorkId } })
+          }
+        >
+          Open Additional Work
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () => void }) {
   const [editing, setEditing] = useState(false);
   const [task, setTask] = useState(item.task);
   const [notes, setNotes] = useState(item.notes ?? "");
   const [priority, setPriority] = useState<Priority>(item.priority);
-  const [confirm, setConfirm] = useState<null | "done" | "carry" | "convert" | "dismiss">(null);
+  const [confirm, setConfirm] = useState<null | "done" | "carry" | "dismiss">(null);
+  const [convertOpen, setConvertOpen] = useState(false);
 
   useEffect(() => {
     setTask(item.task);
@@ -608,7 +627,6 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
   const confirmMeta: Record<NonNullable<typeof confirm>, { label: string; color: string; action: () => void }> = {
     done: { label: "Mark Done", color: "var(--green-glow)", action: () => nightPlanStore.setStatus(item.id, "done") },
     carry: { label: "Carry Over", color: "var(--cyan-glow)", action: () => nightPlanStore.setStatus(item.id, "carried") },
-    convert: { label: "Convert to Additional Work", color: "var(--violet-glow)", action: () => nightPlanStore.setStatus(item.id, "converted") },
     dismiss: { label: "Dismiss", color: "var(--gold-glow)", action: () => nightPlanStore.setStatus(item.id, "dismissed") },
   };
 
@@ -653,7 +671,7 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
                   </Button>
                 )}
                 {item.status !== "converted" && (
-                  <Button size="sm" variant="ghost" onClick={() => setConfirm("convert")}>
+                  <Button size="sm" variant="ghost" onClick={() => setConvertOpen(true)}>
                     <Wand2 className="mr-1 h-4 w-4" style={{ color: "var(--violet-glow)" }} /> Convert to Additional Work
                   </Button>
                 )}
@@ -710,6 +728,13 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
           </DialogContent>
         </Dialog>
       )}
+
+      <ConvertFromNightPlanModal
+        item={item}
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        onConverted={onClose}
+      />
     </>
   );
 }
