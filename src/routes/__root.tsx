@@ -13,7 +13,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GalaxyBackground } from "@/components/layout/GalaxyBackground";
 import { Toaster } from "@/components/ui/sonner";
-import { runReportsSeed } from "@/lib/mock/reports-seed";
 import { useApplyDisplayPrefs } from "@/lib/settings/display-prefs-store";
 import { supabase } from "@/integrations/supabase/client";
 import { useApplyTheme, useTheme } from "@/lib/settings/theme-store";
@@ -132,7 +131,6 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
-  useEffect(() => { runReportsSeed(); }, []);
   useApplyDisplayPrefs();
   useApplyTheme();
   const theme = useTheme();
