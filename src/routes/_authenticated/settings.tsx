@@ -102,6 +102,7 @@ function FreshdeskSection() {
   const cfg = useFreshdeskConfig();
   const [testing, setTesting] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  // (FreshdeskSection body continues below)
   const [domainInput, setDomainInput] = useState(cfg.domain);
 
   async function runTest() {
