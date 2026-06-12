@@ -529,6 +529,14 @@ export const dispatchStore = {
     state = { ...state, sessions: state.sessions.filter((s) => s.id !== id) };
     persist();
   },
+  _seedExtra(items: DispatchSession[]) {
+    ensureLoaded();
+    const existing = new Set(state.sessions.map((s) => s.id));
+    const additions = items.filter((s) => !existing.has(s.id));
+    if (additions.length === 0) return;
+    state = { ...state, sessions: [...additions, ...state.sessions] };
+    persist();
+  },
 };
 
 export interface Readiness {
