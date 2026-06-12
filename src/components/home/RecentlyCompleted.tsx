@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useTickets } from "@/lib/tickets-store";
 
 const kindMeta: Record<CompletedKind, { label: string; icon: typeof Ticket; color: string }> = {
   freshdesk: { label: "Freshdesk", icon: Ticket, color: "var(--cyan-glow)" },
@@ -17,7 +18,18 @@ const kindMeta: Record<CompletedKind, { label: string; icon: typeof Ticket; colo
 export function RecentlyCompleted() {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
-  const top5 = [...mockCompleted].sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime()).slice(0, 5);
+  const { tickets } = useTickets();
+  const ticketCompleted: CompletedItem[] = tickets
+    .filter((t) => t.status === "completed" && t.completedAt)
+    .map((t) => ({
+      id: t.id,
+      kind: "freshdesk" as CompletedKind,
+      title: t.details.subject || `Ticket #${t.number}`,
+      reference: `Ticket #${t.number} · Account ${t.accountNumber}`,
+      completedAt: new Date(t.completedAt!),
+    }));
+  const combined = [...ticketCompleted, ...mockCompleted];
+  const top5 = [...combined].sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime()).slice(0, 5);
 
   return (
     <div className="glass-panel p-5">
@@ -51,7 +63,7 @@ export function RecentlyCompleted() {
             </TabsList>
             {(["all", "freshdesk", "dispatch", "additional"] as const).map((k) => (
               <TabsContent key={k} value={k} className="mt-3 divide-y divide-border/30">
-                {mockCompleted
+                {combined
                   .filter((i) => k === "all" || i.kind === k)
                   .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())
                   .map((i) => <Row key={i.id} item={i} />)}
