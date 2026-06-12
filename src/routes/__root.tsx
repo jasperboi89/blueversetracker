@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/layout/AppShell";
 import { runReportsSeed } from "@/lib/mock/reports-seed";
+import { useApplyDisplayPrefs } from "@/lib/settings/display-prefs-store";
 
 function NotFoundComponent() {
   return (
@@ -117,6 +118,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useEffect(() => { runReportsSeed(); }, []);
+  useApplyDisplayPrefs();
 
   return (
     <QueryClientProvider client={queryClient}>
