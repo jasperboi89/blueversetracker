@@ -86,9 +86,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "AnSer Ops — HIPAA-Safeguarded internal operations portal." },
       { name: "author", content: "AnSer Ops" },
       { property: "og:title", content: "Account Intel Hub" },
-      { property: "og:description", content: "AnSer Ops command deck for night-shift operations." },
+      { property: "og:description", content: "AnSer Ops — HIPAA-Safeguarded internal operations portal." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Account Intel Hub" },
+      { name: "twitter:description", content: "AnSer Ops — HIPAA-Safeguarded internal operations portal." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/187a321c-deb4-4c2f-992d-26d46a5f6e6a/id-preview-d569e755--cc586992-4bbf-4c2f-b7d5-316f472a3f0f.lovable.app-1781258568669.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/187a321c-deb4-4c2f-992d-26d46a5f6e6a/id-preview-d569e755--cc586992-4bbf-4c2f-b7d5-316f472a3f0f.lovable.app-1781258568669.png" },
     ],
     links: [
       {
