@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Plug, Sparkles, PhoneOutgoing, ListChecks, Clock, Eye, Database,
-  TestTube2, Trash2, ShieldCheck, AlertCircle, Plus, Archive, RotateCcw, MoveUp, MoveDown,
+  TestTube2, Trash2, ShieldCheck, AlertCircle, Plus, Archive, RotateCcw, MoveUp, MoveDown, Lock,
 } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { freshdeskTestConnection } from "@/lib/api/freshdesk.functions";
@@ -38,13 +37,17 @@ import { useAccounts } from "@/lib/accounts-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
 import { formatCentralExact } from "@/lib/shift";
+import { useQuery } from "@tanstack/react-query";
+import { adminGetAccessSummary } from "@/lib/auth/admin-users.functions";
+import { INACTIVITY_LOGOUT_MS } from "@/lib/auth/inactivity-config";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Account Intel Hub" }] }),
   component: SettingsPage,
 });
 
 const SECTIONS = [
+  { id: "security",   title: "Security & Access",     icon: Lock },
   { id: "freshdesk",  title: "Freshdesk Integration", icon: Plug },
   { id: "ai",         title: "AI Summary Settings",   icon: Sparkles },
   { id: "templates",  title: "Contact Dispatch Templates", icon: PhoneOutgoing },
@@ -56,7 +59,7 @@ const SECTIONS = [
 
 function SettingsPage() {
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-6xl space-y-4">
         <div className="glass-panel p-4 sm:p-5">
           <h1 className="text-xl font-semibold text-foreground">Settings</h1>
@@ -79,6 +82,7 @@ function SettingsPage() {
           </nav>
 
           <div className="space-y-4">
+            <SecurityAccessSection />
             <FreshdeskSection />
             <AISection />
             <TemplatesSection />
@@ -89,12 +93,47 @@ function SettingsPage() {
           </div>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }
 
 /* ---------------- Freshdesk ---------------- */
 function FreshdeskSection() {
+  return <FreshdeskSectionImpl />;
+}
+
+function SecurityAccessSection() {
+  const { data } = useQuery({
+    queryKey: ["admin-access-summary"],
+    queryFn: () => adminGetAccessSummary(),
+  });
+  const minutes = Math.round(INACTIVITY_LOGOUT_MS / 60000);
+  return (
+    <SectionCard id="security" title="Security & Access" icon={Lock}>
+      <div className="grid gap-2 text-sm">
+        <Row label="Authentication" value="Active" />
+        <Row label="Authorized users" value={`${data?.active ?? "—"} active / ${data?.total ?? "—"} total`} />
+        <Row label="Auto-logoff" value={`${minutes} minutes`} />
+        <Row label="Roles enabled" value="Admin · Programmer · Viewer" />
+        <Row label="Audit logging" value="Enabled" />
+      </div>
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        HIPAA-Safeguarded · Internal Use. User management UI is not enabled in this phase.
+      </p>
+    </SectionCard>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between border-b border-border/20 py-1.5 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function FreshdeskSectionImpl() {
   const cfg = useFreshdeskConfig();
   const [testing, setTesting] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);

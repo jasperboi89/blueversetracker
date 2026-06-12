@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, Outlet, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Building2, Plus, Search } from "lucide-react";
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { accountsStore, useAccounts } from "@/lib/accounts-store";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/accounts")({
+export const Route = createFileRoute("/_authenticated/accounts")({
   head: () => ({ meta: [{ title: "Accounts — Account Intel Hub" }] }),
   component: AccountsLayout,
 });
@@ -32,7 +31,7 @@ function AccountsLookup() {
   const noMatch = q.trim().length > 0 && results.length === 0;
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-3xl space-y-5">
         <div className="glass-panel shimmer p-5 sm:p-6">
           <div className="flex items-start gap-4">
@@ -99,7 +98,7 @@ function AccountsLookup() {
 
         <CreateAccountModal open={createOpen} onOpenChange={setCreateOpen} prefillNumber={q} />
       </div>
-    </AppShell>
+    </>
   );
 }
 

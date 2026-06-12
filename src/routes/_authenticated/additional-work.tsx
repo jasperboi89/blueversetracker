@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ClipboardList, Plus, CheckCircle2, Building2 } from "lucide-react";
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAdditionalWorkModal";
 import { useAdditionalWork } from "@/lib/additional-work-store";
 import { formatCentralShort } from "@/lib/shift";
 
-export const Route = createFileRoute("/additional-work")({
+export const Route = createFileRoute("/_authenticated/additional-work")({
   head: () => ({ meta: [{ title: "Additional Work — Account Intel Hub" }] }),
   component: AdditionalWorkPage,
 });
@@ -26,7 +25,7 @@ function AdditionalWorkPage() {
   const empty = active.length === 0 && completed.length === 0;
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-6xl space-y-6">
         <Header onCreate={() => setCreateOpen(true)} />
 
@@ -74,7 +73,7 @@ function AdditionalWorkPage() {
 
         <CreateAdditionalWorkModal open={createOpen} onOpenChange={setCreateOpen} />
       </div>
-    </AppShell>
+    </>
   );
 }
 

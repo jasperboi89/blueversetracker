@@ -21,14 +21,19 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { UserChip } from "@/components/auth/UserChip";
+import { useIsAdmin } from "@/lib/auth/role-context";
 
-const items = [
+const baseItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: Ticket },
   { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing },
   { title: "Additional Work", url: "/additional-work", icon: ClipboardList },
   { title: "Accounts", url: "/accounts", icon: Building2 },
   { title: "Reports", url: "/reports", icon: FileBarChart },
+] as const;
+
+const adminItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ] as const;
 
@@ -36,6 +41,8 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const isAdmin = useIsAdmin();
+  const items = isAdmin ? [...baseItems, ...adminItems] : baseItems;
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -114,8 +121,9 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-4">
+        <UserChip collapsed={collapsed} />
         {!collapsed && (
-          <div className="text-[10px] leading-relaxed text-muted-foreground/70">
+          <div className="mt-2 text-[10px] leading-relaxed text-muted-foreground/70">
             HIPAA-Safeguarded
             <br />
             Internal Use
