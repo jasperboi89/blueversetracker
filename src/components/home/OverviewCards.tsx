@@ -9,6 +9,7 @@ import {
 } from "@/lib/mock/overview";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { useDispatch } from "@/lib/dispatch-store";
 
 type CardKey = "due" | "open" | "review";
 
@@ -49,14 +50,34 @@ const cards: {
 export function OverviewCards() {
   const [open, setOpen] = useState<CardKey | null>(null);
   const isMobile = useIsMobile();
+  const { sessions } = useDispatch();
+
+  const dispatchOpen = sessions
+    .filter((s) => s.status === "not-ready")
+    .map((s) => ({ id: `ds-${s.id}`, type: "Contact Dispatch", title: "Not Ready, Still Working on Ticket", reference: `${s.accountName} (Account ${s.accountNumber})` }));
+  const dispatchReview = sessions
+    .filter((s) => s.status === "waiting-cs" || s.status === "waiting-prog")
+    .map((s) => ({ id: `ds-${s.id}`, type: "Contact Dispatch", title: s.status === "waiting-cs" ? "Waiting on CS review" : "Waiting on Programming review", reference: `${s.accountName} (Account ${s.accountNumber})` }));
+
+  const merged: Record<CardKey, typeof dueTodayItems> = {
+    due: dueTodayItems,
+    open: [...openItemsList, ...dispatchOpen],
+    review: [...inReviewList, ...dispatchReview],
+  };
+  const counts: Record<CardKey, number> = {
+    due: overviewCounts.due,
+    open: merged.open.length,
+    review: merged.review.length,
+  };
 
   const active = cards.find((c) => c.key === open);
+  const activeItems = active ? merged[active.key] : [];
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-4">
         {cards.map((c) => {
-          const count = overviewCounts[c.key];
+          const count = counts[c.key];
           const Icon = c.icon;
           return (
             <button
@@ -109,7 +130,7 @@ export function OverviewCards() {
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-3">
-                {groupByType(active.items).map((g) => (
+                {groupByType(activeItems).map((g) => (
                   <div key={g.type}>
                     <div className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                       {g.type}
@@ -127,7 +148,7 @@ export function OverviewCards() {
                     </div>
                   </div>
                 ))}
-                {active.items.length === 0 && (
+                {activeItems.length === 0 && (
                   <div className="text-sm text-muted-foreground">Nothing here.</div>
                 )}
               </div>
