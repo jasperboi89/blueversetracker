@@ -3,6 +3,9 @@ import { AlertTriangle, Bell, Info, X } from "lucide-react";
 import { mockAlerts, type AlertPriority, type MockAlert } from "@/lib/mock/alerts";
 import { formatCentralShort } from "@/lib/shift";
 import { Button } from "@/components/ui/button";
+import { useRecurringRows } from "@/lib/reports/recurring-issues";
+import { useNightPlanHistory, nightPlanHistory } from "@/lib/reports/night-plan-history";
+import { useNavigate } from "@tanstack/react-router";
 
 const order: AlertPriority[] = ["critical", "warning", "info"];
 const styles: Record<AlertPriority, { color: string; bg: string; icon: typeof AlertTriangle }> = {
@@ -28,17 +31,45 @@ export function AlertCenter() {
   const [showDismissed, setShowDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const navigate = useNavigate();
+  const recurring = useRecurringRows();
+  useNightPlanHistory(); // re-render on changes
+  const cleanupCount = mounted ? nightPlanHistory.readyForCleanup().length : 0;
+  const activeRecurring = recurring.filter((r) => r.active);
+
+  const dynamic: MockAlert[] = useMemo(() => {
+    const out: MockAlert[] = [];
+    activeRecurring.slice(0, 3).forEach((r) => {
+      out.push({
+        id: `rec-${r.accountNumber}`,
+        priority: "critical",
+        title: `Account ${r.accountNumber} — Recurring Scripting Issues`,
+        detail: `${r.rollingCount} scripting issues in 30 days (${r.sixMonthCount} in last 6 months). Review and document.`,
+        updatedMinutesAgo: Math.max(1, Math.round((Date.now() - r.lastIssueAt) / 60_000)),
+      });
+    });
+    if (cleanupCount > 0) {
+      out.push({
+        id: "np-cleanup",
+        priority: "info",
+        title: "Night Plan Archive cleanup",
+        detail: `${cleanupCount} archived item${cleanupCount === 1 ? "" : "s"} older than 3 months ready to remove.`,
+        updatedMinutesAgo: 5,
+      });
+    }
+    return out;
+  }, [activeRecurring, cleanupCount]);
 
   const visible = useMemo(
     () =>
-      mockAlerts
+      [...dynamic, ...mockAlerts]
         .filter((a) => !dismissed.has(a.id))
         .sort(
           (a, b) =>
             order.indexOf(a.priority) - order.indexOf(b.priority) ||
             a.updatedMinutesAgo - b.updatedMinutesAgo,
         ),
-    [dismissed],
+    [dismissed, dynamic],
   );
 
   if (visible.length === 0 && dismissed.size === 0) return null;
@@ -103,10 +134,22 @@ export function AlertCenter() {
 
         <div className="grid gap-2">
           {visible.map((a) => (
-            <AlertRow key={a.id} alert={a} mounted={mounted} onDismiss={() => setDismissed((s) => new Set(s).add(a.id))} />
+            <AlertRow
+              key={a.id}
+              alert={a}
+              mounted={mounted}
+              onDismiss={() => setDismissed((s) => new Set(s).add(a.id))}
+              onOpen={
+                a.id.startsWith("rec-")
+                  ? () => navigate({ to: "/reports", search: { r: "recurring" } })
+                  : a.id === "np-cleanup"
+                  ? () => navigate({ to: "/reports", search: { r: "night-plan" } })
+                  : undefined
+              }
+            />
           ))}
           {showDismissed &&
-            mockAlerts
+            [...dynamic, ...mockAlerts]
               .filter((a) => dismissed.has(a.id))
               .map((a) => (
                 <div key={a.id} className="rounded-lg border border-border/40 p-3 text-xs opacity-60">
