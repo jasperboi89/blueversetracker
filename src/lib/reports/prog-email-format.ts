@@ -2,6 +2,8 @@ import { ticketsStore, STATUS_LABEL, type Ticket } from "../tickets-store";
 import { dispatchStore, DISPATCH_STATUS_LABEL, type DispatchSession } from "../dispatch-store";
 import { additionalWorkStore, type AdditionalWork } from "../additional-work-store";
 import { isInWindow, isInWindowEither, type ShiftWindow } from "./shift-window";
+import { nightPlanHistory } from "./night-plan-history";
+import { nightPlanStore, isActive as isNPActive } from "../night-plan-store";
 
 export type ItemKind = "freshdesk" | "dispatch" | "additional" | "night-plan";
 export interface AttentionId { kind: ItemKind; id: string }
@@ -345,15 +347,19 @@ export function buildEmail(opts: BuildOptions): BuildResult {
 }
 
 function collectAttentionNightPlan(attentionIds: string[]) {
-  // Lazy import to avoid circular references
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { nightPlanHistory } = require("./night-plan-history") as typeof import("./night-plan-history");
   const all = nightPlanHistory.getAll();
+  const liveActive = nightPlanStore.get().items;
   return attentionIds
     .map(parseAttentionId)
     .filter((i): i is AttentionId => !!i && i.kind === "night-plan")
-    .map((i) => all.find((n) => n.id === i.id))
-    .filter(Boolean) as ReturnType<typeof nightPlanHistory.getAll>;
+    .map((i) => {
+      const fromHist = all.find((n) => n.id === i.id);
+      if (fromHist) return { task: fromHist.task, notes: fromHist.notes };
+      const fromLive = liveActive.find((n) => n.id === i.id);
+      if (fromLive) return { task: fromLive.task, notes: fromLive.notes };
+      return null;
+    })
+    .filter(Boolean) as { task: string; notes?: string }[];
 }
 
 /** Items eligible to appear in the Attention picker — only active waiting / in-progress. */
@@ -402,10 +408,8 @@ export function getAttentionCandidates(): AttentionCandidate[] {
     );
   // Night plan: include active items still in current shift (from main store), labelled "Night Plan"
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { nightPlanStore, isActive } = require("../night-plan-store") as typeof import("../night-plan-store");
     nightPlanStore.get().items
-      .filter((i) => isActive(i.status))
+      .filter((i) => isNPActive(i.status))
       .forEach((i) =>
         out.push({
           id: attentionId("night-plan", i.id),
