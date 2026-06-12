@@ -2,12 +2,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { checkAuthorization, type AuthorizationResult } from "@/lib/auth/authorization.functions";
+import { checkAuthorization, type HubRole } from "@/lib/auth/authorization.functions";
 import { HubIdentityProvider } from "@/lib/auth/role-context";
 
 type State =
   | { kind: "loading" }
-  | { kind: "ok"; userId: string; email: string; role: AuthorizationResult & { ok: true }["role"] }
+  | { kind: "ok"; userId: string; email: string; role: HubRole }
   | { kind: "denied" }
   | { kind: "signed_out" };
 
