@@ -18,6 +18,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedFreshdeskTicketsRouteImport } from './routes/_authenticated/freshdesk-tickets'
 import { Route as AuthenticatedContactDispatchRouteImport } from './routes/_authenticated/contact-dispatch'
+import { Route as AuthenticatedConstellationsRouteImport } from './routes/_authenticated/constellations'
 import { Route as AuthenticatedAdditionalWorkRouteImport } from './routes/_authenticated/additional-work'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
 import { Route as AuthenticatedAccountsAccountNumberRouteImport } from './routes/_authenticated/accounts.$accountNumber'
@@ -71,6 +72,12 @@ const AuthenticatedContactDispatchRoute =
     path: '/contact-dispatch',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConstellationsRoute =
+  AuthenticatedConstellationsRouteImport.update({
+    id: '/constellations',
+    path: '/constellations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdditionalWorkRoute =
   AuthenticatedAdditionalWorkRouteImport.update({
     id: '/additional-work',
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
+  '/constellations': typeof AuthenticatedConstellationsRoute
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
@@ -129,6 +137,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
+  '/constellations': typeof AuthenticatedConstellationsRoute
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
@@ -147,6 +156,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/_authenticated/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
+  '/_authenticated/constellations': typeof AuthenticatedConstellationsRoute
   '/_authenticated/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
   '/_authenticated/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/accounts'
     | '/additional-work'
+    | '/constellations'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/accounts'
     | '/additional-work'
+    | '/constellations'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/accounts'
     | '/_authenticated/additional-work'
+    | '/_authenticated/constellations'
     | '/_authenticated/contact-dispatch'
     | '/_authenticated/freshdesk-tickets'
     | '/_authenticated/reports'
@@ -279,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/contact-dispatch'
       fullPath: '/contact-dispatch'
       preLoaderRoute: typeof AuthenticatedContactDispatchRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/constellations': {
+      id: '/_authenticated/constellations'
+      path: '/constellations'
+      fullPath: '/constellations'
+      preLoaderRoute: typeof AuthenticatedConstellationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/additional-work': {
@@ -388,6 +408,7 @@ const AuthenticatedFreshdeskTicketsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRouteWithChildren
   AuthenticatedAdditionalWorkRoute: typeof AuthenticatedAdditionalWorkRouteWithChildren
+  AuthenticatedConstellationsRoute: typeof AuthenticatedConstellationsRoute
   AuthenticatedContactDispatchRoute: typeof AuthenticatedContactDispatchRouteWithChildren
   AuthenticatedFreshdeskTicketsRoute: typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
@@ -399,6 +420,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountsRoute: AuthenticatedAccountsRouteWithChildren,
   AuthenticatedAdditionalWorkRoute:
     AuthenticatedAdditionalWorkRouteWithChildren,
+  AuthenticatedConstellationsRoute: AuthenticatedConstellationsRoute,
   AuthenticatedContactDispatchRoute:
     AuthenticatedContactDispatchRouteWithChildren,
   AuthenticatedFreshdeskTicketsRoute:
@@ -420,3 +442,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
