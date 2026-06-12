@@ -6,9 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, X } from "lucide-react";
 import {
   additionalWorkStore,
-  ADDWORK_SNIP_CATEGORIES,
   type AddWorkSnipCategory,
 } from "@/lib/additional-work-store";
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 import { toast } from "sonner";
 
 export function AddWorkSnipModal({
@@ -20,6 +20,7 @@ export function AddWorkSnipModal({
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [isImage, setIsImage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const categories = useDropdownGroup("addworkSnipCategory");
 
   const reset = () => { setName(""); setLabel(""); setCategory("Other"); setDataUrl(null); setIsImage(false); };
 
@@ -92,7 +93,7 @@ export function AddWorkSnipModal({
               <Select value={category} onValueChange={(v) => setCategory(v as AddWorkSnipCategory)}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ADDWORK_SNIP_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {categories.map((c) => <SelectItem key={c.id} value={c.label as AddWorkSnipCategory}>{c.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

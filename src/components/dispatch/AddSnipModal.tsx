@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { dispatchStore, DISPATCH_SNIP_CATEGORIES, type DispatchSnipCategory } from "@/lib/dispatch-store";
+import { dispatchStore, type DispatchSnipCategory } from "@/lib/dispatch-store";
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
 
@@ -21,6 +22,7 @@ export function AddSnipModal({
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [isImage, setIsImage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const categories = useDropdownGroup("dispatchSnipCategory");
 
   const reset = () => { setName(""); setCategory("Other"); setLabel(""); setDataUrl(null); setIsImage(false); };
 
@@ -94,7 +96,7 @@ export function AddSnipModal({
               <Select value={category} onValueChange={(v) => setCategory(v as DispatchSnipCategory)}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {DISPATCH_SNIP_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {categories.map((c) => <SelectItem key={c.id} value={c.label as DispatchSnipCategory}>{c.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accountsStore } from "@/lib/accounts-store";
 import { additionalWorkStore, type AddWorkIssueClassification } from "@/lib/additional-work-store";
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 import { toast } from "sonner";
 
 export function CreateAdditionalWorkModal({
@@ -17,6 +18,7 @@ export function CreateAdditionalWorkModal({
   prefillAccount?: { number: string; name: string };
 }) {
   const nav = useNavigate();
+  const classificationOptions = useDropdownGroup("issueClassification");
   const [title, setTitle] = useState("");
   const [acctNum, setAcctNum] = useState(prefillAccount?.number ?? "");
   const [acctName, setAcctName] = useState(prefillAccount?.name ?? "");
@@ -103,9 +105,7 @@ export function CreateAdditionalWorkModal({
               <Select value={classification} onValueChange={(v) => setClassification(v as any)}>
                 <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Scripting Issue">Scripting Issue</SelectItem>
-                  <SelectItem value="Client Change">Client Change</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  {classificationOptions.map((o) => <SelectItem key={o.id} value={o.label}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>

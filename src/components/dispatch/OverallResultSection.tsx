@@ -1,10 +1,10 @@
-import { dispatchStore, DISPATCH_STATUS_LABEL, type DispatchSession, type DispatchStatus } from "@/lib/dispatch-store";
+import { dispatchStore, type DispatchSession, type DispatchStatus } from "@/lib/dispatch-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-const STATUSES: DispatchStatus[] = ["ready", "waiting-cs", "waiting-prog", "not-ready"];
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 
 export function OverallResultSection({ session }: { session: DispatchSession }) {
+  const statuses = useDropdownGroup("dispatchStatus");
   const set = (status: DispatchStatus | null) =>
     dispatchStore.setOverallStatus(session.id, status, session.statusReason);
   const setReason = (v: string) =>
@@ -24,9 +24,9 @@ export function OverallResultSection({ session }: { session: DispatchSession }) 
         <Select value={session.status ?? ""} onValueChange={(v) => set((v || null) as DispatchStatus)}>
           <SelectTrigger className="mt-1"><SelectValue placeholder="Select overall status" /></SelectTrigger>
           <SelectContent>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s} disabled={s === "ready"}>
-                {DISPATCH_STATUS_LABEL[s]}{s === "ready" ? " — use Mark Ready" : ""}
+            {statuses.map((s) => (
+              <SelectItem key={s.id} value={s.id} disabled={s.id === "ready"}>
+                {s.label}{s.id === "ready" ? " — use Mark Ready" : ""}
               </SelectItem>
             ))}
           </SelectContent>

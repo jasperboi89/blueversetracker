@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  dispatchStore, reasonCardStatus, REASON_TYPE_LABEL,
+  dispatchStore, reasonCardStatus,
   type DispatchSession, type ReasonCard, type ReasonType,
 } from "@/lib/dispatch-store";
+import { useDropdownGroup, useDropdownLabel } from "@/lib/settings/dropdowns-store";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub,
@@ -93,6 +94,9 @@ function ReasonCardView({ session, reason }: { session: DispatchSession; reason:
   const status = reasonCardStatus(reason);
   const [snipOpen, setSnipOpen] = useState(false);
   const [retestOpen, setRetestOpen] = useState(false);
+  const reasonTypeOptions = useDropdownGroup("reasonType");
+  const checkResultOptions = useDropdownGroup("checkResult");
+  const reasonTypeLabel = useDropdownLabel("reasonType", reason.type ?? undefined);
   const update = (patch: Partial<ReasonCard>) =>
     dispatchStore.updateReason(session.id, reason.id, patch);
 
@@ -110,7 +114,7 @@ function ReasonCardView({ session, reason }: { session: DispatchSession; reason:
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
           <span>{reason.source === "global" ? "Global" : reason.source === "account" ? "Account" : "Manual"}</span>
-          {reason.type && <span>· {REASON_TYPE_LABEL[reason.type]}</span>}
+          {reason.type && <span>· {reasonTypeLabel}</span>}
         </div>
         <div className="flex items-center gap-2">
           <StatusChip status={status} />
@@ -129,10 +133,7 @@ function ReasonCardView({ session, reason }: { session: DispatchSession; reason:
           <Select value={reason.type ?? ""} onValueChange={(v) => update({ type: v as ReasonType })}>
             <SelectTrigger><SelectValue placeholder="Type (optional)" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="routine">Routine</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-              <SelectItem value="na">N/A</SelectItem>
-              <SelectItem value="unsure">Not Sure Yet</SelectItem>
+              {reasonTypeOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -153,8 +154,7 @@ function ReasonCardView({ session, reason }: { session: DispatchSession; reason:
             <Select value={reason.result ?? ""} onValueChange={(v) => update({ result: (v || null) as ReasonCard["result"] })}>
               <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="passed">Passed</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
+                {checkResultOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
