@@ -38,6 +38,7 @@ import {
   type SnipCategory,
 } from "@/lib/tickets-store";
 import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
+import { AccountLinker } from "@/components/freshdesk/AccountLinker";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -145,7 +146,7 @@ function WorkspacePage() {
           <div>
             <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Ticket Work Workspace</div>
             <h1 className="mt-1 text-lg font-semibold tabular-nums text-foreground">Ticket #{ticket.number}</h1>
-            <div className="text-xs text-muted-foreground">Account {ticket.accountNumber} — {ticket.accountName}</div>
+            <div className="mt-1"><AccountLinker ticket={ticket} /></div>
             <div className="mt-1 grid gap-0.5 text-[11px] text-muted-foreground">
               <div>Status: <span className="text-foreground">{STATUS_LABEL[ticket.status]}</span></div>
               {ticket.dueAt && <div>Due: <span className="text-foreground">{formatCentralShort(new Date(ticket.dueAt))}</span></div>}
