@@ -1,29 +1,38 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GreetingPanel } from "@/components/home/GreetingPanel";
+import { ShiftCard } from "@/components/home/ShiftCard";
+import { AlertCenter } from "@/components/home/AlertCenter";
+import { NightPlan } from "@/components/home/NightPlan";
+import { LookupCards } from "@/components/home/LookupCards";
+import { OverviewCards } from "@/components/home/OverviewCards";
+import { RecentlyCompleted } from "@/components/home/RecentlyCompleted";
+import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Home — Account Intel Hub" },
+      { name: "description", content: "BlueVerse command deck for AnSer Ops night shift." },
+      { property: "og:title", content: "Account Intel Hub" },
+      { property: "og:description", content: "BlueVerse command deck for AnSer Ops night shift." },
     ],
   }),
-  component: Index,
+  component: Home,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Home() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="mx-auto flex max-w-7xl flex-col gap-5">
+      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+        <GreetingPanel />
+        <ShiftCard />
+      </div>
+      <AlertCenter />
+      <NightPlan />
+      <LookupCards />
+      <OverviewCards />
+      <RecentlyCompleted />
+      <ShiftSummaryButton />
     </div>
   );
 }

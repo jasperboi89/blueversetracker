@@ -9,8 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as FreshdeskTicketsRouteImport } from './routes/freshdesk-tickets'
+import { Route as ContactDispatchRouteImport } from './routes/contact-dispatch'
+import { Route as AdditionalWorkRouteImport } from './routes/additional-work'
+import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FreshdeskTicketsRoute = FreshdeskTicketsRouteImport.update({
+  id: '/freshdesk-tickets',
+  path: '/freshdesk-tickets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactDispatchRoute = ContactDispatchRouteImport.update({
+  id: '/contact-dispatch',
+  path: '/contact-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdditionalWorkRoute = AdditionalWorkRouteImport.update({
+  id: '/additional-work',
+  path: '/additional-work',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountsRoute = AccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +55,116 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/additional-work': typeof AdditionalWorkRoute
+  '/contact-dispatch': typeof ContactDispatchRoute
+  '/freshdesk-tickets': typeof FreshdeskTicketsRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/additional-work': typeof AdditionalWorkRoute
+  '/contact-dispatch': typeof ContactDispatchRoute
+  '/freshdesk-tickets': typeof FreshdeskTicketsRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/additional-work': typeof AdditionalWorkRoute
+  '/contact-dispatch': typeof ContactDispatchRoute
+  '/freshdesk-tickets': typeof FreshdeskTicketsRoute
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/accounts'
+    | '/additional-work'
+    | '/contact-dispatch'
+    | '/freshdesk-tickets'
+    | '/reports'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/accounts'
+    | '/additional-work'
+    | '/contact-dispatch'
+    | '/freshdesk-tickets'
+    | '/reports'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/accounts'
+    | '/additional-work'
+    | '/contact-dispatch'
+    | '/freshdesk-tickets'
+    | '/reports'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountsRoute: typeof AccountsRoute
+  AdditionalWorkRoute: typeof AdditionalWorkRoute
+  ContactDispatchRoute: typeof ContactDispatchRoute
+  FreshdeskTicketsRoute: typeof FreshdeskTicketsRoute
+  ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/freshdesk-tickets': {
+      id: '/freshdesk-tickets'
+      path: '/freshdesk-tickets'
+      fullPath: '/freshdesk-tickets'
+      preLoaderRoute: typeof FreshdeskTicketsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact-dispatch': {
+      id: '/contact-dispatch'
+      path: '/contact-dispatch'
+      fullPath: '/contact-dispatch'
+      preLoaderRoute: typeof ContactDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/additional-work': {
+      id: '/additional-work'
+      path: '/additional-work'
+      fullPath: '/additional-work'
+      preLoaderRoute: typeof AdditionalWorkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounts': {
+      id: '/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +177,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountsRoute: AccountsRoute,
+  AdditionalWorkRoute: AdditionalWorkRoute,
+  ContactDispatchRoute: ContactDispatchRoute,
+  FreshdeskTicketsRoute: FreshdeskTicketsRoute,
+  ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

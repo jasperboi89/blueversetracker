@@ -1,0 +1,95 @@
+import { useState } from "react";
+import { FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useNow } from "@/hooks/use-now";
+import { getCentralNow } from "@/lib/shift";
+
+function computeWindow(now: Date) {
+  const p = getCentralNow();
+  // Shift = previous 10pm through 6am of same morning if hour < 6,
+  // or tonight 10pm through tomorrow 6am if hour >= 22,
+  // or "next shift" otherwise (still display tonight 10pm - tomorrow 6am)
+  const today = new Date(now);
+  const start = new Date(today);
+  const end = new Date(today);
+  if (p.hour >= 22) {
+    start.setHours(22, 0, 0, 0);
+    end.setDate(end.getDate() + 1);
+    end.setHours(6, 0, 0, 0);
+  } else if (p.hour < 6 || p.hour < 10) {
+    // assume early-morning -> shift was yesterday 10pm
+    start.setDate(start.getDate() - 1);
+    start.setHours(22, 0, 0, 0);
+    end.setHours(6, 0, 0, 0);
+  } else {
+    start.setHours(22, 0, 0, 0);
+    end.setDate(end.getDate() + 1);
+    end.setHours(6, 0, 0, 0);
+  }
+  const fmt = (d: Date) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago",
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+  return `${fmt(start)} → ${fmt(end)} Central`;
+}
+
+export function ShiftSummaryButton() {
+  const [open, setOpen] = useState(false);
+  const now = useNow(60_000);
+  const win = computeWindow(now);
+
+  return (
+    <div className="flex justify-center pt-2">
+      <button
+        onClick={() => setOpen(true)}
+        className="shimmer relative inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-medium text-foreground transition"
+        style={{
+          background:
+            "linear-gradient(110deg, oklch(0.4 0.16 240 / 0.7), oklch(0.4 0.18 290 / 0.55))",
+          border: "1px solid oklch(0.78 0.18 220 / 0.45)",
+          boxShadow: "0 0 20px oklch(0.78 0.18 220 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.08)",
+          animation: "pulse-glow 5s ease-in-out infinite",
+        }}
+      >
+        <span
+          className="grid h-7 w-7 place-items-center rounded-lg"
+          style={{
+            background: "linear-gradient(135deg, var(--cyan-glow), var(--electric))",
+            boxShadow: "var(--shadow-glow-cyan)",
+          }}
+        >
+          <FileText className="h-3.5 w-3.5 text-background" />
+        </span>
+        Generate Shift Summary
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="glass-panel border-0 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate Shift Summary</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <button className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
+              <div className="text-sm font-medium text-foreground">Use Current Shift</div>
+              <div className="mt-1 text-xs text-muted-foreground">{win}</div>
+            </button>
+            <button className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
+              <div className="text-sm font-medium text-foreground">Choose Custom Date / Time Range</div>
+              <div className="mt-1 text-xs text-muted-foreground">Pick a custom window (available in a later phase).</div>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
