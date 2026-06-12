@@ -16,6 +16,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { runReportsSeed } from "@/lib/mock/reports-seed";
 import { useApplyDisplayPrefs } from "@/lib/settings/display-prefs-store";
 import { supabase } from "@/integrations/supabase/client";
+import { useApplyTheme, useTheme } from "@/lib/settings/theme-store";
+import { QuantumBloomDriver } from "@/components/quantum-bloom/QuantumBloomDriver";
+import { NebulaCanvas } from "@/components/quantum-bloom/NebulaCanvas";
+import { EntryOverlay } from "@/components/quantum-bloom/EntryOverlay";
 
 function NotFoundComponent() {
   return (
@@ -126,6 +130,8 @@ function RootComponent() {
   const router = useRouter();
   useEffect(() => { runReportsSeed(); }, []);
   useApplyDisplayPrefs();
+  useApplyTheme();
+  const theme = useTheme();
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
@@ -138,7 +144,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GalaxyBackground />
+      {theme === "quantum-bloom" ? <NebulaCanvas /> : <GalaxyBackground />}
+      {theme === "quantum-bloom" && <QuantumBloomDriver />}
+      {theme === "quantum-bloom" && <EntryOverlay />}
       <Outlet />
       <Toaster />
     </QueryClientProvider>
