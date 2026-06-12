@@ -14,6 +14,8 @@ export interface NPHistoryItem {
   carryTrail?: string[]; // shift keys (oldest → newest)
   additionalWorkId?: string;
   priority?: "must" | "important" | "normal";
+  /** Seed/demo flag — hidden when Demo Mode is OFF */
+  isDemo?: boolean;
 }
 
 interface State {
@@ -103,7 +105,7 @@ function seed(): NPHistoryItem[] {
       priority: "normal",
     },
   ];
-  return items;
+  return items.map((i) => ({ ...i, isDemo: true }));
 }
 
 function load(): State {

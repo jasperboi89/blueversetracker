@@ -29,6 +29,22 @@ const styles: Record<AlertPriority, { color: string; bg: string; icon: typeof Al
 
 export function AlertCenter() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  // Hydrate persisted dismissals after mount (avoid SSR mismatch).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("aih:alerts:dismissed:v1");
+      if (raw) {
+        const arr = JSON.parse(raw) as string[];
+        if (Array.isArray(arr)) setDismissed(new Set(arr));
+      }
+    } catch {}
+  }, []);
+  // Persist dismissals on change.
+  useEffect(() => {
+    try {
+      localStorage.setItem("aih:alerts:dismissed:v1", JSON.stringify([...dismissed]));
+    } catch {}
+  }, [dismissed]);
   const [showDismissed, setShowDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -36,7 +52,9 @@ export function AlertCenter() {
   const recurring = useRecurringRows();
   const demo = useDemoMode();
   useNightPlanHistory(); // re-render on changes
-  const cleanupCount = mounted ? nightPlanHistory.readyForCleanup().length : 0;
+  const cleanupCount = mounted
+    ? nightPlanHistory.readyForCleanup().filter((i) => demo || !i.isDemo).length
+    : 0;
   const activeRecurring = recurring.filter((r) => r.active);
 
   const dynamic: MockAlert[] = useMemo(() => {

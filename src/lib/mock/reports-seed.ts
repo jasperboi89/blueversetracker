@@ -113,7 +113,7 @@ export function runReportsSeed() {
       details: defaultDetails({ subject: "Account note cleanup", company: "Cedar Oaks Veterinary" }),
     }),
   ];
-  ticketsStore._seedExtra(extras);
+  ticketsStore._seedExtra(extras.map((t) => ({ ...t, isDemo: true })));
 
   // Seed work-session details for completed tickets so reports & email have real text
   extras.forEach((t) => {
@@ -156,7 +156,7 @@ export function runReportsSeed() {
     ],
     snips: [],
   };
-  dispatchStore._seedExtra([completedDispatch as any]);
+  dispatchStore._seedExtra([{ ...(completedDispatch as any), isDemo: true }]);
 
   localStorage.setItem(FLAG, "1");
 }

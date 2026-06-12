@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { useDemoMode } from "./settings/demo-mode-store";
 
 export type DispatchStatus =
   | "ready"
@@ -148,6 +149,8 @@ export interface DispatchSession {
   summaryNotes: string;
   summaryVersions: SummaryVersion[];
   snips: DispatchSnip[];
+  /** Seed/demo flag — hidden when Demo Mode is OFF */
+  isDemo?: boolean;
 }
 
 export const PHONE_CHECKS = [
@@ -326,7 +329,7 @@ function seed(): DispatchSession[] {
     updatedAt: now - 5 * m,
   });
 
-  return [active, waitingCS, waitingProg, notReady, ready, fresh];
+  return [active, waitingCS, waitingProg, notReady, ready, fresh].map((s) => ({ ...s, isDemo: true }));
 }
 
 function loadInitial(): State {
@@ -335,10 +338,32 @@ function loadInitial(): State {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (p && Array.isArray(p.sessions)) return p;
+      if (p && Array.isArray(p.sessions)) return runDispatchDemoMigration(p);
     }
   } catch {}
   return { sessions: seed() };
+}
+
+const DEMO_MIGRATION_KEY = "aih:dispatch:demo-recover:v1";
+function runDispatchDemoMigration(s: State): State {
+  if (typeof window === "undefined") return s;
+  if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
+  const next: State = {
+    sessions: s.sessions.map((sess) => {
+      if (!sess.isDemo) return sess;
+      const hasUserWork =
+        (sess.snips?.length ?? 0) > 0 ||
+        (sess.reasons?.length ?? 0) > 0 && sess.reasons.some(
+          (r) => r.text.trim() || r.actualFlow.trim() || r.changesMade.trim() || r.notes.trim() || r.retests.length > 0,
+        ) ||
+        (sess.summaryNotes?.trim()?.length ?? 0) > 0 ||
+        (sess.summaryVersions?.length ?? 0) > 0 ||
+        sess.status === "ready";
+      return hasUserWork ? { ...sess, isDemo: false } : sess;
+    }),
+  };
+  try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}
+  return next;
 }
 
 function ensureLoaded() {
@@ -538,7 +563,7 @@ export const dispatchStore = {
   _seedExtra(items: DispatchSession[]) {
     ensureLoaded();
     const existing = new Set(state.sessions.map((s) => s.id));
-    const additions = items.filter((s) => !existing.has(s.id));
+    const additions = items.filter((s) => !existing.has(s.id)).map((s) => ({ ...s, isDemo: true }));
     if (additions.length === 0) return;
     state = { ...state, sessions: [...additions, ...state.sessions] };
     persist();
@@ -616,11 +641,14 @@ export function canMarkReady(s: DispatchSession): boolean {
 }
 
 export function useDispatch() {
-  return useSyncExternalStore(
+  const snap = useSyncExternalStore(
     dispatchStore.subscribe,
     () => dispatchStore.getState(),
     () => ({ sessions: [] as DispatchSession[] }),
   );
+  const demo = useDemoMode();
+  if (demo) return snap;
+  return { ...snap, sessions: snap.sessions.filter((s) => !s.isDemo) };
 }
 
 export function buildDispatchSummary(
