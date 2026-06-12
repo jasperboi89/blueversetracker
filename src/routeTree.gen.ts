@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as FreshdeskTicketsRouteImport } from './routes/freshdesk-tickets'
 import { Route as ContactDispatchRouteImport } from './routes/contact-dispatch'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdditionalWorkRouteImport } from './routes/additional-work'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
@@ -39,6 +40,11 @@ const FreshdeskTicketsRoute = FreshdeskTicketsRouteImport.update({
 const ContactDispatchRoute = ContactDispatchRouteImport.update({
   id: '/contact-dispatch',
   path: '/contact-dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdditionalWorkRoute = AdditionalWorkRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
+  '/auth': typeof AuthRoute
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
+  '/auth': typeof AuthRoute
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
+  '/auth': typeof AuthRoute
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/additional-work'
+    | '/auth'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/additional-work'
+    | '/auth'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/additional-work'
+    | '/auth'
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsRoute: typeof AccountsRouteWithChildren
   AdditionalWorkRoute: typeof AdditionalWorkRouteWithChildren
+  AuthRoute: typeof AuthRoute
   ContactDispatchRoute: typeof ContactDispatchRouteWithChildren
   FreshdeskTicketsRoute: typeof FreshdeskTicketsRouteWithChildren
   ReportsRoute: typeof ReportsRoute
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/contact-dispatch'
       fullPath: '/contact-dispatch'
       preLoaderRoute: typeof ContactDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/additional-work': {
@@ -305,6 +325,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRouteWithChildren,
   AdditionalWorkRoute: AdditionalWorkRouteWithChildren,
+  AuthRoute: AuthRoute,
   ContactDispatchRoute: ContactDispatchRouteWithChildren,
   FreshdeskTicketsRoute: FreshdeskTicketsRouteWithChildren,
   ReportsRoute: ReportsRoute,
@@ -313,3 +334,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
