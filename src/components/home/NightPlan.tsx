@@ -43,6 +43,8 @@ import {
 } from "@/lib/night-plan-store";
 import { formatCentralShort, getShiftKey, getShiftStatus } from "@/lib/shift";
 import { CelebrationOverlay } from "./CelebrationOverlay";
+import { useTheme } from "@/lib/settings/theme-store";
+import { triggerCelebration } from "@/lib/quantum-bloom/celebration-bus";
 import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

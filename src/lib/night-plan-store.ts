@@ -91,15 +91,6 @@ export const nightPlanStore = {
     if (status === "dismissed") patch.dismissedAt = Date.now();
     if (status === "converted") patch.convertedAt = Date.now();
     this.update(id, patch);
-    if (status === "done") {
-      void import("./quantum-bloom/celebration-bus").then(({ triggerCelebration }) => {
-        triggerCelebration({
-          kind: "night_plan",
-          label: "Night plan item completed",
-          context: { itemId: id },
-        });
-      });
-    }
   },
   convertToAdditionalWork(
     id: string,
