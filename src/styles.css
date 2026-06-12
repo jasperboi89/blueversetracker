@@ -273,3 +273,38 @@ html[data-motion="reduced"] *::after {
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
+
+/* === Quantum Bloom Phase 2 — Celebrations & Discoveries === */
+@keyframes qb-bloom-pulse {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  35%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
+}
+@keyframes qb-spectral-wave {
+  0%   { opacity: 0; transform: scale(0.4); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(3.2); }
+}
+@keyframes qb-golden-ring {
+  0%   { opacity: 0; transform: scale(0.5); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+@keyframes qb-aurora-sweep {
+  0%   { opacity: 0; transform: translateY(-30%); }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(30%); }
+}
+@keyframes qb-discovery-toast-in {
+  0%   { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Center-anchored bloom variants override translate origin */
+[data-theme="quantum-bloom"] .qb-center-bloom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}

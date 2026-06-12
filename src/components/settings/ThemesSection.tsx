@@ -1,20 +1,22 @@
-import { Palette, Sparkles, Check } from "lucide-react";
+import { Palette, Sparkles, Check, BookOpen } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { setTheme, useTheme } from "@/lib/settings/theme-store";
+import { DiscoveryLogDrawer } from "@/components/quantum-bloom/DiscoveryLogDrawer";
 
 const QB_TOGGLES: { label: string; description: string }[] = [
   { label: "Quantum Bloom Core",       description: "Adaptive intelligence — learns preferences and active hours." },
   { label: "Adaptive Learning",         description: "Lets the Core remember your favorite phases and workspaces." },
-  { label: "Discovery Log",             description: "Tracks rare cosmic events you've witnessed." },
   { label: "Cosmic Weather",            description: "Random atmospheric events (showers, auroras, lightning)." },
   { label: "Ambient Atmosphere",        description: "Subtle ambient soundscape during shift hours." },
-  { label: "Achievement Celebrations",  description: "Bloom pulses on ticket / testing / night plan / shift completion." },
   { label: "Daytime Sleep Mode",        description: "Dim the nebula outside shift hours." },
 ];
 
 export function ThemesSection() {
   const theme = useTheme();
+  const [logOpen, setLogOpen] = useState(false);
+  const qbActive = theme === "quantum-bloom";
 
   return (
     <section id="themes" className="glass-panel p-4 sm:p-5">
@@ -65,6 +67,38 @@ export function ThemesSection() {
           <Switch checked disabled />
         </div>
 
+        <div className="mt-2 flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-2 text-xs">
+          <div>
+            <div className="font-medium text-foreground">Achievement Celebrations</div>
+            <div className="text-muted-foreground">
+              Bloom pulses on ticket, dispatch, night plan, and shift completion.
+            </div>
+          </div>
+          <Switch checked disabled />
+        </div>
+
+        <div className="mt-2 flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-2 text-xs">
+          <div>
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <BookOpen className="h-3.5 w-3.5" />
+              Discovery Log
+            </div>
+            <div className="text-muted-foreground">
+              {qbActive
+                ? "Browse the moments Quantum Bloom has recorded for you."
+                : "Enable Quantum Bloom to record discoveries."}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!qbActive}
+            onClick={() => setLogOpen(true)}
+          >
+            Open
+          </Button>
+        </div>
+
         <div className="mt-2 space-y-1">
           {QB_TOGGLES.map((t) => (
             <div
@@ -85,6 +119,8 @@ export function ThemesSection() {
           ))}
         </div>
       </div>
+
+      <DiscoveryLogDrawer open={logOpen} onOpenChange={setLogOpen} />
     </section>
   );
 }
