@@ -95,10 +95,18 @@ export function TicketLookupCard({
               variant="ghost"
               size="sm"
               onClick={() => {
-                const t = ticketsStore.pullFromFreshdesk(q.trim());
-                toast.success(`Pulled placeholder ticket #${t.number}`);
-                setQ("");
-                openPreview(t);
+                const num = q.trim();
+                toast.loading("Pulling ticket from Freshdesk…", { id: "fd-pull" });
+                ticketsStore.pullFromFreshdesk(num).then((t) => {
+                  toast.dismiss("fd-pull");
+                  if (!t) {
+                    toast.error("Ticket not found in Freshdesk. Check the number or connect Freshdesk in Settings.");
+                    return;
+                  }
+                  toast.success(`Pulled ticket #${t.number} from Freshdesk`);
+                  setQ("");
+                  openPreview(t);
+                });
               }}
             >
               <Download className="mr-1.5 h-3.5 w-3.5" /> Pull Ticket from Freshdesk

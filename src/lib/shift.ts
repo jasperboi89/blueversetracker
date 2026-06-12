@@ -59,6 +59,28 @@ export function formatCentralShort(d = new Date()) {
   );
 }
 
+/** Canonical exact timestamp used across Phase 6: "1:42 AM Central" */
+export function formatCentralExact(d: number | Date): string {
+  return formatCentralShort(typeof d === "number" ? new Date(d) : d);
+}
+
+/** "Jul 12, 1:42 AM Central" — slightly longer for archival contexts */
+export function formatCentralLong(d: number | Date): string {
+  const date = typeof d === "number" ? new Date(d) : d;
+  return (
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(date) + " Central"
+  );
+}
+
+export const USER_INITIALS = "LTP";
+
 export function getShiftStatus(now = new Date()): ShiftStatus {
   const { hour } = centralParts(now);
   if (hour >= 22) return "active"; // 10pm-11:59pm
