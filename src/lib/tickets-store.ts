@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
+import { accountsStore } from "./accounts-store";
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
@@ -690,9 +691,6 @@ export const ticketsStore = {
     if (!/^\d{3,8}$/.test(num)) {
       return { ok: false, error: "Account number must be 3–8 digits." };
     }
-    // Lazy import to avoid circular module init
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { accountsStore } = require("./accounts-store") as typeof import("./accounts-store");
     let acct = accountsStore.get(num);
     let created = false;
     if (!acct) {
