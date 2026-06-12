@@ -1,92 +1,119 @@
-# Quantum Bloom — Phase 2
+# Quantum Bloom — Phase 3
 
-Phase 1 shipped the theme toggle, WebGL nebula, aurora phases, and entry sequence. Phase 2 layers in two systems on top of the existing Quantum Bloom theme:
+Phase 3 finishes the spec on top of the existing Quantum Bloom theme. Everything stays gated to `theme === 'quantum-bloom'`; BlueVerse is untouched.
 
-1. **Celebration system** — visual rewards when meaningful work completes.
-2. **Discovery Log** — a permanent, per-user record of unlocked moments, viewable from a new "Discoveries" entry in Settings → Themes → Quantum Bloom.
+## What you get
 
-Both are gated to `theme === 'quantum-bloom'`. BlueVerse stays untouched. Deferred to Phase 3: Sanctuary, Constellations, Archive, Adaptive Learning (Core), Cosmic Weather, event/particle sliders.
+**Settings sliders (live)** — new "Quantum Bloom Tuning" group flips the Phase 1 "Coming soon" rows into working controls and persists per-user via Lovable Cloud:
+- **Visual Intensity** (1–5) — scales nebula brightness, bloom strength, and particle density on the WebGL canvas.
+- **Event Frequency** (Off / Low / Normal / High) — base rate for Cosmic Weather events.
+- **Particle Density** (Low / Medium / High) — caps ambient sparkle layer and celebration burst counts.
+- **Daytime Sleep Mode** — already on; toggle exposed.
+- **Ambient Atmosphere** — still listed as "Coming soon" (audio out of scope to keep this phase shippable without an asset pipeline).
 
-## What you get in Phase 2
+**Cosmic Weather** — random ambient events overlaid on the nebula, throttled by Event Frequency, suppressed during Sleep Mode, and recorded as Discoveries:
+- **Meteor showers** — diagonal streaks across the canvas, 6–14 s.
+- **Stellar aurora** — extra colored ribbon sweep through the nebula, 8 s.
+- **Cosmic lightning** — single full-screen flash + reverb glow, 1.2 s.
+- **Comet pass** — one slow comet across, 10 s.
+Events fire on a per-user schedule (~1 every 8–20 min at Normal). Each event records a `cosmic_<type>` Discovery.
 
-**Celebrations** (only fire while Quantum Bloom is active):
-- **Ticket completion** — soft cyan bloom + a single particle burst from the completion button. ~1.2 s. No modal, no blocking.
-- **Contact Dispatch testing completion** — radial spectral wave from screen center, "Test cycle complete" glyph, 2.2 s. Reuses the existing `CelebrationOverlay` design language.
-- **Night Plan completion** — golden bloom ring + "Night Plan complete" caption, 2.6 s.
-- **Shift completion** — full aurora curtain sweep (top-to-bottom gradient wash through all 6 phase colors), 3.5 s, plus a "Shift complete · Good morning" card. The existing BlueVerse shift-complete celebration stays for the default theme; Quantum Bloom gets its own variant.
-- A single global queue prevents two celebrations stacking. If two fire within 400 ms they merge into one wave.
+**Sanctuary** — a focus mode reachable from the AppShell header (visible only in Quantum Bloom). One click dims the entire UI to 35%, hides sidebar + non-essential chrome, pulls the nebula to a slow breathing animation, and shows a small "Sanctuary · Exit" pill. Esc or clicking the pill exits. State is local-only (per tab).
 
-**Discovery Log**:
-- Each celebration also records a **Discovery** row — type, label, timestamp, optional context (ticket id, dispatch session id, night plan date).
-- New discoveries appear as a subtle 3-second "★ Discovery unlocked: <label>" toast in the bottom-right.
-- Settings → Themes → Quantum Bloom now exposes an enabled **"Discovery Log"** link → opens a drawer listing all discoveries grouped by date, with counts per type and a "Reset Discoveries" button (confirm modal, clears the user's rows).
+**Constellation View** — a new route `/_authenticated/constellations` linked from Settings → Themes → Quantum Bloom and from the Discovery Log header. Renders the user's Discovery history as a starfield: each Discovery is a star, colored by kind, position derived deterministically from `id`, linked by faint lines between same-day stars. Hovering a star shows label + time. Clicking opens the deep link (ticket / dispatch session / night plan item) when context allows.
 
-## What's deferred (Phase 3)
+**Archive** — a sibling tab inside the Constellation View ("Timeline") showing aggregated counts per day (last 60 days) as a sparkline grid, plus per-kind totals all-time. Pulls from the existing `qb_discoveries` table — no new schema.
 
-Sanctuary, Constellation View, Archive (long-term aggregates), Quantum Bloom Core (adaptive learning), Cosmic Weather, event-frequency / particle-density / visual-intensity sliders.
+**Quantum Bloom Core (adaptive learning)** — derived signals, no extra writes per event:
+- **Favorite Color Phase** — phase with the most discoveries in the last 30 days.
+- **Most Active Hour** — Central hour with the most discoveries in the last 30 days.
+- **Preferred Workspace** — kind with the most discoveries in the last 30 days (ticket / dispatch / night_plan / shift).
+- **Adaptation Level** — derived from total discoveries (Dormant <10, Aware 10–49, Attuned 50–149, Resonant 150+).
+- **Discoveries Unlocked** — total count.
+A new "Quantum Bloom Core" card on the Constellation View shows these readouts, plus a "Reset Learning" button that clears the Discovery Log (reuses existing `resetDiscoveries`).
+
+## What stays deferred
+
+Ambient Atmosphere (audio loops) — needs licensed assets; revisit when you have a source. Everything else from the spec ships in this phase.
 
 ## Technical section
 
-**New table — `public.qb_discoveries`**
-- `id uuid pk default gen_random_uuid()`
-- `user_id uuid not null references auth.users(id) on delete cascade`
-- `kind text not null check (kind in ('ticket','dispatch','night_plan','shift'))`
-- `label text not null`
-- `context jsonb not null default '{}'::jsonb`
-- `created_at timestamptz not null default now()`
-- RLS: user can select/insert/delete own rows (`auth.uid() = user_id`). GRANTs for `authenticated` + `service_role`. Index on `(user_id, created_at desc)`.
+**New table — `public.qb_tuning_prefs`** (one row per user)
+- `user_id uuid pk references auth.users(id) on delete cascade`
+- `visual_intensity smallint not null default 3 check (visual_intensity between 1 and 5)`
+- `event_frequency text not null default 'normal' check (event_frequency in ('off','low','normal','high'))`
+- `particle_density text not null default 'medium' check (particle_density in ('low','medium','high'))`
+- `sleep_mode boolean not null default true`
+- `updated_at timestamptz not null default now()`
+- GRANT select/insert/update to `authenticated`, ALL to `service_role`. RLS scoped to `auth.uid() = user_id`.
 
-**Server functions** — `src/lib/quantum-bloom/discoveries.functions.ts`
-- `listDiscoveries()` → returns user's rows, newest first, capped at 500.
-- `recordDiscovery({ kind, label, context })` → inserts.
-- `resetDiscoveries()` → deletes all of caller's rows.
-All use `requireSupabaseAuth`.
+**Server functions** — `src/lib/quantum-bloom/tuning.functions.ts`
+- `getTuning()` upserts defaults then returns the row.
+- `setTuning(partial)` upserts the diff.
 
-**Celebration runtime** — `src/lib/quantum-bloom/celebration-bus.ts`
-- Tiny event bus (`emit`, `subscribe`) with debounced merge window (400 ms).
-- `triggerCelebration({ kind, label, context })` — emits + fires `recordDiscovery` (best-effort, swallowed on error).
-- Gated by `useTheme() === 'quantum-bloom'` at the call sites — bus is a no-op otherwise.
+**Local + sync** — `src/lib/settings/qb-tuning-store.ts` (mirrors `theme-store.ts`), `src/hooks/use-tuning-sync.ts` mounted next to `useThemeSync()`.
 
-**Components**
-- `src/components/quantum-bloom/CelebrationLayer.tsx` — mounted in `__root.tsx` inside the Quantum Bloom branch. Renders the active celebration via Framer Motion / CSS keyframes. Variants: `ticket`, `dispatch`, `nightPlan`, `shift`.
-- `src/components/quantum-bloom/DiscoveryToast.tsx` — bottom-right slide-in for the 3-second unlock toast (subscribes to the same bus).
-- `src/components/quantum-bloom/DiscoveryLogDrawer.tsx` — Sheet listing discoveries grouped by day with type icons and "Reset" action.
-- Update `src/components/settings/ThemesSection.tsx` — flip "Discovery Log" from disabled "Coming soon" to an enabled button that opens the drawer; counts shown next to label.
+**NebulaCanvas updates** — read `useTuning()`:
+- Pass `uIntensity` (0.4–1.4) uniform into the shader; multiplies brightness + bloom strength.
+- Scale particle count and DPR cap by `particleDensity`.
 
-**Call sites that emit celebrations**
-- `src/lib/tickets-store.ts` — in the function that marks a ticket complete, after persisting, call `triggerCelebration({ kind: 'ticket', label: 'Ticket completed', context: { ticketId } })`.
-- `src/lib/dispatch-store.ts` — on overall result transitioning to `complete`, emit `kind: 'dispatch'`.
-- `src/lib/night-plan-store.ts` — on plan marked complete, emit `kind: 'night_plan'`.
-- Existing shift-complete trigger (currently rendering BlueVerse `CelebrationOverlay`) — when theme is `quantum-bloom`, route to the bus with `kind: 'shift'` instead, suppressing the BlueVerse overlay.
+**Cosmic Weather** — `src/components/quantum-bloom/CosmicWeatherLayer.tsx`
+- Mounted next to `CelebrationLayer` inside the Quantum Bloom branch.
+- Schedules next event via `setTimeout` based on `eventFrequency` (off = never; low = 15–35 min; normal = 8–20 min; high = 3–9 min).
+- Suppresses when `document.hidden`, when `getShiftPhase()` is daytime AND `sleep_mode` is on, or when a celebration is currently playing.
+- On each event: emits visual via CSS animation overlay AND calls `recordDiscovery({ kind: 'shift', label: 'Cosmic <type>' , context: { weather: type } })` — reuses existing table; `kind` stays in allowed enum by tagging the row's context (no migration). Wait — the enum doesn't allow a new kind without a migration. So we add `'cosmic'` to the enum via a small ALTER. See Migration #2 below.
 
-**Performance**
-- Celebrations use CSS transforms + GPU compositing only. No new shaders, no per-frame React state.
-- Toast and overlay both auto-unmount after their animation ends.
-- Visibility-change listener pauses the queue when the tab is hidden (consistent with the nebula).
+**Migration #2** — extend `qb_discoveries.kind` check to include `'cosmic'`. Drop + recreate the CHECK constraint in a single statement.
+
+**Sanctuary** — `src/lib/quantum-bloom/sanctuary-store.ts` (local only, `useSyncExternalStore`), `SanctuaryShell.tsx` mounted in `__root.tsx` (Quantum Bloom branch). Adds a `data-qb-sanctuary="on"` attribute on `<html>`; CSS in `styles.css` fades AppShell sidebar, dims non-essential cards, and slows the nebula via a new `--qb-sanctuary-intensity` factor on the shader uniform path.
+- Trigger: small "Sanctuary" button rendered into `AppShell` header when `theme === 'quantum-bloom'`. Esc handler exits.
+
+**Constellation View route** — `src/routes/_authenticated/constellations.tsx`
+- Loader uses `useServerFn(listDiscoveries)` from a component (no SSR loader — protected fn).
+- Two tabs (`Tabs` from shadcn): **Constellations** (canvas/SVG starfield), **Timeline** (sparkline grid + totals).
+- Star position: `hash(id)` → `(x,y)` in normalized space, jittered per day bucket so same-day stars cluster.
+- Lines: SVG `<line>` between consecutive same-day stars (max 50 per day).
+- Star colors mirror `KIND_META` from the Discovery drawer plus a violet for `cosmic`.
+
+**Quantum Bloom Core card** — pure derivation function `deriveCore(discoveries)` in `src/lib/quantum-bloom/core.ts`. Rendered at the top of `/constellations`. "Reset Learning" calls the existing `resetDiscoveries` + a confirm step.
+
+**Settings UI** — `ThemesSection.tsx`
+- Replace the disabled "Cosmic Weather", "Daytime Sleep Mode" rows with working `Select` / `Switch`.
+- Add three sliders (Visual Intensity, Event Frequency, Particle Density). Existing "Ambient Atmosphere" stays "Coming soon".
+- Add a "Open Constellation View" link next to the Discovery Log row.
 
 **Files to add**
-- `supabase/migrations/<ts>_qb_discoveries.sql`
-- `src/lib/quantum-bloom/celebration-bus.ts`
-- `src/lib/quantum-bloom/discoveries.functions.ts`
-- `src/hooks/use-discoveries.ts` (small wrapper around the server fns + local cache)
-- `src/components/quantum-bloom/CelebrationLayer.tsx`
-- `src/components/quantum-bloom/DiscoveryToast.tsx`
-- `src/components/quantum-bloom/DiscoveryLogDrawer.tsx`
+- `supabase/migrations/<ts>_qb_phase3.sql` (tuning table + GRANT/RLS + extend discovery kind enum)
+- `src/lib/quantum-bloom/tuning.functions.ts`
+- `src/lib/settings/qb-tuning-store.ts`
+- `src/hooks/use-tuning-sync.ts`
+- `src/lib/quantum-bloom/core.ts`
+- `src/lib/quantum-bloom/sanctuary-store.ts`
+- `src/components/quantum-bloom/CosmicWeatherLayer.tsx`
+- `src/components/quantum-bloom/SanctuaryShell.tsx`
+- `src/components/quantum-bloom/SanctuaryButton.tsx`
+- `src/components/quantum-bloom/CoreCard.tsx`
+- `src/components/quantum-bloom/ConstellationField.tsx`
+- `src/components/quantum-bloom/ArchiveTimeline.tsx`
+- `src/routes/_authenticated/constellations.tsx`
 
 **Files to edit**
-- `src/routes/__root.tsx` — mount `<CelebrationLayer />` and `<DiscoveryToast />` inside the Quantum Bloom branch.
-- `src/components/settings/ThemesSection.tsx` — enable Discovery Log row + wire drawer.
-- `src/lib/tickets-store.ts`, `src/lib/dispatch-store.ts`, `src/lib/night-plan-store.ts` — add `triggerCelebration` call at completion points.
-- Existing shift-complete code path (the component currently rendering `CelebrationOverlay` on shift end) — branch on theme.
-- `src/styles.css` — add `@keyframes qb-bloom-pulse`, `qb-aurora-sweep`, `qb-golden-ring`, `qb-spectral-wave`, `qb-discovery-toast-in`.
+- `src/routes/__root.tsx` — mount `<CosmicWeatherLayer />` + `<SanctuaryShell />`.
+- `src/routes/_authenticated/route.tsx` — call `useTuningSync()`.
+- `src/components/quantum-bloom/NebulaCanvas.tsx` — wire `intensity` + `particleDensity` from tuning store; honor sanctuary factor.
+- `src/components/quantum-bloom/CelebrationLayer.tsx` — scale particle bursts by particle density.
+- `src/components/quantum-bloom/DiscoveryLogDrawer.tsx` — add link to `/constellations`; add `cosmic` kind icon/color.
+- `src/components/settings/ThemesSection.tsx` — flip placeholder rows to live controls; add Constellation View link.
+- `src/components/layout/AppShell.tsx` — render `<SanctuaryButton />` in header when Quantum Bloom is active.
+- `src/styles.css` — `[data-qb-sanctuary="on"]` rules; cosmic weather keyframes (`qb-meteor`, `qb-comet`, `qb-cosmic-lightning`, `qb-aurora-ribbon`); constellation styles.
 
 **Verification**
-- Quantum Bloom active → complete a ticket → cyan bloom plays, "★ Discovery unlocked: Ticket completed" toast appears, row visible in Discovery Log drawer.
-- Complete dispatch testing → spectral wave plays + discovery row.
-- Mark night plan complete → golden ring + row.
-- End shift → aurora curtain (Quantum Bloom variant); BlueVerse overlay does not also fire.
-- Switch to BlueVerse → no celebrations fire from the new system, no discovery rows added, drawer not reachable.
-- Sign in on second device → Discovery Log shows the same rows.
-- Reset Discoveries → list empties on both devices after refresh.
+- Toggle Quantum Bloom → set Visual Intensity 1 → nebula visibly dimmer; set 5 → much brighter.
+- Set Event Frequency to High → cosmic event fires within a few minutes; new "cosmic" rows appear in Discovery Log.
+- Click Sanctuary → sidebar + chrome dim, nebula slows; Esc restores. State does not survive refresh.
+- Open `/constellations` → starfield matches Discovery Log count and colors; Timeline tab shows last-60-days sparkline + totals; Core card shows Favorite Phase / Most Active Hour / Preferred Workspace / Adaptation Level / Discoveries Unlocked.
+- Reset Learning empties Discovery Log + Core readouts.
+- Switch back to BlueVerse → all Quantum Bloom layers and Sanctuary button disappear; cosmic events stop firing.
+- Sign in on a second device → tuning settings + discoveries follow user.
 
-Approve and I'll build it. Phase 3 (Sanctuary, Constellations, Archive, Quantum Bloom Core, Cosmic Weather, intensity sliders) stays as its own future plan.
+Approve and I'll build it.
