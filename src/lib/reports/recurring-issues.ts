@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from "react";
 import { ticketsStore, type Ticket } from "../tickets-store";
-import { useDemoMode } from "../settings/demo-mode-store";
 
 interface ReviewState {
   reviewed: Record<string, { lastReviewedAt: number; lastReviewCount: number }>;
@@ -155,17 +154,9 @@ export const recurringStore = {
 };
 
 export function useRecurringRows(): RecurringRow[] {
-  const rows = useSyncExternalStore(
+  return useSyncExternalStore(
     recurringStore.subscribe,
     () => getRecurringRows(),
     () => [] as RecurringRow[],
   );
-  const demo = useDemoMode();
-  if (demo) return rows;
-  return rows
-    .map((r) => {
-      const tickets = r.tickets.filter((t) => !t.isDemo);
-      return { ...r, tickets, sixMonthCount: tickets.length };
-    })
-    .filter((r) => r.tickets.length > 0);
 }

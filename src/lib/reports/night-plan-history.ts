@@ -22,8 +22,7 @@ interface State {
   items: NPHistoryItem[];
 }
 
-const KEY = "aih:nightplan-history:v1";
-const SEED_FLAG = "aih:nightplan-history:seeded:v1";
+const KEY = "aih:nightplan-history:v2";
 
 let state: State = { items: [] };
 let initialized = false;
@@ -35,107 +34,16 @@ function shiftKeyDaysAgo(days: number): string {
   return getShiftKey(d);
 }
 
-function seed(): NPHistoryItem[] {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  const items: NPHistoryItem[] = [
-    {
-      id: "nph-1",
-      shiftKey: shiftKeyDaysAgo(2),
-      task: "Confirm Riverbend rotation update",
-      notes: "Verified with CS.",
-      status: "done",
-      createdAt: now - 2 * day - 30 * 60_000,
-      completedAt: now - 2 * day,
-      priority: "must",
-    },
-    {
-      id: "nph-2",
-      shiftKey: shiftKeyDaysAgo(3),
-      task: "Walk through new dispatcher script edits",
-      notes: "Carried to next shift.",
-      status: "carried",
-      createdAt: now - 3 * day,
-      carryTrail: [shiftKeyDaysAgo(3), shiftKeyDaysAgo(2), shiftKeyDaysAgo(1)],
-      priority: "important",
-    },
-    {
-      id: "nph-3",
-      shiftKey: shiftKeyDaysAgo(4),
-      task: "Old reminder no longer needed",
-      status: "dismissed",
-      createdAt: now - 4 * day,
-      priority: "normal",
-    },
-    {
-      id: "nph-4",
-      shiftKey: shiftKeyDaysAgo(5),
-      task: "Follow up on Cedar Oaks backup",
-      status: "done",
-      createdAt: now - 5 * day - 60 * 60_000,
-      completedAt: now - 5 * day,
-      priority: "normal",
-    },
-    {
-      id: "nph-5",
-      shiftKey: shiftKeyDaysAgo(7),
-      task: "Walk through dispatcher script edits with team",
-      notes: "Converted to Additional Work for tracking.",
-      status: "converted",
-      createdAt: now - 7 * day,
-      additionalWorkId: undefined, // wired by reports-seed if possible
-      priority: "must",
-    },
-    // Cleanup-ready (older than 3 months)
-    {
-      id: "nph-6",
-      shiftKey: shiftKeyDaysAgo(95),
-      task: "Archived shift notes — ready for cleanup",
-      status: "done",
-      createdAt: now - 95 * day,
-      completedAt: now - 95 * day,
-      priority: "normal",
-    },
-    {
-      id: "nph-7",
-      shiftKey: shiftKeyDaysAgo(40),
-      task: "Quarterly script review reminder",
-      status: "dismissed",
-      createdAt: now - 40 * day,
-      priority: "normal",
-    },
-  ];
-  return items.map((i) => ({ ...i, isDemo: true }));
-}
-
 function load(): State {
   if (typeof window === "undefined") return { items: [] };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (Array.isArray(p.items)) return runNPDemoMigration(p);
+      if (Array.isArray(p.items)) return p;
     }
   } catch {}
-  // First-load seed
-  const s: State = { items: seed() };
-  try {
-    localStorage.setItem(KEY, JSON.stringify(s));
-    localStorage.setItem(SEED_FLAG, "1");
-  } catch {}
-  return s;
-}
-
-const DEMO_MIGRATION_KEY = "aih:nightplan-history:demo-recover:v1";
-const SEED_IDS = new Set(["nph-1", "nph-2", "nph-3", "nph-4", "nph-5", "nph-6", "nph-7"]);
-function runNPDemoMigration(s: State): State {
-  if (typeof window === "undefined") return s;
-  if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
-  const next: State = {
-    items: s.items.map((i) => (SEED_IDS.has(i.id) ? { ...i, isDemo: true } : i)),
-  };
-  try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}
-  return next;
+  return { items: [] };
 }
 
 function ensureLoaded() {
