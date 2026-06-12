@@ -538,7 +538,7 @@ function DataSection() {
   const { tickets } = useTickets();
   const { sessions } = useDispatch();
   const { items: work } = useAdditionalWork();
-  const accounts = useAccounts();
+  const { accounts } = useAccounts();
   const archived = nightPlanHistory.archived().length;
   const cleanup = nightPlanHistory.readyForCleanup().length;
   const [cleanupOpen, setCleanupOpen] = useState(false);
