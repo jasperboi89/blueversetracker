@@ -523,6 +523,13 @@ export const dispatchStore = {
   },
   markReady(id: string) {
     patchSession(id, (s) => ({ ...s, status: "ready", completedAt: Date.now() }));
+    void import("./quantum-bloom/celebration-bus").then(({ triggerCelebration }) => {
+      triggerCelebration({
+        kind: "dispatch",
+        label: "Dispatch testing complete",
+        context: { sessionId: id },
+      });
+    });
   },
 
   addSummaryVersion(id: string, label: SummaryVersionLabel, body: string) {

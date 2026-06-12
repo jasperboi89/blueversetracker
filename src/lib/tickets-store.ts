@@ -715,6 +715,7 @@ export const ticketsStore = {
   },
   markCompleted(ticketId: string, classification: IssueClassification) {
     ensureLoaded();
+    const prev = state.tickets.find((t) => t.id === ticketId);
     state = {
       ...state,
       tickets: state.tickets.map((t) =>
@@ -724,6 +725,15 @@ export const ticketsStore = {
       ),
     };
     persist();
+    if (prev && prev.status !== "completed") {
+      void import("./quantum-bloom/celebration-bus").then(({ triggerCelebration }) => {
+        triggerCelebration({
+          kind: "ticket",
+          label: "Ticket completed",
+          context: { ticketId },
+        });
+      });
+    }
   },
   setIssueClassification(ticketId: string, classification: IssueClassification | null) {
     ensureLoaded();
