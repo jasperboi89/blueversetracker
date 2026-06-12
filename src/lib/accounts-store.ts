@@ -141,7 +141,14 @@ function loadInitial(): State {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (p?.accounts?.length) return { recent: {}, ...p } as State;
+      if (p?.accounts?.length) {
+        return {
+          accounts: p.accounts,
+          notes: p.notes ?? [],
+          templates: p.templates ?? [],
+          recent: p.recent ?? {},
+        };
+      }
     }
   } catch {}
   return {
