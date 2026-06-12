@@ -443,6 +443,8 @@ export const ticketsStore = {
         status: res.ticket.status,
         priority: res.ticket.priority,
         dueAt: res.ticket.dueAt,
+        accountNumber: res.ticket.accountNumber,
+        accountName: res.ticket.accountName ?? res.ticket.companyName,
         newNotes: res.notes.map((n) => ({
           id: newId("fn"),
           freshdeskId: n.freshdeskId,
