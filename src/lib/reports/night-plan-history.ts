@@ -114,7 +114,7 @@ function load(): State {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (Array.isArray(p.items)) return p;
+      if (Array.isArray(p.items)) return runNPDemoMigration(p);
     }
   } catch {}
   // First-load seed
@@ -124,6 +124,18 @@ function load(): State {
     localStorage.setItem(SEED_FLAG, "1");
   } catch {}
   return s;
+}
+
+const DEMO_MIGRATION_KEY = "aih:nightplan-history:demo-recover:v1";
+const SEED_IDS = new Set(["nph-1", "nph-2", "nph-3", "nph-4", "nph-5", "nph-6", "nph-7"]);
+function runNPDemoMigration(s: State): State {
+  if (typeof window === "undefined") return s;
+  if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
+  const next: State = {
+    items: s.items.map((i) => (SEED_IDS.has(i.id) ? { ...i, isDemo: true } : i)),
+  };
+  try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}
+  return next;
 }
 
 function ensureLoaded() {
