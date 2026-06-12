@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
 import { accountsStore } from "./accounts-store";
-import { useDemoMode } from "./settings/demo-mode-store";
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
@@ -114,7 +113,7 @@ interface State {
   recentIds: Record<string, string[]>; // by shift key
 }
 
-const KEY = "aih:tickets:v1";
+const KEY = "aih:tickets:v2";
 
 const initialDetails = (over: Partial<TicketDetails> = {}): TicketDetails => ({
   subject: "",
@@ -131,119 +130,18 @@ const initialDetails = (over: Partial<TicketDetails> = {}): TicketDetails => ({
 
 function seed(): Ticket[] {
   const now = Date.now();
-  const m = 60_000;
-  const h = 60 * m;
-  const items: Ticket[] = [
+  return [
     {
-      id: "t-30182",
-      number: "30182",
-      accountNumber: "5426",
-      accountName: "Riverbend Family Clinic",
+      id: "t-sheboygan-1",
+      number: "1",
+      accountNumber: "7431",
+      accountName: "Sheboygan Internal Medicine",
       status: "working",
-      priority: "High",
-      dueAt: now - 45 * m, // overdue
-      updatedAt: now - 30 * m,
-      syncedAt: now - 25 * m,
+      updatedAt: now,
       details: initialDetails({
-        subject: "Update overnight on-call rotation",
-        company: "Riverbend Family Clinic",
-        topic: "On-Call Schedule",
-        type: "Change Request",
-        priority: "High",
-        agent: "L. Park",
-        freshdeskUrl: "https://example.freshdesk.com/a/tickets/30182",
-      }),
-      freshdeskNotes: [
-        { id: "n1", author: "Customer", createdAt: now - 3 * h, body: "Please rotate Dr. Cole to Monday/Wednesday overnight." },
-        { id: "n2", author: "L. Park", createdAt: now - 90 * m, body: "Confirmed. Starting tonight." },
-        { id: "n3", author: "Customer", createdAt: now - 55 * m, body: "Thanks — also add Dr. Reyes to weekend backup." },
-        { id: "n4", author: "System", createdAt: now - 40 * m, body: "Priority raised to High." },
-      ],
-      hubHistory: [
-        { id: "h1", initials: "LTP", createdAt: now - 28 * m, body: "Pulled into Hub. Reviewing rotation file.", kind: "system" },
-        { id: "h2", initials: "LTP", createdAt: now - 20 * m, body: "Confirmed Dr. Cole's schedule with on-call grid.", kind: "note" },
-      ],
-      freshdeskAttachments: [
-        { id: "fa1", name: "rotation-current.pdf", createdAt: now - 3 * h, size: "184 KB" },
-        { id: "fa2", name: "after-hours-protocol.png", createdAt: now - 2 * h, size: "212 KB" },
-      ],
-      hubSnips: [
-        { id: "s1", name: "Before — rotation grid", category: "Before Change", createdAt: now - 22 * m, initials: "LTP", isImage: false },
-      ],
-    },
-    {
-      id: "t-30191",
-      number: "30191",
-      accountNumber: "4821",
-      accountName: "Cedar Oaks Veterinary",
-      status: "waiting-cs",
-      priority: "Medium",
-      dueAt: now + 4 * h,
-      updatedAt: now - 2 * h,
-      syncedAt: now - 90 * m,
-      details: initialDetails({
-        subject: "Add new dispatch contact",
-        company: "Cedar Oaks Veterinary",
-        topic: "Dispatch List",
-        type: "Service Request",
-        priority: "Medium",
-        agent: "Night CS",
-        freshdeskUrl: "https://example.freshdesk.com/a/tickets/30191",
-      }),
-      freshdeskNotes: [
-        { id: "n1", author: "Customer", createdAt: now - 5 * h, body: "Add Dr. Wei to overnight dispatch list." },
-        { id: "n2", author: "L. Park", createdAt: now - 2 * h, body: "Need confirmation of after-hours contact #." },
-      ],
-      hubHistory: [
-        { id: "h1", initials: "LTP", createdAt: now - 2 * h, body: "Sent CS clarification request.", kind: "note" },
-      ],
-      freshdeskAttachments: [],
-      hubSnips: [],
-    },
-    {
-      id: "t-30205",
-      number: "30205",
-      accountNumber: "6610",
-      accountName: "Lakeside Cardiology",
-      status: "waiting-prog",
-      // no priority, no due, never synced
-      updatedAt: now - 4 * h,
-      details: initialDetails({
-        subject: "After-hours auto-routing script issue",
-        company: "Lakeside Cardiology",
-        topic: "Scripting",
-        type: "Bug",
-        priority: "Medium",
-        agent: "Programming",
-        freshdeskUrl: "https://example.freshdesk.com/a/tickets/30205",
-      }),
-      freshdeskNotes: [
-        { id: "n1", author: "L. Park", createdAt: now - 4 * h, body: "Sent to programming — auto-routing skips overnight queue." },
-      ],
-      hubHistory: [
-        { id: "h1", initials: "LTP", createdAt: now - 4 * h, body: "Escalated to programming.", kind: "system" },
-      ],
-      freshdeskAttachments: [
-        { id: "fa1", name: "routing-log.txt", createdAt: now - 4 * h, size: "8 KB" },
-      ],
-      hubSnips: [],
-    },
-    {
-      id: "t-30199",
-      number: "30199",
-      accountNumber: "2188",
-      accountName: "Northstar Pediatrics",
-      status: "working",
-      // no due, no priority
-      updatedAt: now - 75 * m,
-      // never synced
-      details: initialDetails({
-        subject: "Update greeting script",
-        company: "Northstar Pediatrics",
-        topic: "Greeting / Scripting",
-        type: "Change Request",
-        agent: "L. Park",
-        freshdeskUrl: "https://example.freshdesk.com/a/tickets/30199",
+        subject: "Sheboygan Internal Medicine — open work",
+        company: "Sheboygan Internal Medicine",
+        freshdeskUrl: "",
       }),
       freshdeskNotes: [],
       hubHistory: [],
@@ -251,7 +149,6 @@ function seed(): Ticket[] {
       hubSnips: [],
     },
   ];
-  return items.map((t) => ({ ...t, isDemo: true }));
 }
 
 function loadInitial(): State {
@@ -263,74 +160,15 @@ function loadInitial(): State {
     if (raw) {
       const parsed = JSON.parse(raw) as State;
       if (parsed && Array.isArray(parsed.tickets)) {
-        return runTicketsDemoMigration({
+        return {
           tickets: parsed.tickets,
           workSessions: parsed.workSessions ?? {},
           recentIds: parsed.recentIds ?? {},
-        });
+        };
       }
     }
   } catch {}
   return { tickets: seed(), workSessions: {}, recentIds: {} };
-}
-
-const TICKETS_DEMO_MIGRATION_KEY = "aih:tickets:demo-recover:v1";
-function runTicketsDemoMigration(s: State): State {
-  if (typeof window === "undefined") return s;
-  if (localStorage.getItem(TICKETS_DEMO_MIGRATION_KEY)) return s;
-  // Stamp every existing ticket as demo, then immediately recover real ones.
-  // This catches seed records that were persisted before isDemo was introduced.
-  const next: State = {
-    ...s,
-    tickets: s.tickets.map((t) => {
-      const flagged = { ...t, isDemo: true };
-      return isRealTicket(flagged, s.workSessions[t.id]) ? { ...flagged, isDemo: false } : flagged;
-    }),
-  };
-  try { localStorage.setItem(TICKETS_DEMO_MIGRATION_KEY, "1"); } catch {}
-  return next;
-}
-
-function recoverTicketIfUserWorked(t: Ticket, session?: WorkSession): Ticket {
-  if (!t.isDemo) return t;
-  if (isRealTicket(t, session)) return { ...t, isDemo: false };
-  return t;
-}
-
-function isRealTicket(t: Ticket, session?: WorkSession): boolean {
-  // A real Freshdesk pull never uses example.freshdesk.com — demo seeds do.
-  const url = t.details?.freshdeskUrl ?? "";
-  const isRealPull = url.length > 0 && !url.includes("example.freshdesk.com");
-  const userHubHistory = (t.hubHistory ?? []).some(
-    (h) => h.kind === "note" || h.kind === "snip",
-  );
-  const userSnips = (t.hubSnips?.length ?? 0) > 0;
-  const manualAccount = t.accountSource === "manual";
-  const sessionHasWork = !!session && (
-    !!session.issueText?.trim() ||
-    !!session.changesText?.trim() ||
-    !!session.resultStatus ||
-    !!session.generatedNote?.trim() ||
-    !!session.resultNotes?.trim()
-  );
-  return isRealPull || userHubHistory || userSnips || manualAccount || sessionHasWork;
-}
-
-/** Re-run the demo-recovery migration on demand (Settings button). */
-export function recoverRealWorkFromDemo(): { tickets: number } {
-  ensureLoaded();
-  let recovered = 0;
-  const tickets = state.tickets.map((t) => {
-    if (!t.isDemo) return t;
-    if (isRealTicket(t, state.workSessions[t.id])) {
-      recovered++;
-      return { ...t, isDemo: false };
-    }
-    return t;
-  });
-  state = { ...state, tickets };
-  persist();
-  return { tickets: recovered };
 }
 
 let state: State = { tickets: [], workSessions: {}, recentIds: {} };
@@ -919,31 +757,19 @@ export const ticketsStore = {
     return t;
   },
   /** Internal: append seed tickets, dedupe by id. Used by reports demo data. */
-  _seedExtra(items: Ticket[]) {
-    ensureLoaded();
-    const existing = new Set(state.tickets.map((t) => t.id));
-    const additions = items.filter((t) => !existing.has(t.id));
-    if (additions.length === 0) return;
-    state = { ...state, tickets: [...additions, ...state.tickets] };
-    persist();
-  },
 };
 
+/** No-op kept for callers that still reference it after demo-data removal. */
+export function recoverRealWorkFromDemo(): { tickets: number } {
+  return { tickets: 0 };
+}
+
 export function useTickets() {
-  const snap = useSyncExternalStore(
+  return useSyncExternalStore(
     ticketsStore.subscribe,
     () => ticketsStore.getState(),
     () => ({ tickets: [], workSessions: {}, recentIds: {} }),
   );
-  const demo = useDemoMode();
-  if (demo) return snap;
-  const tickets = snap.tickets.filter((t) => !t.isDemo);
-  const allowedIds = new Set(tickets.map((t) => t.id));
-  const recentIds: Record<string, string[]> = {};
-  for (const [k, ids] of Object.entries(snap.recentIds)) {
-    recentIds[k] = ids.filter((id) => allowedIds.has(id));
-  }
-  return { ...snap, tickets, recentIds };
 }
 
 export function isOverdue(t: Ticket, now = Date.now()): boolean {

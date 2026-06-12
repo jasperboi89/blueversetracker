@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, Ticket as TicketIcon, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { mockAccounts } from "@/lib/mock/accounts";
 import { dispatchStore } from "@/lib/dispatch-store";
+import { accountsStore } from "@/lib/accounts-store";
 import { ticketsStore } from "@/lib/tickets-store";
 import { toast } from "sonner";
 
@@ -14,13 +14,7 @@ export function StartTestingPane() {
   const [ticket, setTicket] = useState("");
   const [picked, setPicked] = useState<{ number: string; name: string } | null>(null);
 
-  const matches = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return [];
-    return mockAccounts
-      .filter((a) => a.number.includes(s) || a.name.toLowerCase().includes(s))
-      .slice(0, 6);
-  }, [q]);
+  const matches = q.trim() ? accountsStore.search(q, { includeArchived: true }) : [];
 
   const linkedTicket = ticket.trim() ? ticketsStore.getByNumber(ticket.trim()) : undefined;
 

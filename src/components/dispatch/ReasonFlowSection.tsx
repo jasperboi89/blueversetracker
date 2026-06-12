@@ -13,7 +13,8 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub,
   DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { globalReasonTemplates, accountReasonTemplates } from "@/lib/mock/dispatch-templates";
+const globalReasonTemplates: { id: string; text: string; type: ReasonType; expectedFlow: string }[] = [];
+const accountReasonTemplates: Record<string, { id: string; text: string; type: ReasonType; expectedFlow: string }[]> = {};
 import { StatusChip } from "./StatusChip";
 import { AddSnipModal } from "./AddSnipModal";
 import { RetestModal } from "./RetestModal";

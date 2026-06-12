@@ -16,38 +16,10 @@ export interface DispatchTemplatesState {
   templates: DispatchTemplate[];
 }
 
-const seed = (): DispatchTemplate[] => [
-  {
-    id: "tpl-routine-checkin",
-    name: "Routine After-Hours Check-In",
-    type: "routine",
-    expectedFlow: "Greeting → Identify caller → Take message → Confirm callback time.",
-    notes: "Default flow for routine accounts.",
-    archived: false,
-    order: 0,
-  },
-  {
-    id: "tpl-urgent-escalation",
-    name: "Urgent Medical Escalation",
-    type: "urgent",
-    expectedFlow: "Greeting → Confirm urgency → Page on-call → Stay on line until acknowledged.",
-    notes: "Used for clinical urgent calls.",
-    archived: false,
-    order: 1,
-  },
-  {
-    id: "tpl-blank",
-    name: "Blank / Not Set",
-    type: "blank",
-    expectedFlow: "",
-    notes: "Free-form testing.",
-    archived: false,
-    order: 2,
-  },
-];
+const seed = (): DispatchTemplate[] => [];
 
 export const dispatchTemplatesStore = createPersistedStore<DispatchTemplatesState>(
-  "aih:settings:dispatch-templates:v1",
+  "aih:settings:dispatch-templates:v2",
   { templates: seed() },
 );
 
