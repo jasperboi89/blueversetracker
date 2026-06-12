@@ -1,5 +1,3 @@
-import { getCentralNow } from "@/lib/shift";
-
 /** Aurora color phase. Three oklch colors used by both CSS and the WebGL shader. */
 export interface AuroraPhase {
   /** Hour 0-23 in Central time the phase belongs to. */
@@ -37,8 +35,6 @@ const DAY_PHASE: AuroraPhase = {
 };
 
 export function getActivePhase(now: Date = new Date()): AuroraPhase {
-  const { hour } = getCentralNow.call(null) as unknown as { hour: number };
-  // getCentralNow ignores its arg and reads "now". Build a fresh read instead:
   const h = getHourCentral(now);
   if (h >= 7 && h < 22) return DAY_PHASE;
   // Find best matching phase.
