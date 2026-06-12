@@ -17,7 +17,6 @@ const KIND_LABEL: Record<Discovery["kind"], string> = {
   dispatch: "Dispatch testing",
   night_plan: "Night Plan",
   shift: "Shift",
-  // @ts-expect-error cosmic added later via migration
   cosmic: "Cosmic Weather",
 };
 
@@ -60,9 +59,7 @@ export function deriveCore(rows: Discovery[]): CoreReadout {
   };
 
   const perKind: Record<Discovery["kind"], number> = {
-    ticket: 0, dispatch: 0, night_plan: 0, shift: 0,
-    // @ts-expect-error cosmic
-    cosmic: 0,
+    ticket: 0, dispatch: 0, night_plan: 0, shift: 0, cosmic: 0,
   };
   rows.forEach((r) => { (perKind as Record<string, number>)[r.kind] = (perKind as Record<string, number>)[r.kind] + 1 || 1; });
 
