@@ -1,23 +1,47 @@
-## Bug
+## Fix: Account Number handling in Freshdesk Ticket Workspace
 
-Clicking **Continue Ticket Work** crashes with "This page didn't load". Console shows:
+Right now the ticket header shows `Account {accountNumber} — {accountName}` as plain text with no way to edit, and when Freshdesk doesn't supply an account number the ticket falls back to `"----"`. We'll improve detection, surface an editable field when missing, persist manual entries, and link to the Accounts table.
 
-> Invariant failed: Could not find an active match from "/freshdesk-tickets/$ticketId/work"
+### 1. Broaden Freshdesk auto-detect
 
-TanStack Router's `useParams({ from })` needs the **full route ID**, which includes the `_authenticated` layout segment (even though `_authenticated` is stripped from the URL).
+In `src/lib/api/freshdesk.functions.ts` (`detectAccount`):
+- Keep custom-field check first.
+- Then scan, in order: `subject`, `description_text`, `tags[]`, `company.name`, `requester.name`/`email`.
+- Match a 3–8 digit number, with optional prefixes like `Acct`, `Account #`, `[1234]`, or a bare numeric token.
+- Pass `tags` and `description_text` through (already in DTO).
+- Return both `accountNumber` and `accountName` (prefer company name).
 
-Two route files have the wrong `from`:
+### 2. Track account source on the ticket
 
-- `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx` — uses `from: "/freshdesk-tickets/$ticketId/work"`
-- `src/routes/_authenticated/contact-dispatch.$sessionId.work.tsx` — uses `from: "/contact-dispatch/$sessionId/work"`
+In `src/lib/tickets-store.ts`:
+- Add `accountSource?: "freshdesk" | "manual"` to `Ticket`.
+- `createFromFreshdesk`: leave `accountNumber` empty (`""`) instead of `"----"` when none detected; set `accountSource: "freshdesk"` only when detected.
+- New action `setAccountNumber(ticketId, number, name?)`:
+  - Validates numeric (digits only, 3–8 chars).
+  - Looks up `accountsStore.get(number)`; if found, uses its name and links; if not, creates a new Account via `accountsStore.create({ number, name: name || "Unlinked Account" })`.
+  - Updates ticket `accountNumber`, `accountName`, `accountSource: "manual"`, pushes a hub history entry.
+- New action `refreshAccountFromFreshdesk(ticketId)`: re-runs `freshdeskPullTicket`, replaces the account fields, resets `accountSource` to `"freshdesk"`.
+- `mergeFreshdeskData` (sync): only overwrite `accountNumber`/`accountName` when `accountSource !== "manual"`.
 
-## Fix
+### 3. Workspace header UI
 
-Add the `/_authenticated` prefix to both:
+In `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx`, replace the static "Account {n} — {name}" line with a small inline component:
 
-- `from: "/_authenticated/freshdesk-tickets/$ticketId/work"`
-- `from: "/_authenticated/contact-dispatch/$sessionId/work"`
+- **Has account number** (linked): show `Account {n} — {name}` with a small "Edit" pencil and a "Refresh from Freshdesk" button. Account number is a `Link` to `/accounts/{n}`.
+- **No account number**: show an amber warning panel:
+  > No account number found from Freshdesk. Enter one manually to link this ticket to an account.
+  
+  Below it: a numeric `Input` + "Link Account" button. If the entered number doesn't exist in Accounts, surface an inline "Create new account" row with an optional Account Name field, then `setAccountNumber`.
+- **Edit mode** (from pencil): same input flow but pre-filled; "Replace Account Number" confirm before saving over a manual value.
 
-Then verify by navigating to a ticket work page and a dispatch session work page in the preview.
+### 4. Ticket lookup fallback
 
-No other files affected.
+`src/components/freshdesk/TicketLookupCard.tsx`: no logic change required — manual create already exists, and pulled tickets will now render the warning + editor in the workspace when account number is missing.
+
+### Files changed
+- `src/lib/api/freshdesk.functions.ts` — broader detection
+- `src/lib/tickets-store.ts` — `accountSource`, `setAccountNumber`, `refreshAccountFromFreshdesk`, sync guard, default empty string
+- `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx` — header editor + warning
+- (new) `src/components/freshdesk/AccountLinker.tsx` — small reusable inline editor/warning component
+
+No backend/migration changes — accounts live in `accountsStore` (localStorage), matching existing patterns.

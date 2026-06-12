@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
+import { accountsStore } from "./accounts-store";
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
@@ -64,6 +65,8 @@ export interface Ticket {
   number: string;
   accountNumber: string;
   accountName: string;
+  /** Where the account number came from. Manual entries are not overwritten by sync. */
+  accountSource?: "freshdesk" | "manual";
   status: TicketStatus;
   priority?: "Low" | "Medium" | "High" | "Urgent";
   dueAt?: number;
@@ -441,6 +444,8 @@ export const ticketsStore = {
         status: res.ticket.status,
         priority: res.ticket.priority,
         dueAt: res.ticket.dueAt,
+        accountNumber: res.ticket.accountNumber,
+        accountName: res.ticket.accountName ?? res.ticket.companyName,
         newNotes: res.notes.map((n) => ({
           id: newId("fn"),
           freshdeskId: n.freshdeskId,
@@ -522,6 +527,8 @@ export const ticketsStore = {
       status?: TicketStatus;
       priority?: Ticket["priority"];
       dueAt?: number;
+      accountNumber?: string;
+      accountName?: string;
       newNotes: FreshdeskNote[];
       newAttachments: FreshdeskAttachment[];
     },
@@ -571,6 +578,14 @@ export const ticketsStore = {
           syncedAt: Date.now(),
           lastSyncFailed: false,
         };
+        // Account number — only overwrite if not manually set
+        if (payload.accountNumber !== undefined && tk.accountSource !== "manual") {
+          if (payload.accountNumber) {
+            next.accountNumber = payload.accountNumber;
+            next.accountName = payload.accountName ?? tk.accountName ?? "Unlinked Account";
+            next.accountSource = "freshdesk";
+          }
+        }
         // Freshdesk due date — set only if user hasn't overridden
         if (payload.dueAt !== undefined && tk.dueSource !== "hub-override") {
           if (next.dueAt !== payload.dueAt) {
@@ -662,13 +677,109 @@ export const ticketsStore = {
     };
     persist();
   },
+  /**
+   * Manually set an account number on a ticket. Validates numeric (3-8 digits),
+   * links to an existing Account or creates a new one in the Accounts table.
+   */
+  setAccountNumber(
+    ticketId: string,
+    rawNumber: string,
+    accountName?: string,
+  ): { ok: boolean; error?: string; created?: boolean } {
+    ensureLoaded();
+    const num = rawNumber.trim();
+    if (!/^\d{3,8}$/.test(num)) {
+      return { ok: false, error: "Account number must be 3–8 digits." };
+    }
+    let acct = accountsStore.get(num);
+    let created = false;
+    if (!acct) {
+      try {
+        acct = accountsStore.create({ number: num, name: accountName?.trim() || "Unlinked Account" });
+        created = true;
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : "Could not create account." };
+      }
+    }
+    const finalName = acct?.name ?? accountName?.trim() ?? "Unlinked Account";
+    state = {
+      ...state,
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId
+          ? {
+              ...t,
+              accountNumber: num,
+              accountName: finalName,
+              accountSource: "manual",
+              updatedAt: Date.now(),
+              hubHistory: [
+                {
+                  id: newId("hh"),
+                  initials: "LTP",
+                  createdAt: Date.now(),
+                  body: `Account number set manually to ${num} (${finalName})${created ? " — new account created" : ""}.`,
+                  kind: "system",
+                },
+                ...t.hubHistory,
+              ],
+            }
+          : t,
+      ),
+    };
+    persist();
+    return { ok: true, created };
+  },
+  /** Refresh the account number from Freshdesk, overwriting any manual entry. */
+  async refreshAccountFromFreshdesk(ticketId: string): Promise<{ ok: boolean; error?: string; found?: boolean }> {
+    ensureLoaded();
+    const t = state.tickets.find((x) => x.id === ticketId);
+    if (!t) return { ok: false, error: "Ticket not found." };
+    try {
+      const mod = await import("./api/freshdesk.functions");
+      const res = await mod.freshdeskPullTicket({ data: { number: t.number } });
+      if (!res.ok) return { ok: false, error: res.error };
+      const num = res.ticket.accountNumber;
+      if (!num) {
+        return { ok: true, found: false };
+      }
+      const name = res.ticket.accountName ?? res.ticket.companyName ?? "Unlinked Account";
+      state = {
+        ...state,
+        tickets: state.tickets.map((tk) =>
+          tk.id === ticketId
+            ? {
+                ...tk,
+                accountNumber: num,
+                accountName: name,
+                accountSource: "freshdesk",
+                updatedAt: Date.now(),
+                hubHistory: [
+                  {
+                    id: newId("hh"),
+                    initials: "LTP",
+                    createdAt: Date.now(),
+                    body: `Account number refreshed from Freshdesk: ${num} (${name}).`,
+                    kind: "system",
+                  },
+                  ...tk.hubHistory,
+                ],
+              }
+            : tk,
+        ),
+      };
+      persist();
+      return { ok: true, found: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Refresh failed." };
+    }
+  },
   createManual(number?: string, accountNumber = "", accountName = "Manual Entry"): Ticket {
     ensureLoaded();
     const n = number?.trim() || String(40000 + Math.floor(Math.random() * 9999));
     const t: Ticket = {
       id: newId("t"),
       number: n,
-      accountNumber: accountNumber || "----",
+      accountNumber: accountNumber || "",
       accountName,
       status: "working",
       updatedAt: Date.now(),
@@ -706,8 +817,11 @@ export const ticketsStore = {
     const t: Ticket = {
       id: newId("t"),
       number: input.number,
-      accountNumber: input.accountNumber ?? "----",
-      accountName: input.accountName ?? input.companyName ?? "Unlinked Account",
+      accountNumber: input.accountNumber ?? "",
+      accountName: input.accountNumber
+        ? (input.accountName ?? input.companyName ?? "Unlinked Account")
+        : (input.companyName ?? ""),
+      accountSource: input.accountNumber ? "freshdesk" : undefined,
       status: input.status ?? "working",
       priority: input.priority,
       dueAt: input.dueAt,
