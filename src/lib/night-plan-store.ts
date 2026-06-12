@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
+import { additionalWorkStore } from "./additional-work-store";
 
 export type Priority = "must" | "important" | "normal";
 export type Status = "todo" | "in-progress" | "done" | "carried" | "dismissed" | "converted";
@@ -98,9 +99,6 @@ export const nightPlanStore = {
     ensureLoaded();
     const item = state.items.find((i) => i.id === id);
     if (!item) return;
-    // Lazy import to avoid circular static analysis
-    const { additionalWorkStore } =
-      require("./additional-work-store") as typeof import("./additional-work-store");
     const work = additionalWorkStore.fromNightPlan(item, account);
     this.update(id, {
       status: "converted",
