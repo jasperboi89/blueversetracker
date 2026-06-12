@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Plug, Sparkles, PhoneOutgoing, ListChecks, Clock, Eye, Database,
-  TestTube2, Trash2, ShieldCheck, AlertCircle, Plus, Archive, RotateCcw, MoveUp, MoveDown,
+  TestTube2, Trash2, ShieldCheck, AlertCircle, Plus, Archive, RotateCcw, MoveUp, MoveDown, Lock,
 } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { freshdeskTestConnection } from "@/lib/api/freshdesk.functions";
@@ -37,6 +37,9 @@ import { useAccounts } from "@/lib/accounts-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
 import { formatCentralExact } from "@/lib/shift";
+import { useQuery } from "@tanstack/react-query";
+import { adminGetAccessSummary } from "@/lib/auth/admin-users.functions";
+import { INACTIVITY_LOGOUT_MS } from "@/lib/auth/inactivity-config";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Account Intel Hub" }] }),
@@ -44,6 +47,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 const SECTIONS = [
+  { id: "security",   title: "Security & Access",     icon: Lock },
   { id: "freshdesk",  title: "Freshdesk Integration", icon: Plug },
   { id: "ai",         title: "AI Summary Settings",   icon: Sparkles },
   { id: "templates",  title: "Contact Dispatch Templates", icon: PhoneOutgoing },
@@ -78,6 +82,7 @@ function SettingsPage() {
           </nav>
 
           <div className="space-y-4">
+            <SecurityAccessSection />
             <FreshdeskSection />
             <AISection />
             <TemplatesSection />
