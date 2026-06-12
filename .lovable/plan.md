@@ -1,65 +1,77 @@
-# Phase 1 — Account Intel Hub (BlueVerse)
+# Phase 2 — Freshdesk Tickets Module
 
-Build the visual shell, navigation, and Home Dashboard with local mock data only. No backend, no Freshdesk API, no extra modules.
+Mock/local data only. No real Freshdesk API. No changes to Phase 1 visuals or Home Dashboard. No new top-level pages beyond the existing `/freshdesk-tickets` route plus a nested workspace route.
 
-## Scope (exactly what gets built)
+## Routes
 
-1. **BlueVerse visual system** — cosmic galaxy background, glass panels, electric blue/cyan/violet glow, subtle particles, gold/green/pink accents reserved for special states.
-2. **App shell** — left sidebar (Home, Freshdesk Tickets, Contact Dispatch, Additional Work, Accounts, Reports, Settings). Only Home is functional; others are placeholder pages.
-3. **Home Dashboard** in this exact order:
-   - Header row: greeting panel (left) + Date/Time Shift Card (right)
-   - Alert Center (hidden when empty; shown with mock alerts)
-   - Night Plan header / shell (fully functional, local state)
-   - Lookup area: Account Lookup + Freshdesk Ticket Lookup (mock)
-   - Overview cards: Due Today, Open Items, In Review (drawer/sheet on click, mock)
-   - Recently Completed Work (mock, last 5 mixed)
-   - Generate Shift Summary button + setup modal shell
+- `/freshdesk-tickets` (replace Phase 1 placeholder) — ticket command center.
+- `/freshdesk-tickets/$ticketId/work` — full Ticket Work Workspace page. Back goes to `/freshdesk-tickets`, not preview.
 
-## Module specifics
+Files: `src/routes/freshdesk-tickets.tsx` (rewrite), `src/routes/freshdesk-tickets.$ticketId.work.tsx` (new).
 
-**Date/Time Shift Card** — date, Central time, shift window 10p–6a, status (Before/Active/Near End/Complete), ring + bar (both shown). 5a–6a gold/cyan pulse. 6a: 3s "Finalizing shift…" overlay → 10s dashboard-wide celebration (no sound, glow wave, checkmark, ring/bar 100%). Local-state only; don't replay within same shift.
+## Data layer (mock, localStorage-persisted)
 
-**Alert Center** — data-driven, hidden when empty, auto-expanded, no collapse button, full-width glass. Sort Critical → Warning → Info, newest first. Dismiss per shift; "View Dismissed Alerts" when any dismissed. Animated border color = highest priority. Mock alerts only.
+`src/lib/tickets-store.ts` — single subscribable store, same pattern as `night-plan-store.ts`. Shapes:
 
-**Night Plan** — full local-state CRUD:
-- Header card with 3D icon, progress ring, count "N of M done", priority breakdown, dismissed/converted counts when >0.
-- Empty: "0% / No plan items yet / + Add Item".
-- Populated: "Open Night Plan" + "+ Add Item".
-- Open Night Plan expands inline on Home (first 5 sorted by priority then oldest); "View More" → right drawer (desktop/tablet) or bottom sheet (mobile) with tabs Active / Completed / Dismissed / Converted.
-- Item fields: Task (req), Notes, Status (To Do/In Progress/Done/Carried Over/Dismissed/Converted), Priority (Normal/Important/Must Do Tonight).
-- Item detail view with actions: Mark Done, Carry Over, Dismiss, Convert to Additional Work (placeholder link), Edit. Back returns to originating tab. Completed items remain editable.
-- BlueVerse confirmation popups per action (green/cyan, blue/cyan, violet/blue, amber/pink).
-- Add Item modal: Enter adds, Ctrl+Enter from Notes adds, Escape closes if clean. After add, modal stays open, "Added to Night Plan" toast fades ~2s, fields reset, focus returns to Task. Done Adding closes. Unsaved-text protection prompt with Add & Close / Discard / Go Back.
-- 100% celebration: 5s overlay with specified message; replays if a new item added then completed before 6a; suppressed after 6a.
+- `Ticket`: id, number, accountNumber, accountName, status (`working` | `waiting-cs` | `waiting-prog` | `completed`), priority, dueAt?, updatedAt, syncedAt?, issueClassification?, completedAt?, lastSyncFailed?
+- `TicketDetails` (collapsed section): subject, region, company, topic, type, group, agent, freshdeskUrl
+- `FreshdeskNote[]`, `HubHistoryEntry[]`, `FreshdeskAttachment[]`, `HubSnip[]` (with category, label, dataUrl, createdAt, initials)
+- `WorkSession`: ticketId, issueText, changesText, resultStatus (`passed`|`failed`|`waiting-cs`|`waiting-prog`|`completed`|null), failureReason, waitingReason, resultNotes, hubNotes[], workSnips[], generatedNote { content, version, posted, postedAt }
 
-**Lookup cards** — two side-by-side glass cards. Account Lookup: search-as-you-type, active first, Include Archived toggle, last-5 recents this shift. Freshdesk Ticket Lookup: numeric, saved Hub tickets only, Include Completed toggle, recents; if no result show "Pull from Freshdesk" + "Create Manually" placeholder buttons.
+Actions: `addNote`, `addSnip`, `updateWorkSession`, `syncTicket` (mock: 90% success, sets `syncedAt`/`lastSyncFailed`), `markPosted`, `markCompleted` (validates issueClassification only), `createManual`, `pullFromFreshdesk` (placeholder spawns a mock ticket). Recently-opened ticket IDs cached per shift via `getShiftKey()`.
 
-**Overview cards** — Due Today (wider primary), Open Items, In Review. Count-only, zero-state copy as specified. Click → right drawer (desktop/tablet) or bottom sheet (mobile) grouped by work type, Home visible behind. Mock data.
+`src/lib/mock/tickets-seed.ts` — seeds the store on first load (if empty) with at least one of each: Currently Working, Waiting CS, Waiting Programming, an overdue one, with-due/without-due, with-priority, synced/not-synced, plus notes/history/attachments/snips on at least one ticket. No real customer data.
 
-**Recently Completed Work** — stable section, last 5 mixed newest first, each row: type, title, completed time, 3D icon, Open Record (placeholder). "View All Completed Work" → drawer with category filter.
+## Components
 
-**Generate Shift Summary** — medium glowing button. Modal shell with "Use Current Shift" / "Choose Custom Range"; current-shift window calculated per the time rules.
+`src/components/freshdesk/` (new folder):
 
-**Responsive** — desktop full sidebar + right drawers; tablet collapsible sidebar + right drawers; mobile stacked + bottom sheets.
+- `TicketLookupCard.tsx` — numeric input, search-as-you-type against store; "Include Completed" toggle; last-5 recents this shift; no-match panel exposing "Pull Ticket from Freshdesk" (placeholder mock add) and "Create Ticket Work Manually" (mock add + open preview).
+- `ActiveTicketSections.tsx` — header "Open / Active Ticket Work" with two display toggles (`Show Due Times` default on, `Show Priority` default off) persisted in `localStorage` (`aih:fd:toggles`). Renders `Currently Working On`, `Waiting on Customer Service`, `Waiting on Programming` only when non-empty. Sort: overdue first (most-overdue first), then oldest-updated. Soft empty state when all three are empty.
+- `TicketCard.tsx` — compact glass card: ticket #, account, status, updated, optional due/priority/synced lines, Overdue badge with stronger red/amber edge glow. Actions `Open Preview` (primary), `Open Account` (secondary, placeholder for future Account Profile), `Sync` (icon). Mock sync produces inline shimmer "Synced" / "Sync failed. Open Preview for details." that fades; updates `syncedAt`; no modal. Card click opens preview. Subject/agent/raw URL hidden.
+- `TicketPreviewDrawer.tsx` — right-side `Sheet` (bottom sheet on mobile, expandable). Top: ticket summary + conditional Due/Synced; primary `Continue Ticket Work` button (navigates to workspace route); action row `Add Note` `Add Snip` `Sync Freshdesk` `Open Account Profile` `Open Freshdesk`. Sections in fixed order:
+  1. Ticket Summary
+  2. Latest Freshdesk Notes (3 with View All / Show Less in place)
+  3. Account Intel Hub History (same pattern)
+  4. Freshdesk Attachments (same)
+  5. Hub Saved Snips / Attachments (same)
+  
+  Collapsible **Ticket Details** (collapsed default) containing subject, region, company, topic, type, priority, group, agent, Freshdesk Link.
+- `AddNoteModal.tsx` — single textarea; Save writes to Hub History with timestamp Central + initials `LTP`; no Freshdesk post.
+- `AddSnipModal.tsx` — paste-from-clipboard (`onPaste` reads `clipboardData.items`) + file input; preview (image or filename); rename, remove, category dropdown (`Before Change` / `After Change` / `Testing Result` / `Error / Issue` / `Other`), optional label; Save stores as data URL on the ticket's Hub snips list.
 
-## Technical approach
+## Workspace (`/freshdesk-tickets/$ticketId/work`)
 
-- TanStack Start route files: `index.tsx` (Home) + simple placeholders for `/freshdesk-tickets`, `/contact-dispatch`, `/additional-work`, `/accounts`, `/reports`, `/settings`. Each placeholder route renders a glass panel saying it's coming in a later phase. Each route sets its own `head()` metadata.
-- Sidebar uses the shadcn `Sidebar` (collapsible="icon") pattern with TanStack `Link` + `useRouterState` for active state; glowing pill background via custom utility.
-- Design tokens added to `src/styles.css` under `@theme inline` and `:root`: cosmic background, glass surface, electric-blue, cyan, violet, gold, green, pink, plus glow shadow tokens and a `--gradient-galaxy`. Custom utilities (`@utility glass-panel`, `@utility glow-cyan`, `@utility shimmer`) for reusable BlueVerse treatments.
-- Animated galaxy background: fixed full-screen layer in `__root.tsx` using layered radial gradients + a lightweight CSS particle field (no heavy libs). Framer-motion already-allowed for entrance/celebration overlays.
-- All state Phase 1 is local React state. Night Plan persisted to `localStorage` keyed by shift date so add/edit survives reloads within a shift. Celebrations gated by a `localStorage` flag per shift to avoid replay.
-- Central-time computations via `Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago' })` helpers in `src/lib/shift.ts`.
-- Mock data lives in `src/lib/mock/` (alerts, accounts, tickets, completed work).
-- Component layout under `src/components/home/` (GreetingPanel, ShiftCard, AlertCenter, NightPlan/*, LookupCards, OverviewCards, RecentlyCompleted, ShiftSummaryButton) and `src/components/layout/` (AppSidebar, AppShell, GalaxyBackground).
-- Drawers use shadcn `Sheet`; bottom sheets use `Drawer` (vaul) for mobile. Modals use shadcn `Dialog`.
+`TicketWorkspace.tsx`:
 
-## Explicit non-goals for Phase 1
+- Header: ticket summary (compact) with `Back to Freshdesk Tickets`, `Sync Freshdesk`, `Open Freshdesk`, `Mark Ticket Completed` (header, near status — never inside Generate Note/Export).
+- Collapsible section cards (`<details>`-style via shadcn `Collapsible`/`Accordion`) — all collapsed by default. Each header has a small status chip.
+  1. **Ticket Issue** — freeform textarea. Chip: Empty / In Progress / Complete.
+  2. **Changes Made** — freeform textarea. Chip: Empty / In Progress / Complete.
+  3. **Result / Testing** — required status select (`Passed` / `Failed` / `Waiting on CS` / `Waiting on Programming` / `Completed`); freeform notes. Failed → require Failure Reason. Waiting CS / Waiting Programming → require Waiting Reason. Completed → no extra notes required. Validation enforced only on saving that section.
+  4. **Notes** — Hub notes list, add inline (timestamp Central, initials LTP, never posts to Freshdesk). Chip: `N notes`.
+  5. **Snips** — paste/upload/preview/rename/remove/category/label; saved snips show thumbnail, category, label, timestamp, actions Copy Image / Download / Open Full Size / Delete. Chip: `N attached`.
+  6. **Generate Note / Export** — Issue Classification select (`Scripting Issue` / `Client Change` / `Other`) that suggests template (Scripting Issue Note / Client Change Note / Standard Ticket Work Note); user can override. Buttons: `Generate Note`, `Copy Final Version`, `Copy Text Only`, `Download Included Snips`, `Open Freshdesk Ticket`, `Mark Posted Manually`, `Save Work Session`. Editable preview rendered **inside the section**. Generation uses a local template assembling Ticket Issue / Changes Made / Result/Testing + inserts placeholder lines for included snips. Missing-detail warning panel lists `Go to …` shortcuts that expand the matching section, scroll to it, and pulse a soft glow; `Generate Anyway` is always available unless the selected Result/Testing status genuinely lacks its required reason. For Scripting Issue / Client Change show "Snips are recommended…" hint.
 
-No Audit, Genesis, CRM, billing, team mgmt, client portal, analytics, chatbot. No Freshdesk API. No auth. No extra pages or charts. No real persistence beyond localStorage. Convert-to-Additional-Work only marks Converted + shows a disabled placeholder link.
+`MarkPostedConfirm.tsx`, `MarkCompletedConfirm.tsx` — BlueVerse confirmation dialogs. Mark Posted records posted timestamp + initials LTP, does not change status. Mark Completed requires Issue Classification only; sets status `completed`, completedAt, initials LTP, closes workspace, navigates back to `/freshdesk-tickets`; ticket disappears from active sections and surfaces in Recently Completed Work (extend the shared mock-completed store so newly completed tickets appear there).
+
+## Toggle/preview behavior details
+
+- `Show Due Times` / `Show Priority` persisted in `localStorage` under `aih:fd:toggles:v1`.
+- Overdue computed from `dueAt < now`; styling and sorting applied regardless of Show Due Times.
+- Synced line hidden when never synced.
+- Sync action returns a Promise; while pending show a subtle spinner on the icon; result message lives next to the action.
+
+## Recently Completed Work hook
+
+Update `src/lib/mock/completed.ts` to a subscribable list (or add a thin `completed-store.ts`) so `RecentlyCompleted.tsx` re-renders when a workspace marks a ticket completed. Keep the existing seed entries.
+
+## Strict non-goals
+
+No Completed Tickets section on the page · no API · no subject/agent/URL on cards · ticket subject stays inside Ticket Details only · preview is always drawer · Mark Completed is header-only · Generate Note is inline in its section, not a modal · no new statuses · no Home Dashboard changes · no other modules.
 
 ## Deliverable checklist
 
-Visual shell · sidebar/nav · Home dashboard sections in order · functional Shift Card with celebration · Alert Center (mock) · full local Night Plan CRUD + drawer + celebrations · lookup card shells · overview drawers (mock) · Recently Completed (mock) · Shift Summary modal shell · responsive desktop/tablet/mobile.
+Freshdesk Tickets page · lookup card with toggles + recents + manual create/pull placeholders · stacked active sections with hide-empty behavior · clean ticket cards · persistent toggles · overdue card behavior · mock card-level sync · Ticket Preview drawer with all five sections + collapsible Ticket Details · Add Note + Add Snip modals · workspace route with collapsible work sections · required field rules for Failed/Waiting · Generate Note inline preview + missing-detail shortcuts · Mark Posted confirm · Mark Completed confirm + return flow · responsive desktop/tablet/mobile.
 
-Awaiting your approval before I start building.
+Awaiting approval to build Phase 2.
