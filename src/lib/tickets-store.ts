@@ -407,6 +407,99 @@ export const ticketsStore = {
     persist();
   },
   /**
+   * Back-compat shim for callers that just want to perform a sync and get
+   * a simple ok/fail back. Tries the real Freshdesk API; falls back to
+   * recording a failure if creds are missing or the call errors.
+   */
+  async sync(ticketId: string): Promise<{ ok: boolean; error?: string; newNotes?: number; newAttachments?: number }> {
+    ensureLoaded();
+    const t = state.tickets.find((x) => x.id === ticketId);
+    if (!t) return { ok: false, error: "Ticket not found in Hub." };
+    try {
+      const mod = await import("./api/freshdesk.functions");
+      const res = await mod.freshdeskSyncTicket({ data: { number: t.number } });
+      if (!res.ok) {
+        this.recordSyncFailure(ticketId);
+        return { ok: false, error: res.error };
+      }
+      const merged = this.mergeFreshdeskData(ticketId, {
+        details: {
+          subject: res.ticket.subject || t.details.subject,
+          company: res.ticket.companyName ?? t.details.company,
+        },
+        status: res.ticket.status,
+        priority: res.ticket.priority,
+        dueAt: res.ticket.dueAt,
+        newNotes: res.notes.map((n) => ({
+          id: newId("fn"),
+          freshdeskId: n.freshdeskId,
+          author: n.author,
+          createdAt: n.createdAt,
+          body: n.body,
+          source: "freshdesk",
+        })),
+        newAttachments: res.attachments.map((a) => ({
+          id: newId("fa"),
+          freshdeskId: a.freshdeskId,
+          name: a.name,
+          size: a.size,
+          createdAt: a.createdAt,
+          url: a.url,
+          contentType: a.contentType,
+          source: "freshdesk",
+        })),
+      });
+      return { ok: true, newNotes: merged.newNotes, newAttachments: merged.newAttachments };
+    } catch (e) {
+      this.recordSyncFailure(ticketId);
+      return { ok: false, error: e instanceof Error ? e.message : "Sync failed." };
+    }
+  },
+  /** Back-compat shim — returns the existing record or null if Freshdesk isn't connected. */
+  async pullFromFreshdesk(number: string): Promise<Ticket | null> {
+    ensureLoaded();
+    const existing = state.tickets.find((t) => t.number === number);
+    if (existing) return existing;
+    try {
+      const mod = await import("./api/freshdesk.functions");
+      const res = await mod.freshdeskPullTicket({ data: { number } });
+      if (!res.ok) return null;
+      return this.createFromFreshdesk({
+        number: res.ticket.number,
+        subject: res.ticket.subject,
+        accountNumber: res.ticket.accountNumber,
+        accountName: res.ticket.accountName,
+        status: res.ticket.status,
+        priority: res.ticket.priority,
+        dueAt: res.ticket.dueAt,
+        freshdeskUrl: res.ticket.freshdeskUrl,
+        requesterName: res.ticket.requesterName,
+        companyName: res.ticket.companyName,
+        type: res.ticket.type,
+        notes: res.notes.map((n) => ({
+          id: newId("fn"),
+          freshdeskId: n.freshdeskId,
+          author: n.author,
+          createdAt: n.createdAt,
+          body: n.body,
+          source: "freshdesk",
+        })),
+        attachments: res.attachments.map((a) => ({
+          id: newId("fa"),
+          freshdeskId: a.freshdeskId,
+          name: a.name,
+          size: a.size,
+          createdAt: a.createdAt,
+          url: a.url,
+          contentType: a.contentType,
+          source: "freshdesk",
+        })),
+      });
+    } catch {
+      return null;
+    }
+  },
+  /**
    * Merge Freshdesk data into an existing ticket. Returns counts so the UI
    * can render an accurate sync summary. Dedupe by Freshdesk note/attachment
    * id when present, falling back to (author+createdAt+body) and (name+size+createdAt).
