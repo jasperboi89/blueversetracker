@@ -4,7 +4,6 @@ import {
   ArrowLeft, Archive, Building2, ClipboardList, FileText, MessageSquarePlus,
   PhoneOutgoing, RotateCcw, Ticket as TicketIcon, Plus, Pencil, Trash2,
 } from "lucide-react";
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,14 +46,14 @@ function AccountProfilePage() {
 
   if (!acct) {
     return (
-      <AppShell>
+      <>
         <div className="mx-auto max-w-3xl">
           <div className="glass-panel p-8 text-center">
             <p className="text-sm text-muted-foreground">Account not found.</p>
             <Link to="/accounts"><Button variant="ghost" className="mt-3"><ArrowLeft className="mr-1 h-4 w-4" /> Back to Account Lookup</Button></Link>
           </div>
         </div>
-      </AppShell>
+      </>
     );
   }
 
@@ -162,7 +161,7 @@ function AccountProfilePage() {
   const filtered = filter === "all" ? timeline : timeline.filter((i) => i.kind === filter);
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-6xl space-y-4">
         {recurring && (
           <div
@@ -285,7 +284,7 @@ function AccountProfilePage() {
         <StartFreshdeskModal open={startTicketOpen} onOpenChange={setStartTicketOpen} accountNumber={acct.number} accountName={acct.name} />
         <ArchiveModal open={archiveOpen} onOpenChange={setArchiveOpen} archived={acct.status === "archived"} accountNumber={acct.number} />
       </div>
-    </AppShell>
+    </>
   );
 }
 

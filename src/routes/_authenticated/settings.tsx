@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,7 +55,7 @@ const SECTIONS = [
 
 function SettingsPage() {
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-6xl space-y-4">
         <div className="glass-panel p-4 sm:p-5">
           <h1 className="text-xl font-semibold text-foreground">Settings</h1>
@@ -89,7 +88,7 @@ function SettingsPage() {
           </div>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }
 

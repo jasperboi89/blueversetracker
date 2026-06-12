@@ -14,7 +14,6 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +48,7 @@ function WorkspacePage() {
 
   if (!w) {
     return (
-      <AppShell>
+      <>
         <div className="mx-auto max-w-3xl">
           <div className="glass-panel p-8 text-center">
             <p className="text-sm text-muted-foreground">Work item not found.</p>
@@ -58,12 +57,12 @@ function WorkspacePage() {
             </Link>
           </div>
         </div>
-      </AppShell>
+      </>
     );
   }
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto max-w-5xl space-y-4">
         {/* Header */}
         <div className="glass-panel p-4 sm:p-5">
@@ -128,7 +127,7 @@ function WorkspacePage() {
           onDone={() => nav({ to: "/additional-work" })}
         />
       </div>
-    </AppShell>
+    </>
   );
 }
 
