@@ -20,6 +20,8 @@ import { useApplyTheme, useTheme } from "@/lib/settings/theme-store";
 import { QuantumBloomDriver } from "@/components/quantum-bloom/QuantumBloomDriver";
 import { NebulaCanvas } from "@/components/quantum-bloom/NebulaCanvas";
 import { EntryOverlay } from "@/components/quantum-bloom/EntryOverlay";
+import { CelebrationLayer } from "@/components/quantum-bloom/CelebrationLayer";
+import { DiscoveryToast } from "@/components/quantum-bloom/DiscoveryToast";
 
 function NotFoundComponent() {
   return (
@@ -147,6 +149,8 @@ function RootComponent() {
       {theme === "quantum-bloom" ? <NebulaCanvas /> : <GalaxyBackground />}
       {theme === "quantum-bloom" && <QuantumBloomDriver />}
       {theme === "quantum-bloom" && <EntryOverlay />}
+      {theme === "quantum-bloom" && <CelebrationLayer />}
+      {theme === "quantum-bloom" && <DiscoveryToast />}
       <Outlet />
       <Toaster />
     </QueryClientProvider>
