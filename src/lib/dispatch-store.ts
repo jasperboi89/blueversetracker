@@ -335,7 +335,7 @@ function loadInitial(): State {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (p?.sessions?.length) return p;
+      if (p && Array.isArray(p.sessions)) return p;
     }
   } catch {}
   return { sessions: seed() };
