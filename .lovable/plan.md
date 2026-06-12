@@ -1,62 +1,47 @@
-## Set admin password for lucast@anser.com
+## Goal
 
-Run a one-time migration that upserts the auth user with password `SpeedCruise2024!` (bcrypt-hashed in SQL), marks the email confirmed, and lets the existing `link_authorized_user` trigger link it to the whitelist row.
+Two problems to fix in **Settings**:
 
-### SQL (single migration)
+1. **Freshdesk API key** — the UI shows only a masked field and a "Test Connection" button. The note tells the user to ask Lovable to "add Freshdesk credentials," which is confusing. You need a way to actually save the API key from the app.
+2. **Demo items** — the Hub is seeded with demo tickets, dispatch sessions, additional-work items, accounts, and night-plan archive entries. The current "Demo Mode" toggle only hides them; it doesn't delete them. You want a fresh slate.
 
-```sql
--- Ensure pgcrypto is available for crypt()/gen_salt()
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+## Plan
 
-DO $$
-DECLARE
-  v_user_id uuid;
-BEGIN
-  SELECT id INTO v_user_id FROM auth.users WHERE email = 'lucast@anser.com';
+### 1. Freshdesk credentials — save from the UI
 
-  IF v_user_id IS NULL THEN
-    -- Create confirmed user
-    INSERT INTO auth.users (
-      instance_id, id, aud, role, email,
-      encrypted_password, email_confirmed_at,
-      raw_app_meta_data, raw_user_meta_data,
-      created_at, updated_at, confirmation_token,
-      email_change, email_change_token_new, recovery_token
-    ) VALUES (
-      '00000000-0000-0000-0000-000000000000',
-      gen_random_uuid(), 'authenticated', 'authenticated',
-      'lucast@anser.com',
-      crypt('SpeedCruise2024!', gen_salt('bf')),
-      now(),
-      '{"provider":"email","providers":["email"]}'::jsonb,
-      '{}'::jsonb,
-      now(), now(), '', '', '', ''
-    );
-  ELSE
-    -- Reset password + confirm
-    UPDATE auth.users
-       SET encrypted_password = crypt('SpeedCruise2024!', gen_salt('bf')),
-           email_confirmed_at = COALESCE(email_confirmed_at, now()),
-           updated_at = now()
-     WHERE id = v_user_id;
-  END IF;
+Right now `FRESHDESK_DOMAIN` and `FRESHDESK_API_KEY` are read from `process.env` in `src/lib/api/freshdesk.functions.ts`, but there's no way to set them from inside the app.
 
-  -- Ensure whitelist link
-  UPDATE public.authorized_users
-     SET user_id = (SELECT id FROM auth.users WHERE email = 'lucast@anser.com'),
-         status = 'active'
-   WHERE email = 'lucast@anser.com'::citext
-     AND (user_id IS NULL OR user_id = (SELECT id FROM auth.users WHERE email = 'lucast@anser.com'));
-END $$;
-```
+- In the Freshdesk Settings section, add a **"Save credentials"** button next to the existing Domain field and masked API Key field.
+- Clicking it triggers the Lovable secret-entry prompt for `FRESHDESK_DOMAIN` and `FRESHDESK_API_KEY` (entered securely — values are not stored in the codebase or in the browser).
+- After you submit them, click **Test Connection** to verify, which will flip the status chip to "Connected" and show the agent name.
+- Keep the existing "Clear Connection" button (it clears the Hub-side status; secrets removal stays a separate admin action).
 
-### After it runs
+Technical note: secret entry is handled by Lovable's secret tool flow — the front-end just needs a button that surfaces the request. The server function `freshdeskTestConnection` already validates the saved values.
 
-1. Go to `/auth`.
-2. Sign in with `lucast@anser.com` / `SpeedCruise2024!`.
-3. Change the password from your account afterwards (we can add a Change Password UI in a follow-up if you want — not in this change).
+### 2. "Clear all demo data" — wipe the seeded items
 
-### Notes
-- Password is bcrypt-hashed inside the SQL — never stored as plaintext.
-- Touches only the one admin row + its whitelist link. No schema or policy changes.
-- This bypass is one-time; the login screen itself remains the only normal entry point.
+Add a new block at the top of the **Data / Cleanup** section called **"Reset Hub Data"** with one destructive button: **"Clear all demo data"** (with a confirm modal).
+
+When confirmed, it:
+- Empties Freshdesk Tickets store (`aih:tickets:v1`)
+- Empties Contact Dispatch Sessions store
+- Empties Additional Work store
+- Resets Accounts store back to empty (no seeded accounts, notes, or templates)
+- Clears Night Plan history (archived + active)
+- Turns **Demo Mode OFF** so seeds don't re-appear on next reload
+- Leaves untouched: Freshdesk connection, AI settings, templates, dropdowns, shift settings, display preferences, security/access
+
+To make this work each affected store gets a small `clearAll()` action that sets state to an empty object and persists. The button calls them in sequence and shows a toast `"Hub data cleared."`.
+
+The existing **Hub Data Counts** block will then read 0 across the board, confirming the reset.
+
+### Files to touch
+
+- `src/routes/_authenticated/settings.tsx` — add Save-credentials button in Freshdesk section; add Reset Hub Data block + confirm modal in Data section.
+- `src/lib/tickets-store.ts`, `src/lib/dispatch-store.ts`, `src/lib/additional-work-store.ts`, `src/lib/accounts-store.ts`, `src/lib/reports/night-plan-history.ts` — add a `clearAll()` action each.
+- No schema changes, no edge functions.
+
+### Out of scope
+
+- I won't touch the demo seeders themselves (so devs can still inspect demo data with Demo Mode ON later if useful). The reset just wipes the live persisted store and disables the toggle.
+- Removing Freshdesk secrets entirely (vs. clearing the Hub-side status) — that stays a separate action since secrets are managed outside the app.
