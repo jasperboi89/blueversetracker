@@ -392,22 +392,118 @@ export const ticketsStore = {
     };
     persist();
   },
-  async sync(ticketId: string): Promise<{ ok: boolean }> {
-    await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
+  /**
+   * Mark a sync as failed (e.g. Freshdesk credentials missing).
+   * Real sync data is merged via `mergeFreshdeskData`.
+   */
+  recordSyncFailure(ticketId: string) {
     ensureLoaded();
-    const ok = Math.random() > 0.15;
     state = {
       ...state,
       tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? ok
-            ? { ...t, syncedAt: Date.now(), lastSyncFailed: false }
-            : { ...t, lastSyncFailed: true }
-          : t,
+        t.id === ticketId ? { ...t, lastSyncFailed: true } : t,
       ),
     };
     persist();
-    return { ok };
+  },
+  /**
+   * Merge Freshdesk data into an existing ticket. Returns counts so the UI
+   * can render an accurate sync summary. Dedupe by Freshdesk note/attachment
+   * id when present, falling back to (author+createdAt+body) and (name+size+createdAt).
+   */
+  mergeFreshdeskData(
+    ticketId: string,
+    payload: {
+      details?: Partial<TicketDetails>;
+      status?: TicketStatus;
+      priority?: Ticket["priority"];
+      dueAt?: number;
+      newNotes: FreshdeskNote[];
+      newAttachments: FreshdeskAttachment[];
+    },
+  ): { newNotes: number; newAttachments: number; alreadyNotes: number; alreadyAttachments: number } {
+    ensureLoaded();
+    const t = state.tickets.find((x) => x.id === ticketId);
+    if (!t) return { newNotes: 0, newAttachments: 0, alreadyNotes: 0, alreadyAttachments: 0 };
+
+    const existingNoteKeys = new Set(
+      t.freshdeskNotes.map((n) =>
+        n.freshdeskId ? `id:${n.freshdeskId}` : `k:${n.author}|${n.createdAt}|${(n.body ?? "").slice(0, 80)}`,
+      ),
+    );
+    const existingAttKeys = new Set(
+      t.freshdeskAttachments.map((a) =>
+        a.freshdeskId ? `id:${a.freshdeskId}` : `k:${a.name}|${a.size ?? ""}|${a.createdAt}`,
+      ),
+    );
+
+    const addNotes: FreshdeskNote[] = [];
+    let alreadyNotes = 0;
+    for (const n of payload.newNotes) {
+      const key = n.freshdeskId ? `id:${n.freshdeskId}` : `k:${n.author}|${n.createdAt}|${(n.body ?? "").slice(0, 80)}`;
+      if (existingNoteKeys.has(key)) { alreadyNotes++; continue; }
+      addNotes.push({ ...n, source: "freshdesk" });
+    }
+
+    const addAtts: FreshdeskAttachment[] = [];
+    let alreadyAtts = 0;
+    for (const a of payload.newAttachments) {
+      const key = a.freshdeskId ? `id:${a.freshdeskId}` : `k:${a.name}|${a.size ?? ""}|${a.createdAt}`;
+      if (existingAttKeys.has(key)) { alreadyAtts++; continue; }
+      addAtts.push({ ...a, source: "freshdesk" });
+    }
+
+    state = {
+      ...state,
+      tickets: state.tickets.map((tk) => {
+        if (tk.id !== ticketId) return tk;
+        const next: Ticket = {
+          ...tk,
+          details: { ...tk.details, ...(payload.details ?? {}) },
+          ...(payload.status ? { status: payload.status } : {}),
+          ...(payload.priority ? { priority: payload.priority } : {}),
+          freshdeskNotes: [...addNotes, ...tk.freshdeskNotes].sort((x, y) => y.createdAt - x.createdAt),
+          freshdeskAttachments: [...addAtts, ...tk.freshdeskAttachments].sort((x, y) => y.createdAt - x.createdAt),
+          syncedAt: Date.now(),
+          lastSyncFailed: false,
+        };
+        // Freshdesk due date — set only if user hasn't overridden
+        if (payload.dueAt !== undefined && tk.dueSource !== "hub-override") {
+          if (next.dueAt !== payload.dueAt) {
+            next.dueAt = payload.dueAt;
+            next.dueSource = "freshdesk";
+            next.dueHistory = [
+              { prev: tk.dueAt, next: payload.dueAt, source: "freshdesk", at: Date.now(), initials: "LTP" },
+              ...(tk.dueHistory ?? []),
+            ];
+          }
+        }
+        return next;
+      }),
+    };
+    persist();
+    return { newNotes: addNotes.length, newAttachments: addAtts.length, alreadyNotes, alreadyAttachments: alreadyAtts };
+  },
+  /** Set/override due date with source tracking. */
+  setDueDate(ticketId: string, dueAt: number | undefined, source: "hub-manual" | "hub-override") {
+    ensureLoaded();
+    state = {
+      ...state,
+      tickets: state.tickets.map((t) => {
+        if (t.id !== ticketId) return t;
+        return {
+          ...t,
+          dueAt,
+          dueSource: source,
+          dueHistory: [
+            { prev: t.dueAt, next: dueAt, source, at: Date.now(), initials: "LTP" },
+            ...(t.dueHistory ?? []),
+          ],
+          updatedAt: Date.now(),
+        };
+      }),
+    };
+    persist();
   },
   markPosted(ticketId: string) {
     ensureLoaded();
@@ -484,25 +580,50 @@ export const ticketsStore = {
     persist();
     return t;
   },
-  pullFromFreshdesk(number: string): Ticket {
+  /** Create a Hub ticket record from normalized Freshdesk data. */
+  createFromFreshdesk(input: {
+    number: string;
+    subject: string;
+    accountNumber?: string;
+    accountName?: string;
+    status?: TicketStatus;
+    priority?: Ticket["priority"];
+    dueAt?: number;
+    freshdeskUrl: string;
+    requesterName?: string;
+    companyName?: string;
+    type?: string;
+    notes: FreshdeskNote[];
+    attachments: FreshdeskAttachment[];
+  }): Ticket {
     ensureLoaded();
+    const existing = state.tickets.find((t) => t.number === input.number);
+    if (existing) return existing;
     const t: Ticket = {
       id: newId("t"),
-      number,
-      accountNumber: String(1000 + Math.floor(Math.random() * 8999)),
-      accountName: "Pulled From Freshdesk",
-      status: "working",
-      priority: "Medium",
+      number: input.number,
+      accountNumber: input.accountNumber ?? "----",
+      accountName: input.accountName ?? input.companyName ?? "Unlinked Account",
+      status: input.status ?? "working",
+      priority: input.priority,
+      dueAt: input.dueAt,
+      dueSource: input.dueAt ? "freshdesk" : undefined,
+      dueHistory: input.dueAt
+        ? [{ next: input.dueAt, source: "freshdesk", at: Date.now(), initials: "LTP" }]
+        : undefined,
       updatedAt: Date.now(),
       syncedAt: Date.now(),
-      details: initialDetails({ subject: "Imported ticket placeholder" }),
-      freshdeskNotes: [
-        { id: "n1", author: "Freshdesk", createdAt: Date.now(), body: "Placeholder note — real API connects in Phase 6." },
-      ],
+      details: initialDetails({
+        subject: input.subject,
+        company: input.companyName ?? "",
+        type: input.type ?? "Service Request",
+        freshdeskUrl: input.freshdeskUrl,
+      }),
+      freshdeskNotes: input.notes.map((n) => ({ ...n, source: "freshdesk" as const })),
       hubHistory: [
-        { id: newId("hh"), initials: "LTP", createdAt: Date.now(), body: "Pulled placeholder ticket from Freshdesk.", kind: "system" },
+        { id: newId("hh"), initials: "LTP", createdAt: Date.now(), body: "Pulled ticket from Freshdesk.", kind: "system" },
       ],
-      freshdeskAttachments: [],
+      freshdeskAttachments: input.attachments.map((a) => ({ ...a, source: "freshdesk" as const })),
       hubSnips: [],
     };
     state = { ...state, tickets: [t, ...state.tickets] };
