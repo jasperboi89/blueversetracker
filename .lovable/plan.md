@@ -1,68 +1,100 @@
-## Phase 3 — Contact Dispatch Testing
+# Phase 4 — Additional Work + Account Profiles
 
-Build the Contact Dispatch Testing module per spec. Reuse Phase 1/2 visual patterns (glass panels, drawers, sticky tracker styling akin to ShiftCard, Sheet/Drawer responsive shell). No changes to Home or Freshdesk visuals beyond mock data feeding.
+Build the Additional Work module, the Account Profile module, the Night Plan → Additional Work conversion bridge, and integrate both into the existing Home Dashboard. BlueVerse visual style and Phase 1–3 modules stay untouched.
 
-### Files to create
+## 1. State / data layer
 
-**Data layer**
-- `src/lib/dispatch-store.ts` — subscribable store (same shape as `tickets-store.ts`) with `localStorage` persistence under `aih:dispatch:v1`. Exports:
-  - Types: `DispatchStatus` (4 values exactly), `SectionStatus`, `ReasonType`, `ReasonResult`, `RetestEntry`, `ReasonCard`, `SectionState` (for Phone / Repeat / Save-Summary), `UrgentRoutingCheck`, `DispatchSnip`, `SummaryNoteVersion` (`Manual Draft | Generated | User Edited | Final Posted / Marked Used`), `DispatchSession`.
-  - Actions: `start({accountNumber, ticketNumber?})`, `update(id, patch)`, `updateSection`, `addReason`, `updateReason`, `duplicateReason`, `removeReason`, `addRetest`, `addSnip`, `removeSnip`, `setOverallStatus`, `markReady`, `generateSummary`, `saveSummaryEdit`, `markPosted`, `restoreVersion`.
-  - Selectors: `computeReadiness(session)` → `{percent, sectionStatuses, blockedBy[]}`, `canMarkReady(session)`.
-  - Seeds: 6+ sessions covering every required state + a linked-ticket and no-ticket case.
-- `src/lib/mock/dispatch-templates.ts` — mock Global + per-account reason templates.
+### `src/lib/accounts-store.ts` (new)
+Subscribable store, `localStorage` key `aih:accounts:v1`. Seeds from existing `mockAccounts` on first load (preserved as the canonical list).
+- Types: `AccountStatus = "active" | "archived"`, `Account { number, name, status, createdAt, updatedAt }`, `AccountNote { id, accountNumber, text, createdAt, initials, editedAt? }`, `AccountTemplate { id, accountNumber, name, type: "routine"|"urgent"|"blank", expectedFlow, notes?, archived, order }`.
+- Actions: `create`, `update`, `archive`, `restore`, `changeNumber(old,new)` (with uniqueness check + cascade across additional work / tickets / dispatch), `addNote`, `editNote`, `deleteNote`, template `add/edit/duplicate/archive/restore/reorder`, `touchRecent(number)` (last 5 opened this shift, sessionStorage).
+- Selectors: `getAccount(num)`, `searchAccounts(query, { includeArchived })`, `getTimeline(num)` (merges Freshdesk tickets, dispatch sessions, additional work, notes — newest first, with nested snips).
 
-**Page (Contact Dispatch index)**
-- Replace `src/routes/contact-dispatch.tsx` with dashboard layout:
-  1. Page header (3D glass routing icon, title, subtitle)
-  2. `StartTestingPane` — account search-as-you-type against `mockAccounts`, optional Freshdesk ticket linker (validates against `ticketsStore.getByNumber`), `Start Testing` → navigates to workspace; `Create Account Later` placeholder when no match.
-  3. `DispatchMiniDashboard` — 5 compact glass cards (Active, Waiting CS, Waiting Prog, Not Ready, Ready). Click → filtered Sheet (right on desktop, bottom on mobile) listing matching sessions.
-  4. `ActiveSessionsList` — stacked glass cards (account #, name, linked ticket, status chip, readiness %, last updated Central, Open Testing, Open Account placeholder).
-  5. `DispatchRecentlyCompleted` (only if mock has Ready/completed) — small section using same row style.
+### `src/lib/additional-work-store.ts` (new)
+Subscribable store, `localStorage` key `aih:addwork:v1`.
+- Types: `AdditionalWorkStatus = "working" | "completed"`, `IssueClassification = "scripting" | "client-change" | "other"`, `AddWorkNote { id, text, createdAt, initials }`, `AddWorkSnip { id, dataUrl, label, category, createdAt }` (categories: `email|before|after|testing|error|other`), `AdditionalWork { id, title, accountNumber?, accountName?, whatNeedsDone, notes, programmingStatusNotes, issueClassification?, status, createdAt, updatedAt, completedAt?, completedBy?, completionSummary?, completionFinalNotes?, nightPlanItemId?, snips, notesList }`.
+- Actions: `create`, `update`, `addNote/editNote/deleteNote`, `addSnip/deleteSnip`, `markCompleted(id, { summary, finalNotes, force })`, `fromNightPlan(item, accountNumber?)`.
+- Seeds: active w/ account, active w/o account, completed w/ account, completed w/o account, one converted-from-night-plan.
 
-**Workspace route**
-- `src/routes/contact-dispatch.$sessionId.work.tsx` — full-page workspace. Use nested-route pattern from Phase 2 (`contact-dispatch.tsx` renders `<Outlet/>` for child path, index UI for `/contact-dispatch`).
-- Components in `src/components/dispatch/`:
-  - `WorkspaceHeader.tsx` — account info, status, readiness %, last updated, actions: Back, Open Account (placeholder), Open Freshdesk (if linked), Generate Summary Note (scrolls to section), Mark Ready (disabled until `canMarkReady`).
-  - `ReadinessTracker.tsx` — sticky (`sticky top-0 z-20`), progress ring + bar, section status chips, blocked-by list. Color thresholds: 0–49 blue/purple, 50–89 cyan/blue, 90–99 bright cyan, 100 green/cyan shimmer + checkmark + Ready badge (no sound, no global overlay).
-  - `SectionCard.tsx` — reused collapsible shell (forked from Phase 2 work route's local SectionCard) with section-status chip.
-  - `ReasonFlowSection.tsx` — Add Reason menu (Global Template / Account Template / Manual). Renders `ReasonCard` list. Each `ReasonCard`:
-    - Fields: reason text, type tag (Routine/Urgent/N/A/Not Sure Yet, optional pre-save), Expected Flow, Actual Flow, Result (Passed/Failed), Failure Reason (required if Failed), Changes Made, Retest History list + add, Notes, Snips grid.
-    - Routine + Passed requires Expected/Actual/Result; Urgent + Passed adds `UrgentRoutingSubsection`.
-    - Duplicate Reason copies text/type/expected/notes/urgent fields; does NOT copy result/failure reason/retests/snips.
-  - `UrgentRoutingSubsection.tsx` — fields per spec; failing forces parent reason Failed and requires Failure Reason + Changes/Retest before Passed After Retest.
-  - `PhoneFieldSection.tsx`, `RepeatCallerSection.tsx` (cannot be skipped — sectionStatus must be set to non-`Not Tested`), `SaveSummarySection.tsx` — fixed-checks structured forms per spec with Failure Reason, Changes, Retest, Snips, Notes.
-  - `OverallResultSection.tsx` — radio between 4 statuses with conditional Reason field; surfaces gating rules.
-  - `SummaryNotesSection.tsx` — status, recommended note type, Generate, editable preview, version dropdown (Manual Draft/Generated/User Edited/Final Posted), Copy Final/Text Only, Download Snips, Open Freshdesk, Mark Posted Manually (confirm modal), Save. Generated note builder honors “Show all tested reasons / only failed-retested-review” toggle and emits warning panel with Add Missing Details / Generate Anyway / Write Manually when insufficient detail.
-  - `MarkReadyModal.tsx` — three options: Mark Ready Only, Mark Ready + Generate Summary Note, Cancel; on confirm calls `markReady`, plays local green/cyan checkmark pulse (component-scoped, not full-screen).
-  - `MarkPostedModal.tsx` — confirmation copy per spec.
-  - `RetestModal.tsx` — date/time (Central, defaults now), result, notes, optional snips.
-  - `AddSnipModal.tsx` — reuse pattern from `freshdesk/AddSnipModal` (paste/upload, preview, rename, category change, label) but bound to dispatch store and tagged with section/reason id.
+### `src/lib/night-plan-store.ts` (edit)
+Add `convertToAdditionalWork(id, accountNumber?)`: calls `additionalWorkStore.fromNightPlan(item, account)`, sets night plan item status `converted` with `additionalWorkId` link. Add `additionalWorkId?: string` to `NightPlanItem`. Add `Converted` tab filter helper.
 
-**Home Dashboard integration (mock, additive only)**
-- Add an adapter `src/lib/mock/dispatch-feed.ts` that pulls live counts/items from `dispatchStore` and merges into:
-  - `OverviewCards` Open Items list — Not Ready sessions
-  - `OverviewCards` In Review list — Waiting CS / Waiting Prog sessions
-  - `RecentlyCompleted` — Ready for Activation sessions (alongside existing ticket + mock completed)
-- Modify `OverviewCards.tsx` and `RecentlyCompleted.tsx` to subscribe to `dispatchStore` and merge (lists only — counts derived from merged length). Existing static `overviewCounts`/`mockCompleted` items remain.
+### Mock additions
+- `src/lib/mock/accounts.ts` — extend with timestamps, plus archived account that has Freshdesk + dispatch + note history (seeded into stores below).
+- Seed Freshdesk tickets (existing `tickets-store`) + dispatch sessions against specific account numbers so the timeline has content. Add an `accountNumber` field to existing seeded items if missing (verify and extend during build).
 
-### Statuses & rules (locked)
+## 2. Additional Work module
 
-- Overall statuses: exactly `Ready for Activation`, `Waiting on Review from Customer Service`, `Waiting on Review from Programming`, `Not Ready, Still Working on Ticket`. No others. No “In Review” status.
-- Section status chips: `Not Tested | In Progress | Passed | Failed | Passed After Retest | Still Failed | Waiting Review | Complete` (+ `N/A` for Save/Summary).
-- Mark Ready gating: Repeat Caller section complete; all required reasons Passed or Passed After Retest; readiness = 100%. Reaching 100% only unlocks the button — never auto-flips status.
+### `src/routes/additional-work.tsx` (replace placeholder)
+Sections in order:
+1. Page header — 3D glass task/check icon, title, subtitle.
+2. `[+ Create Additional Work]` prominent glass card/button (opens modal).
+3. Active list — stacked glass cards sorted oldest updated first. Card shows title, linked account (or "No account linked"), status chip, last updated Central time, short note preview, Open Work + Open Account (if linked).
+4. Recently Completed Additional Work — compact cards (title, account, completed time Central, Open Record).
+5. Empty state when neither list has content.
 
-### Non-goals (will not build)
+### `src/components/additional-work/CreateAdditionalWorkModal.tsx`
+Fields per spec (Title required, Account # / Name optional w/ live search of accounts store, What needs done required, Notes, Status default Currently Working On, Issue Classification optional, Programming Status Notes optional). No Source, no due date. Account is optional and never blocks save. Live search showing matches; if no match, allow saving with free-text account number/name (placeholder link).
 
-- Audit, Genesis, full Account Profile, Additional Work, Reports, Settings, Freshdesk API, real persistence, charts/analytics on the dispatch page, sound, dashboard-wide celebration overlay, any extra overall status, ability to skip Repeat Caller Check.
+### `src/routes/additional-work.$workId.work.tsx` (new)
+Full workspace.
+- Header: title, linked account chip, status chip, last updated Central. Actions: Back, Open Account (if linked), Mark Completed.
+- Collapsible BlueVerse cards: Work Details, Notes, Snips, Programming Status Notes, Completion Summary.
+- Components: `WorkDetailsSection`, `NotesSection` (timestamp Central, initials LTP, edit, delete w/ confirmation), `SnipsSection` (reuses dispatch `AddSnipModal` pattern; categories: Email/Request, Before, After, Testing, Error, Other; preview, copy, download, open full size, delete w/ confirm), `ProgrammingStatusNotesSection`, `CompletionSummarySection`.
+- `MarkCompletedModal`: warns if summary empty ("Mark Completed Anyway"), blocks only if title missing. On confirm → return to `/additional-work`.
 
-### Technical notes
+### Night Plan integration
+- `src/components/home/NightPlan.tsx` (edit): per-item action "Convert to Additional Work" opens `ConvertToAdditionalWorkModal` with Attach Account search, three buttons: Cancel / Convert Without Account / Attach Account & Convert.
+- Converted items: removed from active counts/progress, shown under Converted tab while the linked Additional Work is still active, moved to history once completed (link preserved).
 
-- All `Date.now()` / random values stay out of module scope (Phase 2 hydration lessons): seed sessions store `*MinutesAgo` offsets and resolve to dates on client mount.
-- Workspace route lives under nested file `contact-dispatch.$sessionId.work.tsx`; `contact-dispatch.tsx` becomes a layout that renders the dashboard at index or `<Outlet/>` for children, matching the Freshdesk pattern.
-- Reuse `glass-panel`, `shimmer`, `--cyan-glow`, `--electric`, `--violet-glow`, `--green-glow`, `--gold-glow` tokens already in `styles.css` — no new design tokens unless a status needs a shade not already present.
-- All sheets use `Sheet` with `side={isMobile ? "bottom" : "right"}` mirroring `OverviewCards` / `RecentlyCompleted`.
+## 3. Account Profile module
 
-### Verification
+### `src/routes/accounts.tsx` (replace placeholder — Account Lookup landing)
+Search-as-you-type (number priority, then name). Active first; "Include Archived / Off Service" toggle. Recent accounts (last 5 this shift). "Create New Account" button when query has no match → `CreateAccountModal` (number + name required, unique check, default Active; duplicate → "Open Existing Account"). Clicking result navigates to `/accounts/$accountNumber`.
 
-After build, smoke-check: start session from lookup, run a Routine reason pass, an Urgent reason fail → retest → Passed After Retest, fail repeat-caller then retest, set Waiting CS (requires reason), flip to Not Ready (requires reason), drive a session to 100% and Mark Ready (modal → both options), Mark Posted on summary note, verify Home Dashboard Open Items / In Review / Recently Completed reflect the mock dispatch sessions, and confirm responsive drawer/sheet behavior.
+### `src/routes/accounts.$accountNumber.tsx` (new)
+Header: account number, name, status badge (Active / Off Service · Archived), last updated Central. Header actions: Start Freshdesk Ticket (modal → ticket number → links + routes), Start Contact Dispatch Testing (routes to dispatch start with prefilled account), Start Additional Work (opens Create modal prefilled), Add Account Note (modal w/ Account Note vs Ticket Note radio — if Ticket Note, choose from this account's tickets), Add Snip / Attachment, Archive / Restore (each with confirmation modal per spec). Archived banner with View History + Restore.
+
+Main sections (BlueVerse cards, Timeline central):
+- **Account Timeline** — `AccountTimeline` component. Mixed Freshdesk / Dispatch / Additional Work / Notes, newest first. Filters: All / Freshdesk / Contact Dispatch / Additional Work / Notes. Each item renders type-specific card with Expand + Open Record actions, nested snips inline (not separate entries).
+- **Account Notes** — list with edit/delete (delete confirms).
+- **Snips / Attachments** — grouped by source (Freshdesk → per ticket → per category; Contact Dispatch → per session → per category; Additional Work → per work item → per category). Each snip: preview, label, category, date Central, Open Source, copy, download, open full size.
+- **Contact Dispatch Templates** — account-scoped templates. Add/Edit/Duplicate/Archive/Restore/Reorder. Archived hidden by default with toggle.
+- **Account Details** — number/name/status/created/updated. Edit name + status inline. Account number change requires confirmation, uniqueness check, cascades, preserves history.
+
+### Components in `src/components/account/`
+`AccountTimeline.tsx`, `TimelineItemFreshdesk.tsx`, `TimelineItemDispatch.tsx`, `TimelineItemAddWork.tsx`, `TimelineItemNote.tsx`, `AddAccountNoteModal.tsx`, `ArchiveAccountModal.tsx`, `RestoreAccountModal.tsx`, `CreateAccountModal.tsx`, `StartFreshdeskTicketModal.tsx`, `AccountTemplatesSection.tsx`, `AccountDetailsSection.tsx`, `SnipsSection.tsx`.
+
+### Dispatch templates bridge
+Extend `src/lib/mock/dispatch-templates.ts` (or wire dispatch store) so the Contact Dispatch Testing workspace can read per-account templates from `accountsStore.templates`. No redesign of Dispatch — additive read only.
+
+## 4. Home Dashboard integration (additive only)
+
+- `src/components/home/OverviewCards.tsx` — Open Items count now includes Additional Work `working`. In Review unchanged (already pulls dispatch). 
+- `src/components/home/RecentlyCompleted.tsx` — merge completed Additional Work entries (sorted by `completedAt`).
+- `src/components/home/LookupCards.tsx` — Account Lookup card already routes; ensure clicking a result opens `/accounts/$number`. Last-5-this-shift list shown in lookup dropdown.
+- No visual redesign; only data merge + link wiring.
+
+## 5. Routing / route tree
+
+Add routes: `/additional-work/$workId/work`, `/accounts/$accountNumber`. Confirm `routeTree.gen.ts` regenerates (auto). `accounts.tsx` becomes leaf landing, `accounts.$accountNumber.tsx` is the profile.
+
+## 6. Responsive
+
+- Desktop: 2-column where natural (header actions row, timeline + side cards stacked under on smaller widths).
+- Tablet: cards wrap, sections single column.
+- Mobile: stack, modals → bottom sheets where they exist in shadcn ui set, timeline cards full width.
+
+## 7. Strict guardrails
+
+- No Source field, no due dates, no required account on Additional Work.
+- No Reports, Settings (beyond per-account templates), Audit, Genesis, CRM.
+- No new statuses beyond those listed.
+- Snips never appear as separate timeline items.
+- Archive never deletes history; templates with usage never hard delete.
+- BlueVerse tokens only; reuse existing glass/gradient utilities from `styles.css`.
+
+## Out of scope (Phase 5+)
+Reports page, Settings page, Freshdesk API integration, polish pass.
+
+Stop after Phase 4. Awaiting approval before continuing.
