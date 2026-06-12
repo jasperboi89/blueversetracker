@@ -524,14 +524,11 @@ export function canMarkReady(s: DispatchSession): boolean {
 }
 
 export function useDispatch() {
-  const snap = useSyncExternalStore(
+  return useSyncExternalStore(
     dispatchStore.subscribe,
     () => dispatchStore.getState(),
     () => ({ sessions: [] as DispatchSession[] }),
   );
-  const demo = useDemoMode();
-  if (demo) return snap;
-  return { ...snap, sessions: snap.sessions.filter((s) => !s.isDemo) };
 }
 
 export function buildDispatchSummary(
