@@ -41,11 +41,13 @@ export const setTuning = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => setSchema.parse(input))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const row: Record<string, unknown> = { user_id: userId };
-    if (data.visualIntensity !== undefined) row.visual_intensity = data.visualIntensity;
-    if (data.eventFrequency !== undefined) row.event_frequency = data.eventFrequency;
-    if (data.particleDensity !== undefined) row.particle_density = data.particleDensity;
-    if (data.sleepMode !== undefined) row.sleep_mode = data.sleepMode;
+    const row = {
+      user_id: userId,
+      ...(data.visualIntensity !== undefined ? { visual_intensity: data.visualIntensity } : {}),
+      ...(data.eventFrequency !== undefined ? { event_frequency: data.eventFrequency } : {}),
+      ...(data.particleDensity !== undefined ? { particle_density: data.particleDensity } : {}),
+      ...(data.sleepMode !== undefined ? { sleep_mode: data.sleepMode } : {}),
+    };
     const { error } = await supabase
       .from("qb_tuning_prefs")
       .upsert(row, { onConflict: "user_id" });
