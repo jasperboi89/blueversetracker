@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useTickets } from "@/lib/tickets-store";
 import { useDispatch } from "@/lib/dispatch-store";
+import { useAdditionalWork } from "@/lib/additional-work-store";
 
 const kindMeta: Record<CompletedKind, { label: string; icon: typeof Ticket; color: string }> = {
   freshdesk: { label: "Freshdesk", icon: Ticket, color: "var(--cyan-glow)" },
@@ -21,6 +22,7 @@ export function RecentlyCompleted() {
   const isMobile = useIsMobile();
   const { tickets } = useTickets();
   const { sessions } = useDispatch();
+  const { items: workItems } = useAdditionalWork();
   // Lock the base time after mount so SSR (which uses 0) and client agree initially,
   // then re-render once with the real "now" anchor.
   const [baseMs, setBaseMs] = useState<number>(0);
@@ -44,7 +46,16 @@ export function RecentlyCompleted() {
       reference: `${s.accountName} · Account ${s.accountNumber}`,
       completedAt: new Date(s.completedAt!),
     }));
-  const combined = [...ticketCompleted, ...dispatchReady, ...mockCompleted];
+  const addWorkCompleted: CompletedItem[] = workItems
+    .filter((w) => w.status === "completed" && w.completedAt)
+    .map((w) => ({
+      id: `aw-${w.id}`,
+      kind: "additional" as CompletedKind,
+      title: w.title,
+      reference: w.accountNumber ? `${w.accountName} · Account ${w.accountNumber}` : "No account linked",
+      completedAt: new Date(w.completedAt!),
+    }));
+  const combined = [...ticketCompleted, ...dispatchReady, ...addWorkCompleted, ...mockCompleted];
   const top5 = [...combined].sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime()).slice(0, 5);
 
   return (

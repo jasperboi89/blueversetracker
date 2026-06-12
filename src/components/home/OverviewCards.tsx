@@ -10,6 +10,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useDispatch } from "@/lib/dispatch-store";
+import { useAdditionalWork } from "@/lib/additional-work-store";
 
 type CardKey = "due" | "open" | "review";
 
@@ -51,17 +52,21 @@ export function OverviewCards() {
   const [open, setOpen] = useState<CardKey | null>(null);
   const isMobile = useIsMobile();
   const { sessions } = useDispatch();
+  const { items: workItems } = useAdditionalWork();
 
   const dispatchOpen = sessions
     .filter((s) => s.status === "not-ready")
     .map((s) => ({ id: `ds-${s.id}`, type: "Contact Dispatch", title: "Not Ready, Still Working on Ticket", reference: `${s.accountName} (Account ${s.accountNumber})` }));
+  const addWorkOpen = workItems
+    .filter((w) => w.status === "working")
+    .map((w) => ({ id: `aw-${w.id}`, type: "Additional Work", title: w.title, reference: w.accountNumber ? `${w.accountName} (Account ${w.accountNumber})` : "No account linked" }));
   const dispatchReview = sessions
     .filter((s) => s.status === "waiting-cs" || s.status === "waiting-prog")
     .map((s) => ({ id: `ds-${s.id}`, type: "Contact Dispatch", title: s.status === "waiting-cs" ? "Waiting on CS review" : "Waiting on Programming review", reference: `${s.accountName} (Account ${s.accountNumber})` }));
 
   const merged: Record<CardKey, typeof dueTodayItems> = {
     due: dueTodayItems,
-    open: [...openItemsList, ...dispatchOpen],
+    open: [...openItemsList, ...dispatchOpen, ...addWorkOpen],
     review: [...inReviewList, ...dispatchReview],
   };
   const counts: Record<CardKey, number> = {

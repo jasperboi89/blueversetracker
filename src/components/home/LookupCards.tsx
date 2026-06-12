@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Building2, Search, Ticket } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { mockAccounts } from "@/lib/mock/accounts";
 import { mockTickets } from "@/lib/mock/tickets";
+import { accountsStore } from "@/lib/accounts-store";
 
 export function LookupCards() {
   return (
@@ -16,6 +18,7 @@ export function LookupCards() {
 }
 
 function AccountLookup() {
+  const nav = useNavigate();
   const [q, setQ] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
 
@@ -70,6 +73,7 @@ function AccountLookup() {
           {results.map((a) => (
             <button
               key={a.number}
+              onClick={() => { accountsStore.touchRecent(a.number); nav({ to: "/accounts/$accountNumber", params: { accountNumber: a.number } }); }}
               className="flex w-full items-center justify-between rounded-md border border-border/30 bg-white/[0.02] px-3 py-2 text-left text-sm hover:border-border/60 hover:bg-white/[0.05]"
             >
               <span className="truncate">
