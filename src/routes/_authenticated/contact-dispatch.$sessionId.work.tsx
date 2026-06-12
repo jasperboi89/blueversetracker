@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/contact-dispatch/$sessionI
 });
 
 function Workspace() {
-  const { sessionId } = useParams({ from: "/contact-dispatch/$sessionId/work" });
+  const { sessionId } = useParams({ from: "/_authenticated/contact-dispatch/$sessionId/work" });
   const navigate = useNavigate();
   const { sessions } = useDispatch();
   const session = sessions.find((s) => s.id === sessionId);

@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/freshdesk-tickets/$ticketI
 });
 
 function WorkspacePage() {
-  const { ticketId } = useParams({ from: "/freshdesk-tickets/$ticketId/work" });
+  const { ticketId } = useParams({ from: "/_authenticated/freshdesk-tickets/$ticketId/work" });
   const navigate = useNavigate();
   const { tickets, workSessions } = useTickets();
   const ticket = tickets.find((t) => t.id === ticketId);
