@@ -18,6 +18,8 @@ import { useAdditionalWork } from "@/lib/additional-work-store";
 import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAdditionalWorkModal";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
+import { useRecurringRows, recurringStore } from "@/lib/reports/recurring-issues";
+import { AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/accounts/$accountNumber")({
   head: () => ({ meta: [{ title: "Account — Account Intel Hub" }] }),
@@ -34,6 +36,8 @@ function AccountProfilePage() {
   const { tickets } = useTickets();
   const { sessions } = useDispatch();
   const { items: workItems } = useAdditionalWork();
+  const recurringRows = useRecurringRows();
+  const recurring = recurringRows.find((r) => r.accountNumber === accountNumber && r.active);
 
   const [addWorkOpen, setAddWorkOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -160,6 +164,36 @@ function AccountProfilePage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl space-y-4">
+        {recurring && (
+          <div
+            className="glass-panel flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5"
+            style={{
+              borderColor: "color-mix(in oklab, oklch(0.72 0.22 25) 55%, transparent)",
+              background:
+                "linear-gradient(135deg, oklch(0.72 0.22 25 / 0.16), oklch(0.8 0.16 350 / 0.08))",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5" style={{ color: "oklch(0.72 0.22 25)" }} />
+              <div>
+                <div className="text-sm font-semibold text-foreground">
+                  Recurring scripting issues detected
+                </div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {recurring.rollingCount} scripting issues in 30 days · {recurring.sixMonthCount} in the last 6 months. Review scripting and document any changes.
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => nav({ to: "/reports", search: { r: "recurring" } })}>
+                View in Reports
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { recurringStore.markReviewed(accountNumber); toast.success("Marked as reviewed"); }}>
+                Mark reviewed
+              </Button>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="glass-panel p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">

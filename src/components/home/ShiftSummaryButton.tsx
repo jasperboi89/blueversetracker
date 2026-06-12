@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { useNow } from "@/hooks/use-now";
 import { getCentralNow } from "@/lib/shift";
+import { useNavigate } from "@tanstack/react-router";
 
 function computeWindow(now: Date) {
   const p = getCentralNow();
@@ -44,6 +45,16 @@ export function ShiftSummaryButton() {
   const [open, setOpen] = useState(false);
   const now = useNow(60_000);
   const win = computeWindow(now);
+  const navigate = useNavigate();
+
+  const goCurrent = () => {
+    setOpen(false);
+    navigate({ to: "/reports", search: { r: "prog-email", window: "current" } });
+  };
+  const goCustom = () => {
+    setOpen(false);
+    navigate({ to: "/reports", search: { r: "prog-email", window: "custom" } });
+  };
 
   return (
     <div className="flex justify-center pt-2">
@@ -76,13 +87,13 @@ export function ShiftSummaryButton() {
             <DialogTitle>Generate Shift Summary</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <button className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
+            <button onClick={goCurrent} className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
               <div className="text-sm font-medium text-foreground">Use Current Shift</div>
               <div className="mt-1 text-xs text-muted-foreground">{win}</div>
             </button>
-            <button className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
+            <button onClick={goCustom} className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
               <div className="text-sm font-medium text-foreground">Choose Custom Date / Time Range</div>
-              <div className="mt-1 text-xs text-muted-foreground">Pick a custom window (available in a later phase).</div>
+              <div className="mt-1 text-xs text-muted-foreground">Pick a custom date/time window.</div>
             </button>
           </div>
           <DialogFooter>
