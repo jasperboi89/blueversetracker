@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { useDemoMode } from "./settings/demo-mode-store";
 
 export type DispatchStatus =
   | "ready"
@@ -195,7 +194,7 @@ interface State {
   sessions: DispatchSession[];
 }
 
-const KEY = "aih:dispatch:v1";
+const KEY = "aih:dispatch:v2";
 
 let state: State = { sessions: [] };
 let initialized = false;
@@ -212,157 +211,16 @@ function persist() {
   listeners.forEach((l) => l());
 }
 
-function seed(): DispatchSession[] {
-  const now = Date.now();
-  const m = 60_000;
-  const h = 60 * m;
-
-  const mk = (over: Partial<DispatchSession>): DispatchSession => ({
-    id: newId("ds"),
-    accountNumber: "0000",
-    accountName: "Account",
-    status: null,
-    statusReason: "",
-    createdAt: now,
-    updatedAt: now,
-    reasons: [],
-    phone: emptyCheckSection(PHONE_CHECKS),
-    repeat: emptyCheckSection(REPEAT_CHECKS),
-    saveSummary: emptyCheckSection(SAVE_CHECKS),
-    summaryNotes: "",
-    summaryVersions: [],
-    snips: [],
-    ...over,
-  });
-
-  // Active in-progress, linked ticket
-  const active = mk({
-    accountNumber: "1042",
-    accountName: "Riverbend Family Clinic",
-    ticketNumber: "30182",
-    updatedAt: now - 25 * m,
-    reasons: [
-      {
-        id: newId("rc"), source: "global", text: "After-hours appointment request",
-        type: "routine", expectedFlow: "Greeting → reason → message → save.",
-        actualFlow: "Greeting → reason → message → save.",
-        result: "passed", failureReason: "", changesMade: "", retests: [],
-        notes: "", snipIds: [],
-      },
-      {
-        id: newId("rc"), source: "global", text: "Urgent chest pain callback",
-        type: "urgent",
-        expectedFlow: "Urgent script → on-call lookup → page Dr. Cole.",
-        actualFlow: "Pulled Dr. Reyes, not Dr. Cole.",
-        result: "failed",
-        failureReason: "Wrong on-call pulled from rotation table.",
-        changesMade: "Corrected rotation override for Monday overnight.",
-        retests: [],
-        notes: "",
-        snipIds: [],
-        urgent: {
-          expectedContact: "Dr. Cole",
-          actualContact: "Dr. Reyes",
-          contactCorrect: "failed",
-          instructionsMatch: "yes",
-          savedMessageOk: "passed",
-        },
-      },
-    ],
-  });
-
-  // Waiting CS
-  const waitingCS = mk({
-    accountNumber: "3401",
-    accountName: "Harbor Dental Group",
-    ticketNumber: "30191",
-    status: "waiting-cs",
-    statusReason: "Need CS to confirm after-hours protocol exceptions.",
-    updatedAt: now - 2 * h,
-    reasons: [],
-  });
-
-  // Waiting Programming
-  const waitingProg = mk({
-    accountNumber: "6610",
-    accountName: "Lakeside Cardiology",
-    status: "waiting-prog",
-    statusReason: "Routing script skips overnight queue — sent to programming.",
-    updatedAt: now - 4 * h,
-  });
-
-  // Not Ready
-  const notReady = mk({
-    accountNumber: "5093",
-    accountName: "Summit Orthopedics",
-    ticketNumber: "30199",
-    status: "not-ready",
-    statusReason: "Account changes still pending from client.",
-    updatedAt: now - 6 * h,
-  });
-
-  // Ready (recent)
-  const ready = mk({
-    accountNumber: "2188",
-    accountName: "Northstar Pediatrics",
-    status: "ready",
-    statusReason: "",
-    updatedAt: now - 30 * m,
-    completedAt: now - 30 * m,
-    reasons: [
-      {
-        id: newId("rc"), source: "global", text: "Routine appointment",
-        type: "routine", expectedFlow: "Routine greeting → save.",
-        actualFlow: "Routine greeting → save.", result: "passed",
-        failureReason: "", changesMade: "", retests: [], notes: "", snipIds: [],
-      },
-    ],
-  });
-  ready.phone.status = "passed";
-  ready.repeat.status = "complete";
-  ready.saveSummary.status = "passed";
-
-  // Unlinked, brand-new
-  const fresh = mk({
-    accountNumber: "4821",
-    accountName: "Cedar Oaks Veterinary",
-    updatedAt: now - 5 * m,
-  });
-
-  return [active, waitingCS, waitingProg, notReady, ready, fresh].map((s) => ({ ...s, isDemo: true }));
-}
-
 function loadInitial(): State {
   if (typeof window === "undefined") return { sessions: [] };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (p && Array.isArray(p.sessions)) return runDispatchDemoMigration(p);
+      if (p && Array.isArray(p.sessions)) return p;
     }
   } catch {}
-  return { sessions: seed() };
-}
-
-const DEMO_MIGRATION_KEY = "aih:dispatch:demo-recover:v1";
-function runDispatchDemoMigration(s: State): State {
-  if (typeof window === "undefined") return s;
-  if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
-  // Stamp every existing session as demo, then recover real ones with user work.
-  const next: State = {
-    sessions: s.sessions.map((sess) => {
-      const hasUserWork =
-        (sess.snips?.length ?? 0) > 0 ||
-        (sess.summaryNotes?.trim()?.length ?? 0) > 0 ||
-        (sess.summaryVersions?.length ?? 0) > 0 ||
-        (sess.reasons ?? []).some(
-          (r) => r.changesMade.trim() || r.notes.trim() || r.retests.length > 0,
-        );
-      return hasUserWork ? { ...sess, isDemo: false } : { ...sess, isDemo: true };
-    }),
-  };
-  try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}
-  return next;
+  return { sessions: [] };
 }
 
 function ensureLoaded() {
