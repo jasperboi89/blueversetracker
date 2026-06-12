@@ -129,7 +129,7 @@ function seed(): Ticket[] {
   const now = Date.now();
   const m = 60_000;
   const h = 60 * m;
-  return [
+  const items: Ticket[] = [
     {
       id: "t-30182",
       number: "30182",
@@ -247,6 +247,7 @@ function seed(): Ticket[] {
       hubSnips: [],
     },
   ];
+  return items.map((t) => ({ ...t, isDemo: true }));
 }
 
 function loadInitial(): State {
