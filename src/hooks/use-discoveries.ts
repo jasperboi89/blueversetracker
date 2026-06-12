@@ -8,7 +8,7 @@ import { subscribeCelebrations } from "@/lib/quantum-bloom/celebration-bus";
 
 export interface Discovery {
   id: string;
-  kind: "ticket" | "dispatch" | "night_plan" | "shift";
+  kind: "ticket" | "dispatch" | "night_plan" | "shift" | "cosmic";
   label: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: Record<string, any>;

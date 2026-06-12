@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Ticket, Phone, Moon, Sunrise, Sparkles, RotateCcw } from "lucide-react";
+import { Ticket, Phone, Moon, Sunrise, Sparkles, RotateCcw, Stars, ExternalLink } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useDiscoveries, type Discovery } from "@/hooks/use-discoveries";
 
-const KIND_META: Record<Discovery["kind"], { label: string; icon: typeof Ticket; color: string }> = {
+const KIND_META: Record<string, { label: string; icon: typeof Ticket; color: string }> = {
   ticket: { label: "Ticket", icon: Ticket, color: "var(--cyan-glow)" },
   dispatch: { label: "Dispatch", icon: Phone, color: "var(--electric)" },
   night_plan: { label: "Night Plan", icon: Moon, color: "var(--violet-glow)" },
   shift: { label: "Shift", icon: Sunrise, color: "var(--gold-glow)" },
+  cosmic: { label: "Cosmic", icon: Stars, color: "var(--pink-glow)" },
 };
 
 export function DiscoveryLogDrawer({
@@ -37,8 +39,8 @@ export function DiscoveryLogDrawer({
   }, [rows]);
 
   const counts = useMemo(() => {
-    const c: Record<Discovery["kind"], number> = { ticket: 0, dispatch: 0, night_plan: 0, shift: 0 };
-    rows.forEach((r) => { c[r.kind] += 1; });
+    const c: Record<string, number> = { ticket: 0, dispatch: 0, night_plan: 0, shift: 0, cosmic: 0 };
+    rows.forEach((r) => { c[r.kind] = (c[r.kind] ?? 0) + 1; });
     return c;
   }, [rows]);
 
@@ -55,8 +57,19 @@ export function DiscoveryLogDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-4 grid grid-cols-4 gap-2">
-          {(Object.keys(KIND_META) as Discovery["kind"][]).map((k) => {
+        <div className="mt-3">
+          <Link
+            to="/constellations"
+            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+            onClick={() => onOpenChange(false)}
+          >
+            <ExternalLink className="h-3 w-3" />
+            Open Constellation View
+          </Link>
+        </div>
+
+        <div className="mt-4 grid grid-cols-5 gap-2">
+          {Object.keys(KIND_META).map((k) => {
             const m = KIND_META[k];
             const Icon = m.icon;
             return (
@@ -65,7 +78,7 @@ export function DiscoveryLogDrawer({
                 className="rounded-md border border-border/40 p-2 text-center text-xs"
               >
                 <Icon className="mx-auto h-4 w-4" style={{ color: m.color }} />
-                <div className="mt-1 font-semibold text-foreground">{counts[k]}</div>
+                <div className="mt-1 font-semibold text-foreground">{counts[k] ?? 0}</div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {m.label}
                 </div>
@@ -89,7 +102,7 @@ export function DiscoveryLogDrawer({
                 </div>
                 <ul className="space-y-1">
                   {items.map((r) => {
-                    const m = KIND_META[r.kind];
+                    const m = KIND_META[r.kind] ?? KIND_META.shift;
                     const Icon = m.icon;
                     return (
                       <li
