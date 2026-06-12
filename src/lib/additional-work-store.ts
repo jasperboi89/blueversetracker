@@ -165,14 +165,14 @@ const DEMO_MIGRATION_KEY = "aih:addwork:demo-recover:v1";
 function runAddWorkDemoMigration(s: State): State {
   if (typeof window === "undefined") return s;
   if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
+  // Stamp every existing item as demo, then recover real ones with user work.
   const next: State = {
     items: s.items.map((i) => {
-      if (!i.isDemo) return i;
       const hasUserWork =
         (i.notesList?.length ?? 0) > 0 ||
         (i.snips?.length ?? 0) > 0 ||
         (i.completionFinalNotes?.trim()?.length ?? 0) > 0;
-      return hasUserWork ? { ...i, isDemo: false } : i;
+      return hasUserWork ? { ...i, isDemo: false } : { ...i, isDemo: true };
     }),
   };
   try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}

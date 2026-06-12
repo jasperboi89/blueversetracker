@@ -348,18 +348,17 @@ const DEMO_MIGRATION_KEY = "aih:dispatch:demo-recover:v1";
 function runDispatchDemoMigration(s: State): State {
   if (typeof window === "undefined") return s;
   if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
+  // Stamp every existing session as demo, then recover real ones with user work.
   const next: State = {
     sessions: s.sessions.map((sess) => {
-      if (!sess.isDemo) return sess;
       const hasUserWork =
         (sess.snips?.length ?? 0) > 0 ||
-        (sess.reasons?.length ?? 0) > 0 && sess.reasons.some(
-          (r) => r.text.trim() || r.actualFlow.trim() || r.changesMade.trim() || r.notes.trim() || r.retests.length > 0,
-        ) ||
         (sess.summaryNotes?.trim()?.length ?? 0) > 0 ||
         (sess.summaryVersions?.length ?? 0) > 0 ||
-        sess.status === "ready";
-      return hasUserWork ? { ...sess, isDemo: false } : sess;
+        (sess.reasons ?? []).some(
+          (r) => r.changesMade.trim() || r.notes.trim() || r.retests.length > 0,
+        );
+      return hasUserWork ? { ...sess, isDemo: false } : { ...sess, isDemo: true };
     }),
   };
   try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}

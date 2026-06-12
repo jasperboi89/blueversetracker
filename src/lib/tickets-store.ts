@@ -278,9 +278,14 @@ const TICKETS_DEMO_MIGRATION_KEY = "aih:tickets:demo-recover:v1";
 function runTicketsDemoMigration(s: State): State {
   if (typeof window === "undefined") return s;
   if (localStorage.getItem(TICKETS_DEMO_MIGRATION_KEY)) return s;
+  // Stamp every existing ticket as demo, then immediately recover real ones.
+  // This catches seed records that were persisted before isDemo was introduced.
   const next: State = {
     ...s,
-    tickets: s.tickets.map((t) => recoverTicketIfUserWorked(t, s.workSessions[t.id])),
+    tickets: s.tickets.map((t) => {
+      const flagged = { ...t, isDemo: true };
+      return isRealTicket(flagged, s.workSessions[t.id]) ? { ...flagged, isDemo: false } : flagged;
+    }),
   };
   try { localStorage.setItem(TICKETS_DEMO_MIGRATION_KEY, "1"); } catch {}
   return next;
@@ -288,6 +293,14 @@ function runTicketsDemoMigration(s: State): State {
 
 function recoverTicketIfUserWorked(t: Ticket, session?: WorkSession): Ticket {
   if (!t.isDemo) return t;
+  if (isRealTicket(t, session)) return { ...t, isDemo: false };
+  return t;
+}
+
+function isRealTicket(t: Ticket, session?: WorkSession): boolean {
+  // A real Freshdesk pull never uses example.freshdesk.com — demo seeds do.
+  const url = t.details?.freshdeskUrl ?? "";
+  const isRealPull = url.length > 0 && !url.includes("example.freshdesk.com");
   const userHubHistory = (t.hubHistory ?? []).some(
     (h) => h.kind === "note" || h.kind === "snip",
   );
@@ -300,10 +313,7 @@ function recoverTicketIfUserWorked(t: Ticket, session?: WorkSession): Ticket {
     !!session.generatedNote?.trim() ||
     !!session.resultNotes?.trim()
   );
-  if (userHubHistory || userSnips || manualAccount || sessionHasWork) {
-    return { ...t, isDemo: false };
-  }
-  return t;
+  return isRealPull || userHubHistory || userSnips || manualAccount || sessionHasWork;
 }
 
 /** Re-run the demo-recovery migration on demand (Settings button). */
@@ -311,9 +321,12 @@ export function recoverRealWorkFromDemo(): { tickets: number } {
   ensureLoaded();
   let recovered = 0;
   const tickets = state.tickets.map((t) => {
-    const next = recoverTicketIfUserWorked(t, state.workSessions[t.id]);
-    if (t.isDemo && !next.isDemo) recovered++;
-    return next;
+    if (!t.isDemo) return t;
+    if (isRealTicket(t, state.workSessions[t.id])) {
+      recovered++;
+      return { ...t, isDemo: false };
+    }
+    return t;
   });
   state = { ...state, tickets };
   persist();
