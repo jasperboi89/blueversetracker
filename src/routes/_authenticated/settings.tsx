@@ -36,7 +36,7 @@ import { useTickets } from "@/lib/tickets-store";
 import { useAccounts } from "@/lib/accounts-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
-import { ticketsStore } from "@/lib/tickets-store";
+import { ticketsStore, recoverRealWorkFromDemo } from "@/lib/tickets-store";
 import { accountsStore } from "@/lib/accounts-store";
 import { dispatchStore } from "@/lib/dispatch-store";
 import { additionalWorkStore } from "@/lib/additional-work-store";
