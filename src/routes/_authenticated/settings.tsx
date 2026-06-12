@@ -25,7 +25,7 @@ import {
   type DispatchTemplateType,
 } from "@/lib/settings/dispatch-templates-store";
 import {
-  useDropdowns, dropdownsStore, DROPDOWN_LABEL,
+  useDropdowns, dropdownsActions, DROPDOWN_LABEL, DROPDOWN_GROUP_SECTIONS,
   type DropdownGroup,
 } from "@/lib/settings/dropdowns-store";
 import { useShiftSettings, shiftSettingsStore, fmtHour } from "@/lib/settings/shift-settings-store";
@@ -435,52 +435,171 @@ function TemplatesSection() {
 /* ---------------- Dropdowns ---------------- */
 function DropdownsSection() {
   const state = useDropdowns();
-  const [group, setGroup] = useState<DropdownGroup>("region");
-  const [showArchived, setShowArchived] = useState(false);
-  const [newLabel, setNewLabel] = useState("");
-  const values = [...state[group]].sort((a, b) => a.order - b.order).filter((v) => showArchived || !v.archived);
+  const sectionTitles = DROPDOWN_GROUP_SECTIONS.map((s) => s.title);
+  const [activeSection, setActiveSection] = useState<string>(sectionTitles[0]);
+  const section = DROPDOWN_GROUP_SECTIONS.find((s) => s.title === activeSection) ?? DROPDOWN_GROUP_SECTIONS[0];
+  const [openGroup, setOpenGroup] = useState<DropdownGroup | null>(section.groups[0]);
 
   return (
     <SectionCard id="dropdowns" title="Dropdown Management" icon={ListChecks}>
-      <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-        <Select value={group} onValueChange={(v) => setGroup(v as DropdownGroup)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {(Object.keys(DROPDOWN_LABEL) as DropdownGroup[]).map((g) => <SelectItem key={g} value={g}>{DROPDOWN_LABEL[g]}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <label className="flex items-center gap-2 text-xs"><Switch checked={showArchived} onCheckedChange={setShowArchived} /> Show Archived</label>
-      </div>
+      <p className="mb-3 text-[11px] text-muted-foreground">
+        Rename, reorder, add, or remove every dropdown option in the portal. Changes apply everywhere
+        the dropdown is used. Removing a status that existing tickets still use leaves their value in
+        place until you change it.
+      </p>
 
-      <div className="space-y-1">
-        {values.length === 0 && <div className="text-xs text-muted-foreground">No values.</div>}
-        {values.map((v) => (
-          <div key={v.id} className="flex items-center justify-between rounded-md border border-border/40 px-3 py-1.5 text-sm">
-            <span className={v.archived ? "text-muted-foreground line-through" : "text-foreground"}>{v.label}</span>
-            <div className="flex gap-1">
-              {v.archived
-                ? <Button size="sm" variant="ghost" onClick={() => dropdownsStore.update((s) => ({ ...s, [group]: s[group].map((x) => x.id === v.id ? { ...x, archived: false } : x) }))}>Restore</Button>
-                : <Button size="sm" variant="ghost" onClick={() => dropdownsStore.update((s) => ({ ...s, [group]: s[group].map((x) => x.id === v.id ? { ...x, archived: true } : x) }))}><Archive className="h-3.5 w-3.5" /></Button>}
-            </div>
-          </div>
+      <div className="mb-3 flex flex-wrap gap-1 rounded-md border border-border/30 bg-white/[0.02] p-1 text-xs">
+        {sectionTitles.map((t) => (
+          <button
+            key={t}
+            onClick={() => { setActiveSection(t); const g = DROPDOWN_GROUP_SECTIONS.find((s) => s.title === t)!.groups[0]; setOpenGroup(g); }}
+            className={`rounded px-2.5 py-1 transition ${activeSection === t ? "bg-white/10 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >{t}</button>
         ))}
       </div>
 
-      <div className="mt-3 flex gap-2">
-        <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={`Add to ${DROPDOWN_LABEL[group]}`} />
-        <Button onClick={() => {
-          const label = newLabel.trim();
-          if (!label) return;
-          dropdownsStore.update((s) => ({
-            ...s,
-            [group]: [...s[group], { id: `${group}-${Date.now()}`, label, archived: false, order: s[group].length }],
-          }));
-          setNewLabel("");
-          toast.success("Value added.");
-        }}><Plus className="mr-1.5 h-4 w-4" /> Add</Button>
+      <div className="space-y-2">
+        {section.groups.map((g) => (
+          <DropdownGroupPanel
+            key={g}
+            group={g}
+            values={[...(state[g] ?? [])].sort((a, b) => a.order - b.order)}
+            open={openGroup === g}
+            onToggle={() => setOpenGroup((cur) => cur === g ? null : g)}
+          />
+        ))}
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">Used values can be archived, not deleted, so historical records stay readable.</p>
     </SectionCard>
+  );
+}
+
+function DropdownGroupPanel({
+  group, values, open, onToggle,
+}: {
+  group: DropdownGroup;
+  values: { id: string; label: string; archived: boolean; order: number }[];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const [newLabel, setNewLabel] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const visible = values; // include archived so user can restore
+
+  return (
+    <div className="rounded-lg border border-border/40">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-white/[0.03]"
+      >
+        <span className="font-medium text-foreground">{DROPDOWN_LABEL[group]}</span>
+        <span className="text-[11px] text-muted-foreground">
+          {values.filter((v) => !v.archived).length} option{values.filter((v) => !v.archived).length === 1 ? "" : "s"} · {open ? "Hide" : "Edit"}
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-border/40 p-3">
+          <div className="space-y-1.5">
+            {visible.length === 0 && <div className="text-xs text-muted-foreground">No options yet.</div>}
+            {visible.map((v, idx) => {
+              const isEditing = editingId === v.id;
+              return (
+                <div key={v.id} className="flex items-center gap-1.5 rounded-md border border-border/30 bg-white/[0.02] px-2 py-1.5">
+                  <div className="flex flex-col">
+                    <button
+                      onClick={() => dropdownsActions.move(group, v.id, -1)}
+                      disabled={idx === 0}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      aria-label="Move up"
+                    ><MoveUp className="h-3 w-3" /></button>
+                    <button
+                      onClick={() => dropdownsActions.move(group, v.id, 1)}
+                      disabled={idx === visible.length - 1}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      aria-label="Move down"
+                    ><MoveDown className="h-3 w-3" /></button>
+                  </div>
+                  {isEditing ? (
+                    <Input
+                      autoFocus
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onBlur={() => {
+                        if (draft.trim() && draft.trim() !== v.label) {
+                          dropdownsActions.rename(group, v.id, draft);
+                          toast.success("Renamed.");
+                        }
+                        setEditingId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                        if (e.key === "Escape") { setEditingId(null); }
+                      }}
+                      className="h-7 flex-1 text-sm"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => { setEditingId(v.id); setDraft(v.label); }}
+                      className={`flex-1 truncate rounded px-2 py-1 text-left text-sm ${v.archived ? "text-muted-foreground line-through" : "text-foreground hover:bg-white/5"}`}
+                      title="Click to rename"
+                    >{v.label}</button>
+                  )}
+                  <code className="hidden text-[10px] text-muted-foreground sm:inline">{v.id}</code>
+                  {v.archived ? (
+                    <Button size="sm" variant="ghost" onClick={() => dropdownsActions.setArchived(group, v.id, false)}>Restore</Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(v.id)} aria-label="Remove">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <Input
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              placeholder={`Add option to ${DROPDOWN_LABEL[group]}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newLabel.trim()) {
+                  dropdownsActions.add(group, newLabel);
+                  setNewLabel("");
+                  toast.success("Option added.");
+                }
+              }}
+            />
+            <Button onClick={() => {
+              if (!newLabel.trim()) return;
+              dropdownsActions.add(group, newLabel);
+              setNewLabel("");
+              toast.success("Option added.");
+            }}><Plus className="mr-1.5 h-4 w-4" /> Add</Button>
+            <Button variant="ghost" onClick={() => { dropdownsActions.reset(group); toast.success("Reset to defaults."); }}>
+              <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
+            </Button>
+          </div>
+
+          <ConfirmModal
+            open={!!confirmRemove}
+            onOpenChange={(v) => !v && setConfirmRemove(null)}
+            title="Remove this option?"
+            description="The option is removed from this dropdown. Existing records that already use it keep the value until you change them."
+            confirmLabel="Remove"
+            tone="danger"
+            onConfirm={() => {
+              if (confirmRemove) {
+                dropdownsActions.remove(group, confirmRemove);
+                toast.success("Option removed.");
+              }
+              setConfirmRemove(null);
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
