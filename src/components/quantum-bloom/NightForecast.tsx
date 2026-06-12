@@ -13,9 +13,7 @@ export function NightForecast() {
   const phase = getActivePhase(now);
   const active = isShiftActive(now);
 
-  const open = tickets.filter(
-    (t) => t.status !== "completed" && t.status !== "closed",
-  ).length;
+  const open = tickets.filter((t) => t.status !== "completed").length;
 
   const headline = active
     ? `${phase.label}`
