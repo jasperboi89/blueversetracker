@@ -13,6 +13,7 @@ import {
   type EventFrequency,
   type ParticleDensity,
 } from "@/lib/settings/qb-tuning-store";
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 
 const INTENSITY_LABEL = ["", "Whisper", "Gentle", "Balanced", "Vivid", "Radiant"];
 
@@ -21,6 +22,8 @@ export function ThemesSection() {
   const [logOpen, setLogOpen] = useState(false);
   const qbActive = theme === "quantum-bloom";
   const tuning = useQbTuning();
+  const frequencyOptions = useDropdownGroup("qbEventFrequency");
+  const densityOptions = useDropdownGroup("qbParticleDensity");
 
   return (
     <section id="themes" className="glass-panel p-4 sm:p-5">
@@ -150,10 +153,7 @@ export function ThemesSection() {
             >
               <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="off">Off</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="high">High</SelectItem>
+                {frequencyOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -169,9 +169,7 @@ export function ThemesSection() {
             >
               <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
+                {densityOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { dispatchStore } from "@/lib/dispatch-store";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 
 export function RetestModal({
   sessionId, open, onOpenChange, target,
@@ -17,6 +18,7 @@ export function RetestModal({
 }) {
   const [result, setResult] = useState<"passed" | "still-failed" | "">("");
   const [notes, setNotes] = useState("");
+  const resultOptions = useDropdownGroup("retestResult");
 
   const save = () => {
     if (!result) return;
@@ -36,8 +38,7 @@ export function RetestModal({
             <Select value={result} onValueChange={(v) => setResult(v as "passed" | "still-failed")}>
               <SelectTrigger className="mt-1"><SelectValue placeholder="Select result" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="passed">Passed</SelectItem>
-                <SelectItem value="still-failed">Still Failed</SelectItem>
+                {resultOptions.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

@@ -1,4 +1,5 @@
-import { SECTION_STATUS_LABEL, type SectionStatus } from "@/lib/dispatch-store";
+import { type SectionStatus, SECTION_STATUS_LABEL } from "@/lib/dispatch-store";
+import { useDropdownLabel } from "@/lib/settings/dropdowns-store";
 
 const styles: Record<SectionStatus, { color: string; bg: string }> = {
   "not-tested":   { color: "oklch(0.7 0.04 240)",  bg: "oklch(0.7 0.04 240 / 0.12)" },
@@ -14,12 +15,13 @@ const styles: Record<SectionStatus, { color: string; bg: string }> = {
 
 export function StatusChip({ status, className = "" }: { status: SectionStatus; className?: string }) {
   const s = styles[status];
+  const label = useDropdownLabel("sectionStatus", status, SECTION_STATUS_LABEL[status]);
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${className}`}
       style={{ color: s.color, background: s.bg, borderColor: `${s.color.replace(")", " / 0.45)")}` }}
     >
-      {SECTION_STATUS_LABEL[status]}
+      {label}
     </span>
   );
 }

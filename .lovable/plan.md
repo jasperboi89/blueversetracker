@@ -1,60 +1,77 @@
-## Goal
+# Editable Dropdown Labels (Global)
 
-Completely remove every piece of demo/mock data from the portal — not hidden behind a toggle, actually deleted from the codebase. The only account that remains is **Sheboygan Internal Medicine (account #7431)** with **one ticket** attached to it. The "Demo Mode" toggle and "Recover real work from demo" controls in Settings are removed since they have nothing left to act on.
+A single "Dropdown Labels" section in Settings lets you manage every dropdown in the portal: rename text, add new options, remove options you don't use, and drag to reorder. Changes apply everywhere the dropdown is used.
 
-## What gets deleted
+## What you'll see in Settings
 
-**Mock data files (deleted outright):**
-- `src/lib/mock/accounts.ts`
-- `src/lib/mock/tickets.ts`
-- `src/lib/mock/completed.ts`
-- `src/lib/mock/alerts.ts`
-- `src/lib/mock/overview.ts`
-- `src/lib/mock/reports-seed.ts`
-- `src/lib/mock/dispatch-templates.ts` (the seeded "demo" templates only — see below)
+A new card: **Settings → Dropdown Labels**.
 
-**Seed functions stripped to return empty arrays in:**
-- `src/lib/tickets-store.ts` — `seed()` replaced with the single Sheboygan ticket (see below). `isDemo` field, `recoverRealWorkFromDemo`, `runTicketsDemoMigration`, `recoverTicketIfUserWorked`, `isRealTicket`, `_seedExtra` removed. `useDemoMode` import dropped; `useTickets` no longer filters by `isDemo`.
-- `src/lib/accounts-store.ts` — `seedFromMock`, `seedNotes`, `seedTemplates` replaced with a single seed for Sheboygan Internal Medicine (#7431, active). No notes, no templates.
-- `src/lib/dispatch-store.ts` — `seed()` returns `[]`. `isDemo`, `recoverRealWork`, `_seedExtra` removed; `useDemoMode` filter dropped.
-- `src/lib/additional-work-store.ts` — `seed()` returns `[]`. Same demo-flag cleanup.
-- `src/lib/reports/night-plan-history.ts` — `seed()` returns `[]`, `SEED_FLAG` and seeded-history bootstrap removed.
-- `src/lib/settings/dispatch-templates-store.ts` — `seed()` returns `[]`.
+It lists every dropdown group in the app, each as a collapsible panel:
 
-**Settings cleanup (`src/routes/_authenticated/settings.tsx`):**
-- Remove the "Demo Mode" section, the `useDemoMode`/`setDemoMode` imports, the "Recover real work from demo" button, and the now-redundant "Clear all data" handler can stay (it's still useful) but its copy is updated to not reference demo data.
+- **Ticket — Section Status** (Working, Waiting, Blocked, Ready, etc.)
+- **Ticket — Snip Category** (Dispatch snip categories)
+- **Ticket — Check Result** (Passed, Failed)
+- **Ticket — Reason Urgency** (Routine, Urgent, N/A, Not Sure Yet)
+- **Ticket — Retest Result** (Passed, Still Failed)
+- **Additional Work — Reason** (Scripting Issue, Client Change, Other)
+- **Additional Work — Snip Category**
+- **Freshdesk Snip — Category**
+- **Settings — Quantum Bloom Density / Motion** (Off/Low/Normal/High, Low/Medium/High)
 
-**Store delete:** `src/lib/settings/demo-mode-store.ts` removed.
+Each panel shows the current options as a draggable list. For every row:
+- Edit the label inline
+- Drag handle to reorder
+- Trash icon to remove (with confirm)
+- "Add option" button at the bottom
+- "Reset to defaults" button per group
 
-**Component cleanup:** drop `useDemoMode` from `src/components/home/RecentlyCompleted.tsx`, `src/components/home/AlertCenter.tsx`, `src/components/home/OverviewCards.tsx`, `src/components/home/LookupCards.tsx`. Their filters become "show everything you have" (which, on first load, is just Sheboygan + its ticket).
+## Two categories of dropdowns
 
-**LocalStorage migration:** because returning users still have the old demo seeds persisted in `localStorage`, bump the storage key version for each store:
-- `aih:accounts:v1` → `v2`
-- `aih:tickets:v1` → `v2` (whatever the current key is — same idea)
-- dispatch / additional-work / night-plan-history / dispatch-templates keys all bumped one major.
+Some dropdowns drive logic (status, result), others are free-form tags (categories). The editor handles both, but with one safety rule:
 
-On next load every browser starts from the clean slate seed (Sheboygan + 1 ticket); no manual "clear data" step needed.
+- **Logic-bound groups** (status, result, urgency, retest result): rename + reorder + add new entries freely; removing a built-in option is allowed but warns "tickets currently using this option will keep it until changed." The internal value stays stable so existing data never breaks.
+- **Free-form groups** (snip categories, additional-work reason): full rename / add / remove / reorder with no restriction. Existing items that referenced a removed category fall back to "Uncategorized."
 
-## The one account + ticket that stays
+## How it works
 
-**Account**
-- Number: `7431`
-- Name: `Sheboygan Internal Medicine`
-- Status: `active`
+A new store `src/lib/settings/dropdown-labels-store.ts` holds the user's overrides:
 
-**Ticket** (default values shown — tell me if you want different)
-- Number: `1` (placeholder — say the word if you have the real Freshdesk ticket #)
-- Subject: `Sheboygan Internal Medicine — open work`
-- Account: 7431 / Sheboygan Internal Medicine
-- Status: `working`
-- No notes, no snips, no Freshdesk URL (real ticket gets attached when you pull it from Freshdesk).
+```ts
+type DropdownOption = { value: string; label: string; builtin?: boolean };
+type DropdownGroupId =
+  | "ticket.sectionStatus" | "ticket.snipCategory" | "ticket.checkResult"
+  | "ticket.reasonUrgency" | "ticket.retestResult"
+  | "addwork.reason" | "addwork.snipCategory"
+  | "freshdesk.snipCategory"
+  | "qb.density" | "qb.motion";
+```
+
+Persisted in `localStorage` under `dropdown-labels:v1`. Defaults seeded from the current hard-coded lists in `src/lib/dispatch-store.ts`, `src/lib/additional-work-store.ts`, `src/components/freshdesk/AddSnipModal.tsx`, and `src/components/settings/ThemesSection.tsx`.
+
+A hook `useDropdownGroup(groupId)` returns the ordered, labeled options. Every existing `<Select>` consumer is refactored from hard-coded `<SelectItem>` lists to `group.map(o => <SelectItem value={o.value}>{o.label}</SelectItem>)`. Label display (e.g. `SECTION_STATUS_LABEL[s]` in `StatusChip`) reads from the same store via a helper `getLabel(groupId, value)`.
+
+Drag-and-drop uses `@dnd-kit/core` + `@dnd-kit/sortable` (already common; will add if missing).
+
+## Files
+
+**New**
+- `src/lib/settings/dropdown-labels-store.ts` — store, defaults, helpers
+- `src/hooks/use-dropdown-labels.ts` — `useDropdownGroup`, `useDropdownLabel`
+- `src/components/settings/DropdownLabelsSection.tsx` — collapsible groups + sortable rows
+
+**Edited**
+- `src/routes/_authenticated/settings.tsx` — mount the new section
+- `src/components/dispatch/ChecksSection.tsx`, `OverallResultSection.tsx`, `ReasonFlowSection.tsx`, `RetestModal.tsx`, `AddSnipModal.tsx`, `StatusChip.tsx`
+- `src/components/additional-work/CreateAdditionalWorkModal.tsx`, `AddWorkSnipModal.tsx`
+- `src/components/freshdesk/AddSnipModal.tsx`
+- `src/components/settings/ThemesSection.tsx` (density/motion dropdowns)
+- `src/lib/dispatch-store.ts` — `SECTION_STATUS_LABEL` becomes a getter that reads overrides; types stay
+- `src/lib/additional-work-store.ts` — same treatment for `ADDWORK_SNIP_CATEGORIES`
 
 ## Out of scope
 
-- Quantum Bloom discoveries already persist per-user in Supabase — those are real user data, not demo, and are left alone.
-- Tuning prefs, theme prefs, dropdown defaults (regions, priorities, etc.) stay — those are config, not demo work.
-- No database migration needed; all demo data lives in client localStorage.
+- Adding new dropdown *groups* the app doesn't already have
+- Per-user/team sync (local to this browser, like other settings)
+- Renaming non-dropdown UI labels (buttons, headings)
 
-## Open question before I build
-
-You gave me the account number (7431) but not the ticket. **Do you want the seeded ticket to use a specific number/subject, or are you fine with the placeholder `#1 — "Sheboygan Internal Medicine — open work"` that you can rename/replace once you pull the real one from Freshdesk?**
+Ready to build?

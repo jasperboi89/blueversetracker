@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ticketsStore, type SnipCategory } from "@/lib/tickets-store";
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
-
-const categories: SnipCategory[] = ["Before Change", "After Change", "Testing Result", "Error / Issue", "Other"];
 
 export function AddSnipModal({ ticketId, open, onOpenChange }: { ticketId: string; open: boolean; onOpenChange: (v: boolean) => void }) {
   const [name, setName] = useState("");
@@ -16,6 +15,7 @@ export function AddSnipModal({ ticketId, open, onOpenChange }: { ticketId: strin
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [isImage, setIsImage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const categories = useDropdownGroup("snipCategory");
 
   const reset = () => {
     setName(""); setCategory("Other"); setLabel(""); setDataUrl(null); setIsImage(false);
@@ -108,7 +108,7 @@ export function AddSnipModal({ ticketId, open, onOpenChange }: { ticketId: strin
               <Select value={category} onValueChange={(v) => setCategory(v as SnipCategory)}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {categories.map((c) => <SelectItem key={c.id} value={c.label as SnipCategory}>{c.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  dispatchStore, SECTION_STATUS_LABEL,
+  dispatchStore,
   type CheckSection, type DispatchSession, type SectionStatus,
 } from "@/lib/dispatch-store";
+import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 import { AddSnipModal } from "./AddSnipModal";
 import { RetestModal, } from "./RetestModal";
 import { RetestList } from "./ReasonFlowSection";
@@ -28,9 +29,11 @@ export function ChecksSection({
   const update = (patch: Partial<CheckSection>) =>
     dispatchStore.updateSection(session.id, sectionKey, patch);
 
-  const statuses: SectionStatus[] = allowNA
-    ? ["not-tested", "in-progress", "passed", "failed", "passed-retest", "still-failed", "na"]
-    : ["not-tested", "in-progress", "passed", "failed", "passed-retest", "still-failed"];
+  const allStatuses = useDropdownGroup("sectionStatus");
+  const statusOptions = allStatuses.filter((s) =>
+    allowNA ? s.id !== "waiting-review" && s.id !== "complete"
+            : s.id !== "waiting-review" && s.id !== "complete" && s.id !== "na"
+  );
 
   const sectionSnips = session.snips.filter((s) => sec.snipIds.includes(s.id));
 
@@ -67,7 +70,7 @@ export function ChecksSection({
           <Select value={sec.status} onValueChange={(v) => update({ status: v as SectionStatus })}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {statuses.map((s) => <SelectItem key={s} value={s}>{SECTION_STATUS_LABEL[s]}</SelectItem>)}
+              {statusOptions.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
