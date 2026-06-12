@@ -16,6 +16,7 @@ import { Route as ContactDispatchRouteImport } from './routes/contact-dispatch'
 import { Route as AdditionalWorkRouteImport } from './routes/additional-work'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountsAccountNumberRouteImport } from './routes/accounts.$accountNumber'
 import { Route as FreshdeskTicketsTicketIdWorkRouteImport } from './routes/freshdesk-tickets.$ticketId.work'
 import { Route as ContactDispatchSessionIdWorkRouteImport } from './routes/contact-dispatch.$sessionId.work'
 import { Route as AdditionalWorkWorkIdWorkRouteImport } from './routes/additional-work.$workId.work'
@@ -55,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountsAccountNumberRoute = AccountsAccountNumberRouteImport.update({
+  id: '/$accountNumber',
+  path: '/$accountNumber',
+  getParentRoute: () => AccountsRoute,
+} as any)
 const FreshdeskTicketsTicketIdWorkRoute =
   FreshdeskTicketsTicketIdWorkRouteImport.update({
     id: '/$ticketId/work',
@@ -76,24 +82,26 @@ const AdditionalWorkWorkIdWorkRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/accounts': typeof AccountsRoute
+  '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof ContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof FreshdeskTicketsTicketIdWorkRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/accounts': typeof AccountsRoute
+  '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof ContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof FreshdeskTicketsTicketIdWorkRoute
@@ -101,12 +109,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/accounts': typeof AccountsRoute
+  '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof ContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof FreshdeskTicketsTicketIdWorkRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
@@ -152,7 +164,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AccountsRoute: typeof AccountsRoute
+  AccountsRoute: typeof AccountsRouteWithChildren
   AdditionalWorkRoute: typeof AdditionalWorkRouteWithChildren
   ContactDispatchRoute: typeof ContactDispatchRouteWithChildren
   FreshdeskTicketsRoute: typeof FreshdeskTicketsRouteWithChildren
@@ -211,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accounts/$accountNumber': {
+      id: '/accounts/$accountNumber'
+      path: '/$accountNumber'
+      fullPath: '/accounts/$accountNumber'
+      preLoaderRoute: typeof AccountsAccountNumberRouteImport
+      parentRoute: typeof AccountsRoute
+    }
     '/freshdesk-tickets/$ticketId/work': {
       id: '/freshdesk-tickets/$ticketId/work'
       path: '/$ticketId/work'
@@ -234,6 +253,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AccountsRouteChildren {
+  AccountsAccountNumberRoute: typeof AccountsAccountNumberRoute
+}
+
+const AccountsRouteChildren: AccountsRouteChildren = {
+  AccountsAccountNumberRoute: AccountsAccountNumberRoute,
+}
+
+const AccountsRouteWithChildren = AccountsRoute._addFileChildren(
+  AccountsRouteChildren,
+)
 
 interface AdditionalWorkRouteChildren {
   AdditionalWorkWorkIdWorkRoute: typeof AdditionalWorkWorkIdWorkRoute
@@ -272,7 +303,7 @@ const FreshdeskTicketsRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AccountsRoute: AccountsRoute,
+  AccountsRoute: AccountsRouteWithChildren,
   AdditionalWorkRoute: AdditionalWorkRouteWithChildren,
   ContactDispatchRoute: ContactDispatchRouteWithChildren,
   FreshdeskTicketsRoute: FreshdeskTicketsRouteWithChildren,
