@@ -64,6 +64,8 @@ export interface Ticket {
   number: string;
   accountNumber: string;
   accountName: string;
+  /** Where the account number came from. Manual entries are not overwritten by sync. */
+  accountSource?: "freshdesk" | "manual";
   status: TicketStatus;
   priority?: "Low" | "Medium" | "High" | "Urgent";
   dueAt?: number;
