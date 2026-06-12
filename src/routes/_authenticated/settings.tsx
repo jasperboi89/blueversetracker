@@ -199,6 +199,17 @@ function FreshdeskSectionImpl() {
         <Button onClick={runTest} disabled={testing}>
           <TestTube2 className="mr-1.5 h-4 w-4" /> {testing ? "Testing…" : "Test Connection"}
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            toast.info(
+              "Ask Lovable in chat: \"save my Freshdesk credentials\" — a secure prompt will appear for FRESHDESK_DOMAIN and FRESHDESK_API_KEY.",
+              { duration: 8000 },
+            );
+          }}
+        >
+          <ShieldCheck className="mr-1.5 h-4 w-4" /> Save Credentials
+        </Button>
         <Button variant="ghost" onClick={() => setClearOpen(true)}>
           <Trash2 className="mr-1.5 h-4 w-4" /> Clear Connection
         </Button>
