@@ -606,7 +606,8 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
   const [task, setTask] = useState(item.task);
   const [notes, setNotes] = useState(item.notes ?? "");
   const [priority, setPriority] = useState<Priority>(item.priority);
-  const [confirm, setConfirm] = useState<null | "done" | "carry" | "convert" | "dismiss">(null);
+  const [confirm, setConfirm] = useState<null | "done" | "carry" | "dismiss">(null);
+  const [convertOpen, setConvertOpen] = useState(false);
 
   useEffect(() => {
     setTask(item.task);
@@ -626,7 +627,6 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
   const confirmMeta: Record<NonNullable<typeof confirm>, { label: string; color: string; action: () => void }> = {
     done: { label: "Mark Done", color: "var(--green-glow)", action: () => nightPlanStore.setStatus(item.id, "done") },
     carry: { label: "Carry Over", color: "var(--cyan-glow)", action: () => nightPlanStore.setStatus(item.id, "carried") },
-    convert: { label: "Convert to Additional Work", color: "var(--violet-glow)", action: () => nightPlanStore.setStatus(item.id, "converted") },
     dismiss: { label: "Dismiss", color: "var(--gold-glow)", action: () => nightPlanStore.setStatus(item.id, "dismissed") },
   };
 
@@ -671,7 +671,7 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
                   </Button>
                 )}
                 {item.status !== "converted" && (
-                  <Button size="sm" variant="ghost" onClick={() => setConfirm("convert")}>
+                  <Button size="sm" variant="ghost" onClick={() => setConvertOpen(true)}>
                     <Wand2 className="mr-1 h-4 w-4" style={{ color: "var(--violet-glow)" }} /> Convert to Additional Work
                   </Button>
                 )}
@@ -728,6 +728,13 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
           </DialogContent>
         </Dialog>
       )}
+
+      <ConvertFromNightPlanModal
+        item={item}
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        onConverted={onClose}
+      />
     </>
   );
 }
