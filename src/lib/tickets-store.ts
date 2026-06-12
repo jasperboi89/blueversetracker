@@ -497,6 +497,15 @@ export const ticketsStore = {
     persist();
     return t;
   },
+  /** Internal: append seed tickets, dedupe by id. Used by reports demo data. */
+  _seedExtra(items: Ticket[]) {
+    ensureLoaded();
+    const existing = new Set(state.tickets.map((t) => t.id));
+    const additions = items.filter((t) => !existing.has(t.id));
+    if (additions.length === 0) return;
+    state = { ...state, tickets: [...additions, ...state.tickets] };
+    persist();
+  },
 };
 
 export function useTickets() {
