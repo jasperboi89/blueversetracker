@@ -17,6 +17,7 @@ import { Route as AdditionalWorkRouteImport } from './routes/additional-work'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FreshdeskTicketsTicketIdWorkRouteImport } from './routes/freshdesk-tickets.$ticketId.work'
+import { Route as ContactDispatchSessionIdWorkRouteImport } from './routes/contact-dispatch.$sessionId.work'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -59,25 +60,33 @@ const FreshdeskTicketsTicketIdWorkRoute =
     path: '/$ticketId/work',
     getParentRoute: () => FreshdeskTicketsRoute,
   } as any)
+const ContactDispatchSessionIdWorkRoute =
+  ContactDispatchSessionIdWorkRouteImport.update({
+    id: '/$sessionId/work',
+    path: '/$sessionId/work',
+    getParentRoute: () => ContactDispatchRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/additional-work': typeof AdditionalWorkRoute
-  '/contact-dispatch': typeof ContactDispatchRoute
+  '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/contact-dispatch/$sessionId/work': typeof ContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof FreshdeskTicketsTicketIdWorkRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/additional-work': typeof AdditionalWorkRoute
-  '/contact-dispatch': typeof ContactDispatchRoute
+  '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/contact-dispatch/$sessionId/work': typeof ContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof FreshdeskTicketsTicketIdWorkRoute
 }
 export interface FileRoutesById {
@@ -85,10 +94,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/additional-work': typeof AdditionalWorkRoute
-  '/contact-dispatch': typeof ContactDispatchRoute
+  '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/contact-dispatch/$sessionId/work': typeof ContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof FreshdeskTicketsTicketIdWorkRoute
 }
 export interface FileRouteTypes {
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
   id:
     | '__root__'
@@ -121,6 +133,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
   fileRoutesById: FileRoutesById
 }
@@ -128,7 +141,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsRoute: typeof AccountsRoute
   AdditionalWorkRoute: typeof AdditionalWorkRoute
-  ContactDispatchRoute: typeof ContactDispatchRoute
+  ContactDispatchRoute: typeof ContactDispatchRouteWithChildren
   FreshdeskTicketsRoute: typeof FreshdeskTicketsRouteWithChildren
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
@@ -192,8 +205,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FreshdeskTicketsTicketIdWorkRouteImport
       parentRoute: typeof FreshdeskTicketsRoute
     }
+    '/contact-dispatch/$sessionId/work': {
+      id: '/contact-dispatch/$sessionId/work'
+      path: '/$sessionId/work'
+      fullPath: '/contact-dispatch/$sessionId/work'
+      preLoaderRoute: typeof ContactDispatchSessionIdWorkRouteImport
+      parentRoute: typeof ContactDispatchRoute
+    }
   }
 }
+
+interface ContactDispatchRouteChildren {
+  ContactDispatchSessionIdWorkRoute: typeof ContactDispatchSessionIdWorkRoute
+}
+
+const ContactDispatchRouteChildren: ContactDispatchRouteChildren = {
+  ContactDispatchSessionIdWorkRoute: ContactDispatchSessionIdWorkRoute,
+}
+
+const ContactDispatchRouteWithChildren = ContactDispatchRoute._addFileChildren(
+  ContactDispatchRouteChildren,
+)
 
 interface FreshdeskTicketsRouteChildren {
   FreshdeskTicketsTicketIdWorkRoute: typeof FreshdeskTicketsTicketIdWorkRoute
@@ -210,7 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRoute,
   AdditionalWorkRoute: AdditionalWorkRoute,
-  ContactDispatchRoute: ContactDispatchRoute,
+  ContactDispatchRoute: ContactDispatchRouteWithChildren,
   FreshdeskTicketsRoute: FreshdeskTicketsRouteWithChildren,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,

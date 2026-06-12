@@ -8,6 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useTickets } from "@/lib/tickets-store";
+import { useDispatch } from "@/lib/dispatch-store";
 
 const kindMeta: Record<CompletedKind, { label: string; icon: typeof Ticket; color: string }> = {
   freshdesk: { label: "Freshdesk", icon: Ticket, color: "var(--cyan-glow)" },
@@ -19,6 +20,7 @@ export function RecentlyCompleted() {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const { tickets } = useTickets();
+  const { sessions } = useDispatch();
   // Lock the base time after mount so SSR (which uses 0) and client agree initially,
   // then re-render once with the real "now" anchor.
   const [baseMs, setBaseMs] = useState<number>(0);
@@ -33,7 +35,16 @@ export function RecentlyCompleted() {
       reference: `Ticket #${t.number} · Account ${t.accountNumber}`,
       completedAt: new Date(t.completedAt!),
     }));
-  const combined = [...ticketCompleted, ...mockCompleted];
+  const dispatchReady: CompletedItem[] = sessions
+    .filter((s) => s.status === "ready" && s.completedAt)
+    .map((s) => ({
+      id: `ds-${s.id}`,
+      kind: "dispatch" as CompletedKind,
+      title: "Ready for Activation",
+      reference: `${s.accountName} · Account ${s.accountNumber}`,
+      completedAt: new Date(s.completedAt!),
+    }));
+  const combined = [...ticketCompleted, ...dispatchReady, ...mockCompleted];
   const top5 = [...combined].sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime()).slice(0, 5);
 
   return (
