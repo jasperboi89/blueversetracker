@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { GalaxyBackground } from "./GalaxyBackground";
-import { Toaster } from "@/components/ui/sonner";
+import { HipaaPill } from "@/components/auth/HipaaPill";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen>
-      <GalaxyBackground />
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
@@ -16,11 +14,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
               BlueVerse Command Deck
             </div>
+            <div className="ml-auto">
+              <HipaaPill />
+            </div>
           </header>
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
         </div>
       </div>
-      <Toaster />
     </SidebarProvider>
   );
 }
