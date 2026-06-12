@@ -1,0 +1,161 @@
+import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useState } from "react";
+import { ArrowLeft, Building2, CheckCircle2, ExternalLink, Wand2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  canMarkReady, dispatchStore, DISPATCH_STATUS_LABEL,
+  PHONE_CHECKS, REPEAT_CHECKS, SAVE_CHECKS, buildDispatchSummary,
+  useDispatch, reasonCardStatus,
+} from "@/lib/dispatch-store";
+import { ReadinessTracker } from "@/components/dispatch/ReadinessTracker";
+import { SectionCard } from "@/components/dispatch/SectionCard";
+import { ReasonFlowSection } from "@/components/dispatch/ReasonFlowSection";
+import { ChecksSection } from "@/components/dispatch/ChecksSection";
+import { OverallResultSection } from "@/components/dispatch/OverallResultSection";
+import { SummaryNotesSection } from "@/components/dispatch/SummaryNotesSection";
+import { MarkReadyModal } from "@/components/dispatch/MarkReadyModal";
+import { MarkPostedModal } from "@/components/dispatch/MarkPostedModal";
+import { formatCentralShort } from "@/lib/shift";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/contact-dispatch/$sessionId/work")({
+  head: () => ({ meta: [{ title: "Contact Dispatch Testing Workspace — Account Intel Hub" }] }),
+  component: Workspace,
+});
+
+function Workspace() {
+  const { sessionId } = useParams({ from: "/contact-dispatch/$sessionId/work" });
+  const navigate = useNavigate();
+  const { sessions } = useDispatch();
+  const session = sessions.find((s) => s.id === sessionId);
+
+  const [open, setOpen] = useState<Record<string, boolean>>({ reasons: true });
+  const [readyOpen, setReadyOpen] = useState(false);
+  const [postedOpen, setPostedOpen] = useState(false);
+
+  if (!session) {
+    return (
+      <div className="mx-auto max-w-2xl pt-16 text-center">
+        <div className="glass-panel p-8">
+          <p className="text-sm text-muted-foreground">Testing session not found.</p>
+          <Button asChild className="mt-4"><Link to="/contact-dispatch">Back to Contact Dispatch</Link></Button>
+        </div>
+      </div>
+    );
+  }
+
+  const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+  const reasonStat =
+    session.reasons.length === 0 ? "not-tested" as const :
+    session.reasons.every((r) => {
+      const st = reasonCardStatus(r);
+      return st === "passed" || st === "passed-retest";
+    }) ? (session.reasons.some((r) => r.retests.length) ? "passed-retest" : "passed") :
+    session.reasons.some((r) => r.result === "failed" && !r.retests.some((x) => x.result === "passed")) ? "still-failed" : "in-progress";
+
+  const ready = canMarkReady(session);
+
+  return (
+    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      {/* Header */}
+      <div className="glass-panel p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Contact Dispatch Testing</div>
+            <h1 className="mt-1 truncate text-lg font-semibold text-foreground">{session.accountName}</h1>
+            <div className="text-[11px] text-muted-foreground">
+              Account {session.accountNumber}
+              {session.ticketNumber ? ` · Ticket #${session.ticketNumber}` : ""}
+              {session.status ? ` · ${DISPATCH_STATUS_LABEL[session.status]}` : ""}
+              {` · Updated ${formatCentralShort(new Date(session.updatedAt))}`}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="ghost" asChild>
+              <Link to="/contact-dispatch"><ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to Contact Dispatch</Link>
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => toast.info("Account profile opens in a later phase.")}>
+              <Building2 className="mr-1 h-3.5 w-3.5" /> Open Account
+            </Button>
+            {session.ticketNumber && (
+              <Button size="sm" variant="ghost" onClick={() => toast.info(`Freshdesk ticket #${session.ticketNumber} (mock).`)}>
+                <ExternalLink className="mr-1 h-3.5 w-3.5" /> Open Freshdesk Ticket
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setOpen((o) => ({ ...o, summary: true }))}>
+              <Wand2 className="mr-1 h-3.5 w-3.5" /> Generate Summary Note
+            </Button>
+            <Button
+              size="sm"
+              disabled={!ready}
+              onClick={() => setReadyOpen(true)}
+              style={ready ? {
+                background: "linear-gradient(110deg, oklch(0.82 0.18 155 / 0.5), oklch(0.4 0.18 290 / 0.5))",
+                border: "1px solid oklch(0.82 0.18 155 / 0.55)",
+                boxShadow: "0 0 16px oklch(0.82 0.18 155 / 0.4)",
+              } : undefined}
+            >
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Mark Ready for Activation
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <ReadinessTracker session={session} />
+
+      <SectionCard title="Reason for Call Flow" status={reasonStat} open={!!open.reasons} onToggle={() => toggle("reasons")} badge={`${session.reasons.length} reasons`}>
+        <ReasonFlowSection session={session} />
+      </SectionCard>
+
+      <SectionCard title="Phone Number Field Check" status={session.phone.status} open={!!open.phone} onToggle={() => toggle("phone")}>
+        <ChecksSection session={session} sectionKey="phone" checks={PHONE_CHECKS} />
+      </SectionCard>
+
+      <SectionCard title="Repeat Caller Button Check" status={session.repeat.status} open={!!open.repeat} onToggle={() => toggle("repeat")} required>
+        <ChecksSection session={session} sectionKey="repeat" checks={REPEAT_CHECKS} />
+      </SectionCard>
+
+      <SectionCard title="Save / Message Summary" status={session.saveSummary.status} open={!!open.save} onToggle={() => toggle("save")}>
+        <ChecksSection session={session} sectionKey="saveSummary" checks={SAVE_CHECKS} allowNA />
+      </SectionCard>
+
+      <SectionCard
+        title="Overall Result"
+        status={session.status === "ready" ? "complete" : session.status === "not-ready" ? "still-failed" : (session.status === "waiting-cs" || session.status === "waiting-prog") ? "waiting-review" : "not-tested"}
+        open={!!open.overall}
+        onToggle={() => toggle("overall")}
+      >
+        <OverallResultSection session={session} />
+      </SectionCard>
+
+      <SectionCard
+        title="Summary Notes"
+        status={session.summaryVersions.length > 0 ? "complete" : "not-tested"}
+        open={!!open.summary}
+        onToggle={() => toggle("summary")}
+        badge={`${session.summaryVersions.length} versions`}
+      >
+        <SummaryNotesSection session={session} onMarkPostedRequest={() => setPostedOpen(true)} />
+      </SectionCard>
+
+      <MarkReadyModal
+        open={readyOpen}
+        onOpenChange={setReadyOpen}
+        onConfirm={(alsoGenerate) => {
+          dispatchStore.markReady(session.id);
+          if (alsoGenerate) {
+            const body = buildDispatchSummary({ ...session, status: "ready", completedAt: Date.now() });
+            dispatchStore.addSummaryVersion(session.id, "Generated", body);
+          }
+          toast.success(`${session.accountName} marked Ready for Activation.`);
+          setTimeout(() => navigate({ to: "/contact-dispatch" }), 900);
+        }}
+      />
+      <MarkPostedModal
+        open={postedOpen}
+        onOpenChange={setPostedOpen}
+        onConfirm={() => { dispatchStore.markPosted(session.id); toast.success("Summary note marked posted."); }}
+      />
+    </div>
+  );
+}
