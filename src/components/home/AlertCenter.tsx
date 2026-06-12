@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useRecurringRows } from "@/lib/reports/recurring-issues";
 import { useNightPlanHistory, nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useNavigate } from "@tanstack/react-router";
+import { useDemoMode } from "@/lib/settings/demo-mode-store";
 
 const order: AlertPriority[] = ["critical", "warning", "info"];
 const styles: Record<AlertPriority, { color: string; bg: string; icon: typeof AlertTriangle }> = {
@@ -33,6 +34,7 @@ export function AlertCenter() {
   useEffect(() => setMounted(true), []);
   const navigate = useNavigate();
   const recurring = useRecurringRows();
+  const demo = useDemoMode();
   useNightPlanHistory(); // re-render on changes
   const cleanupCount = mounted ? nightPlanHistory.readyForCleanup().length : 0;
   const activeRecurring = recurring.filter((r) => r.active);
@@ -60,16 +62,17 @@ export function AlertCenter() {
     return out;
   }, [activeRecurring, cleanupCount]);
 
+  const seedAlerts = demo ? mockAlerts : [];
   const visible = useMemo(
     () =>
-      [...dynamic, ...mockAlerts]
+      [...dynamic, ...seedAlerts]
         .filter((a) => !dismissed.has(a.id))
         .sort(
           (a, b) =>
             order.indexOf(a.priority) - order.indexOf(b.priority) ||
             a.updatedMinutesAgo - b.updatedMinutesAgo,
         ),
-    [dismissed, dynamic],
+    [dismissed, dynamic, seedAlerts],
   );
 
   if (visible.length === 0 && dismissed.size === 0) return null;
@@ -149,7 +152,7 @@ export function AlertCenter() {
             />
           ))}
           {showDismissed &&
-            [...dynamic, ...mockAlerts]
+            [...dynamic, ...seedAlerts]
               .filter((a) => dismissed.has(a.id))
               .map((a) => (
                 <div key={a.id} className="rounded-lg border border-border/40 p-3 text-xs opacity-60">

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
 import { accountsStore } from "./accounts-store";
+import { useDemoMode } from "./settings/demo-mode-store";
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
@@ -860,11 +861,20 @@ export const ticketsStore = {
 };
 
 export function useTickets() {
-  return useSyncExternalStore(
+  const snap = useSyncExternalStore(
     ticketsStore.subscribe,
     () => ticketsStore.getState(),
     () => ({ tickets: [], workSessions: {}, recentIds: {} }),
   );
+  const demo = useDemoMode();
+  if (demo) return snap;
+  const tickets = snap.tickets.filter((t) => !t.isDemo);
+  const allowedIds = new Set(tickets.map((t) => t.id));
+  const recentIds: Record<string, string[]> = {};
+  for (const [k, ids] of Object.entries(snap.recentIds)) {
+    recentIds[k] = ids.filter((id) => allowedIds.has(id));
+  }
+  return { ...snap, tickets, recentIds };
 }
 
 export function isOverdue(t: Ticket, now = Date.now()): boolean {
