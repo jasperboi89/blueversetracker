@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccessDeniedRouteImport } from './routes/access-denied'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
@@ -39,43 +40,47 @@ const AccessDeniedRoute = AccessDeniedRouteImport.update({
   path: '/access-denied',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
-  id: '/_authenticated/',
-  path: '/',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/_authenticated/settings',
+  id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
-  id: '/_authenticated/reports',
+  id: '/reports',
   path: '/reports',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFreshdeskTicketsRoute =
   AuthenticatedFreshdeskTicketsRouteImport.update({
-    id: '/_authenticated/freshdesk-tickets',
+    id: '/freshdesk-tickets',
     path: '/freshdesk-tickets',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedContactDispatchRoute =
   AuthenticatedContactDispatchRouteImport.update({
-    id: '/_authenticated/contact-dispatch',
+    id: '/contact-dispatch',
     path: '/contact-dispatch',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdditionalWorkRoute =
   AuthenticatedAdditionalWorkRouteImport.update({
-    id: '/_authenticated/additional-work',
+    id: '/additional-work',
     path: '/additional-work',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
-  id: '/_authenticated/accounts',
+  id: '/accounts',
   path: '/accounts',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAccountsAccountNumberRoute =
   AuthenticatedAccountsAccountNumberRouteImport.update({
@@ -103,6 +108,7 @@ const AuthenticatedAdditionalWorkWorkIdWorkRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof AuthenticatedIndexRoute
   '/access-denied': typeof AccessDeniedRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -112,7 +118,6 @@ export interface FileRoutesByFullPath {
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/': typeof AuthenticatedIndexRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof AuthenticatedContactDispatchSessionIdWorkRoute
@@ -136,6 +141,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/access-denied': typeof AccessDeniedRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -154,6 +160,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/access-denied'
     | '/auth'
     | '/reset-password'
@@ -163,7 +170,6 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
-    | '/'
     | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
@@ -186,6 +192,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets/$ticketId/work'
   id:
     | '__root__'
+    | '/_authenticated'
     | '/access-denied'
     | '/auth'
     | '/reset-password'
@@ -203,16 +210,10 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AccessDeniedRoute: typeof AccessDeniedRoute
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRouteWithChildren
-  AuthenticatedAdditionalWorkRoute: typeof AuthenticatedAdditionalWorkRouteWithChildren
-  AuthenticatedContactDispatchRoute: typeof AuthenticatedContactDispatchRouteWithChildren
-  AuthenticatedFreshdeskTicketsRoute: typeof AuthenticatedFreshdeskTicketsRouteWithChildren
-  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -238,54 +239,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccessDeniedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/': {
       id: '/_authenticated/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports': {
       id: '/_authenticated/reports'
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof AuthenticatedReportsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/freshdesk-tickets': {
       id: '/_authenticated/freshdesk-tickets'
       path: '/freshdesk-tickets'
       fullPath: '/freshdesk-tickets'
       preLoaderRoute: typeof AuthenticatedFreshdeskTicketsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/contact-dispatch': {
       id: '/_authenticated/contact-dispatch'
       path: '/contact-dispatch'
       fullPath: '/contact-dispatch'
       preLoaderRoute: typeof AuthenticatedContactDispatchRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/additional-work': {
       id: '/_authenticated/additional-work'
       path: '/additional-work'
       fullPath: '/additional-work'
       preLoaderRoute: typeof AuthenticatedAdditionalWorkRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/accounts': {
       id: '/_authenticated/accounts'
       path: '/accounts'
       fullPath: '/accounts'
       preLoaderRoute: typeof AuthenticatedAccountsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/accounts/$accountNumber': {
       id: '/_authenticated/accounts/$accountNumber'
@@ -377,10 +385,17 @@ const AuthenticatedFreshdeskTicketsRouteWithChildren =
     AuthenticatedFreshdeskTicketsRouteChildren,
   )
 
-const rootRouteChildren: RootRouteChildren = {
-  AccessDeniedRoute: AccessDeniedRoute,
-  AuthRoute: AuthRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRouteWithChildren
+  AuthenticatedAdditionalWorkRoute: typeof AuthenticatedAdditionalWorkRouteWithChildren
+  AuthenticatedContactDispatchRoute: typeof AuthenticatedContactDispatchRouteWithChildren
+  AuthenticatedFreshdeskTicketsRoute: typeof AuthenticatedFreshdeskTicketsRouteWithChildren
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountsRoute: AuthenticatedAccountsRouteWithChildren,
   AuthenticatedAdditionalWorkRoute:
     AuthenticatedAdditionalWorkRouteWithChildren,
@@ -391,6 +406,16 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AccessDeniedRoute: AccessDeniedRoute,
+  AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
