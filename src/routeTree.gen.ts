@@ -16,6 +16,7 @@ import { Route as ContactDispatchRouteImport } from './routes/contact-dispatch'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdditionalWorkRouteImport } from './routes/additional-work'
 import { Route as AccountsRouteImport } from './routes/accounts'
+import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsAccountNumberRouteImport } from './routes/accounts.$accountNumber'
 import { Route as FreshdeskTicketsTicketIdWorkRouteImport } from './routes/freshdesk-tickets.$ticketId.work'
@@ -57,6 +58,11 @@ const AccountsRoute = AccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessDeniedRoute = AccessDeniedRouteImport.update({
+  id: '/access-denied',
+  path: '/access-denied',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -88,6 +94,7 @@ const AdditionalWorkWorkIdWorkRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/auth': typeof AuthRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/auth': typeof AuthRoute
@@ -117,6 +125,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/accounts': typeof AccountsRouteWithChildren
   '/additional-work': typeof AdditionalWorkRouteWithChildren
   '/auth': typeof AuthRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/access-denied'
     | '/accounts'
     | '/additional-work'
     | '/auth'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/access-denied'
     | '/accounts'
     | '/additional-work'
     | '/auth'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/access-denied'
     | '/accounts'
     | '/additional-work'
     | '/auth'
@@ -176,6 +188,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccessDeniedRoute: typeof AccessDeniedRoute
   AccountsRoute: typeof AccountsRouteWithChildren
   AdditionalWorkRoute: typeof AdditionalWorkRouteWithChildren
   AuthRoute: typeof AuthRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/accounts'
       fullPath: '/accounts'
       preLoaderRoute: typeof AccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access-denied': {
+      id: '/access-denied'
+      path: '/access-denied'
+      fullPath: '/access-denied'
+      preLoaderRoute: typeof AccessDeniedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -323,6 +343,7 @@ const FreshdeskTicketsRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccessDeniedRoute: AccessDeniedRoute,
   AccountsRoute: AccountsRouteWithChildren,
   AdditionalWorkRoute: AdditionalWorkRouteWithChildren,
   AuthRoute: AuthRoute,
