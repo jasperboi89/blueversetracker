@@ -310,6 +310,11 @@ export const ticketsStore = {
     ensureLoaded();
     return state;
   },
+  clearAll() {
+    ensureLoaded();
+    state = { tickets: [], workSessions: {}, recentIds: {} };
+    persist();
+  },
   getTicket(id: string): Ticket | undefined {
     ensureLoaded();
     return state.tickets.find((t) => t.id === id);

@@ -183,6 +183,11 @@ function patchItem(id: string, fn: (i: AdditionalWork) => AdditionalWork) {
 export const additionalWorkStore = {
   subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },
   getState(): State { ensureLoaded(); return state; },
+  clearAll() {
+    ensureLoaded();
+    state = { items: [] };
+    persist();
+  },
   get(id: string) { ensureLoaded(); return state.items.find((i) => i.id === id); },
   byAccount(num: string) {
     ensureLoaded();

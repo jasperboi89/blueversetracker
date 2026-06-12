@@ -176,6 +176,11 @@ function persist() {
 export const accountsStore = {
   subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); },
   getState(): State { ensureLoaded(); return state; },
+  clearAll() {
+    ensureLoaded();
+    state = { accounts: [], notes: [], templates: [], recent: {} };
+    persist();
+  },
   get(num: string): Account | undefined {
     ensureLoaded();
     return state.accounts.find((a) => a.number === num);

@@ -363,6 +363,12 @@ export const dispatchStore = {
   getState(): State { ensureLoaded(); return state; },
   getSession(id: string) { ensureLoaded(); return state.sessions.find((s) => s.id === id); },
 
+  clearAll() {
+    ensureLoaded();
+    state = { sessions: [] };
+    persist();
+  },
+
   start({ accountNumber, accountName, ticketNumber }: { accountNumber: string; accountName: string; ticketNumber?: string }) {
     ensureLoaded();
     const s: DispatchSession = {
