@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Bell, Info, X } from "lucide-react";
 import { mockAlerts, type AlertPriority, type MockAlert } from "@/lib/mock/alerts";
 import { formatCentralShort } from "@/lib/shift";
@@ -26,6 +26,8 @@ const styles: Record<AlertPriority, { color: string; bg: string; icon: typeof Al
 export function AlertCenter() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [showDismissed, setShowDismissed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const visible = useMemo(
     () =>
@@ -34,7 +36,7 @@ export function AlertCenter() {
         .sort(
           (a, b) =>
             order.indexOf(a.priority) - order.indexOf(b.priority) ||
-            b.updatedAt.getTime() - a.updatedAt.getTime(),
+            a.updatedMinutesAgo - b.updatedMinutesAgo,
         ),
     [dismissed],
   );
@@ -101,7 +103,7 @@ export function AlertCenter() {
 
         <div className="grid gap-2">
           {visible.map((a) => (
-            <AlertRow key={a.id} alert={a} onDismiss={() => setDismissed((s) => new Set(s).add(a.id))} />
+            <AlertRow key={a.id} alert={a} mounted={mounted} onDismiss={() => setDismissed((s) => new Set(s).add(a.id))} />
           ))}
           {showDismissed &&
             mockAlerts
@@ -128,9 +130,10 @@ export function AlertCenter() {
   );
 }
 
-function AlertRow({ alert, onDismiss }: { alert: MockAlert; onDismiss: () => void }) {
+function AlertRow({ alert, mounted, onDismiss }: { alert: MockAlert; mounted: boolean; onDismiss: () => void }) {
   const s = styles[alert.priority];
   const Icon = s.icon;
+  const updatedAt = mounted ? new Date(Date.now() - alert.updatedMinutesAgo * 60_000) : null;
   return (
     <div
       className="flex items-start gap-3 rounded-lg border p-3"
@@ -141,7 +144,7 @@ function AlertRow({ alert, onDismiss }: { alert: MockAlert; onDismiss: () => voi
         <div className="flex items-center justify-between gap-2">
           <div className="truncate text-sm font-medium text-foreground">{alert.title}</div>
           <div className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
-            Updated {formatCentralShort(alert.updatedAt)}
+            {updatedAt ? `Updated ${formatCentralShort(updatedAt)}` : "\u00a0"}
           </div>
         </div>
         <div className="mt-0.5 text-xs text-muted-foreground">{alert.detail}</div>
