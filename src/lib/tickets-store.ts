@@ -263,15 +263,61 @@ function loadInitial(): State {
     if (raw) {
       const parsed = JSON.parse(raw) as State;
       if (parsed && Array.isArray(parsed.tickets)) {
-        return {
+        return runTicketsDemoMigration({
           tickets: parsed.tickets,
           workSessions: parsed.workSessions ?? {},
           recentIds: parsed.recentIds ?? {},
-        };
+        });
       }
     }
   } catch {}
   return { tickets: seed(), workSessions: {}, recentIds: {} };
+}
+
+const TICKETS_DEMO_MIGRATION_KEY = "aih:tickets:demo-recover:v1";
+function runTicketsDemoMigration(s: State): State {
+  if (typeof window === "undefined") return s;
+  if (localStorage.getItem(TICKETS_DEMO_MIGRATION_KEY)) return s;
+  const next: State = {
+    ...s,
+    tickets: s.tickets.map((t) => recoverTicketIfUserWorked(t, s.workSessions[t.id])),
+  };
+  try { localStorage.setItem(TICKETS_DEMO_MIGRATION_KEY, "1"); } catch {}
+  return next;
+}
+
+function recoverTicketIfUserWorked(t: Ticket, session?: WorkSession): Ticket {
+  if (!t.isDemo) return t;
+  const userHubHistory = (t.hubHistory ?? []).some(
+    (h) => h.kind === "note" || h.kind === "snip",
+  );
+  const userSnips = (t.hubSnips?.length ?? 0) > 0;
+  const manualAccount = t.accountSource === "manual";
+  const sessionHasWork = !!session && (
+    !!session.issueText?.trim() ||
+    !!session.changesText?.trim() ||
+    !!session.resultStatus ||
+    !!session.generatedNote?.trim() ||
+    !!session.resultNotes?.trim()
+  );
+  if (userHubHistory || userSnips || manualAccount || sessionHasWork) {
+    return { ...t, isDemo: false };
+  }
+  return t;
+}
+
+/** Re-run the demo-recovery migration on demand (Settings button). */
+export function recoverRealWorkFromDemo(): { tickets: number } {
+  ensureLoaded();
+  let recovered = 0;
+  const tickets = state.tickets.map((t) => {
+    const next = recoverTicketIfUserWorked(t, state.workSessions[t.id]);
+    if (t.isDemo && !next.isDemo) recovered++;
+    return next;
+  });
+  state = { ...state, tickets };
+  persist();
+  return { tickets: recovered };
 }
 
 let state: State = { tickets: [], workSessions: {}, recentIds: {} };
