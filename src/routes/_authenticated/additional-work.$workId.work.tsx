@@ -34,7 +34,7 @@ import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/additional-work/$workId/work")({
+export const Route = createFileRoute("/_authenticated/additional-work/$workId/work")({
   head: () => ({ meta: [{ title: "Additional Work — Workspace" }] }),
   component: WorkspacePage,
 });

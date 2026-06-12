@@ -8,7 +8,7 @@ import { OverviewCards } from "@/components/home/OverviewCards";
 import { RecentlyCompleted } from "@/components/home/RecentlyCompleted";
 import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Home — Account Intel Hub" },

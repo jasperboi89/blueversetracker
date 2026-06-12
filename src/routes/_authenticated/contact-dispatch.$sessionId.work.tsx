@@ -18,7 +18,7 @@ import { MarkPostedModal } from "@/components/dispatch/MarkPostedModal";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/contact-dispatch/$sessionId/work")({
+export const Route = createFileRoute("/_authenticated/contact-dispatch/$sessionId/work")({
   head: () => ({ meta: [{ title: "Contact Dispatch Testing Workspace — Account Intel Hub" }] }),
   component: Workspace,
 });

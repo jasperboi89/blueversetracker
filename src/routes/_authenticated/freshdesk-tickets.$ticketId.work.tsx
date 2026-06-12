@@ -42,7 +42,7 @@ import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/freshdesk-tickets/$ticketId/work")({
+export const Route = createFileRoute("/_authenticated/freshdesk-tickets/$ticketId/work")({
   head: () => ({ meta: [{ title: "Ticket Work — Account Intel Hub" }] }),
   component: WorkspacePage,
 });

@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { useRecurringRows, recurringStore } from "@/lib/reports/recurring-issues";
 import { AlertTriangle } from "lucide-react";
 
-export const Route = createFileRoute("/accounts/$accountNumber")({
+export const Route = createFileRoute("/_authenticated/accounts/$accountNumber")({
   head: () => ({ meta: [{ title: "Account — Account Intel Hub" }] }),
   component: AccountProfilePage,
 });

@@ -5,7 +5,7 @@ import { ActiveTicketSections } from "@/components/freshdesk/ActiveTicketSection
 import { TicketPreviewDrawer } from "@/components/freshdesk/TicketPreviewDrawer";
 import { ticketsStore, useTickets } from "@/lib/tickets-store";
 
-export const Route = createFileRoute("/freshdesk-tickets")({
+export const Route = createFileRoute("/_authenticated/freshdesk-tickets")({
   head: () => ({
     meta: [
       { title: "Freshdesk Tickets — Account Intel Hub" },

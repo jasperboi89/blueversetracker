@@ -39,7 +39,7 @@ import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
 import { formatCentralExact } from "@/lib/shift";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Account Intel Hub" }] }),
   component: SettingsPage,
 });

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { accountsStore, useAccounts } from "@/lib/accounts-store";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/accounts")({
+export const Route = createFileRoute("/_authenticated/accounts")({
   head: () => ({ meta: [{ title: "Accounts — Account Intel Hub" }] }),
   component: AccountsLayout,
 });

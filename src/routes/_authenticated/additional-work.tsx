@@ -7,7 +7,7 @@ import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAd
 import { useAdditionalWork } from "@/lib/additional-work-store";
 import { formatCentralShort } from "@/lib/shift";
 
-export const Route = createFileRoute("/additional-work")({
+export const Route = createFileRoute("/_authenticated/additional-work")({
   head: () => ({ meta: [{ title: "Additional Work — Account Intel Hub" }] }),
   component: AdditionalWorkPage,
 });

@@ -30,7 +30,7 @@ const reportSchema = z.object({
   to: z.string().optional().catch(undefined),
 });
 
-export const Route = createFileRoute("/reports")({
+export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({ meta: [{ title: "Reports — Account Intel Hub" }] }),
   validateSearch: (s: Record<string, unknown>) => reportSchema.parse(s),
   component: ReportsPage,
