@@ -42,7 +42,11 @@ export const setThemePrefs = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => setSchema.parse(input))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const row: Record<string, unknown> = { user_id: userId };
+    const row: {
+      user_id: string;
+      theme?: string;
+      qb_first_entry_completed?: boolean;
+    } = { user_id: userId };
     if (data.theme !== undefined) row.theme = data.theme;
     if (data.qbFirstEntryCompleted !== undefined)
       row.qb_first_entry_completed = data.qbFirstEntryCompleted;
