@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { useDemoMode } from "./settings/demo-mode-store";
 
 export type AdditionalWorkStatus = "working" | "completed";
 export type AddWorkIssueClassification = "Scripting Issue" | "Client Change" | "Other";
@@ -67,7 +66,7 @@ interface State {
   items: AdditionalWork[];
 }
 
-const KEY = "aih:addwork:v1";
+const KEY = "aih:addwork:v2";
 
 let state: State = { items: [] };
 let initialized = false;
@@ -77,106 +76,16 @@ function newId(p = "id") {
   return `${p}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function seed(): AdditionalWork[] {
-  const now = Date.now();
-  const m = 60_000;
-  const h = 60 * m;
-  const d = 24 * h;
-  const mk = (over: Partial<AdditionalWork>): AdditionalWork => ({
-    id: newId("aw"),
-    title: "",
-    whatNeedsDone: "",
-    notes: "",
-    programmingStatusNotes: "",
-    status: "working",
-    createdAt: now,
-    updatedAt: now,
-    snips: [],
-    notesList: [],
-    ...over,
-  });
-  return [
-    mk({
-      title: "Email Riverbend on revised overnight rotation",
-      accountNumber: "1042",
-      accountName: "Riverbend Family Clinic",
-      whatNeedsDone:
-        "Send confirmation email to Riverbend with the rotation update plus revised on-call grid.",
-      notes: "Pull rotation grid attachment from ticket 30182 before sending.",
-      programmingStatusNotes: "",
-      updatedAt: now - 35 * m,
-    }),
-    mk({
-      title: "Supervisor follow-up: weekend coverage exceptions",
-      whatNeedsDone:
-        "Document the weekend coverage exception list for Mark and send a quick recap.",
-      notes: "No account linked — supervisor task.",
-      updatedAt: now - 90 * m,
-    }),
-    mk({
-      title: "Add Dr. Reyes to Cedar Oaks backup list",
-      accountNumber: "4821",
-      accountName: "Cedar Oaks Veterinary",
-      whatNeedsDone:
-        "Update Cedar Oaks backup contact list to include Dr. Reyes for weekend overnight backup.",
-      notes: "",
-      status: "completed",
-      completedAt: now - 8 * h,
-      completedBy: "LTP",
-      completionSummary: "Added Dr. Reyes to weekend backup. Confirmed with CS via Slack.",
-      updatedAt: now - 8 * h,
-    }),
-    mk({
-      title: "Reach out to client re: holiday hours change",
-      whatNeedsDone: "Email client about holiday hours change.",
-      notes: "",
-      status: "completed",
-      completedAt: now - 1 * d,
-      completedBy: "LTP",
-      completionSummary: "Email sent. Awaiting confirmation.",
-      updatedAt: now - 1 * d,
-    }),
-    mk({
-      title: "Carry over: walk through new dispatcher script edits",
-      accountNumber: "2188",
-      accountName: "Northstar Pediatrics",
-      whatNeedsDone:
-        "Review dispatcher script edits with overnight team before next shift.",
-      notes: "Originally a Night Plan item — converted to Additional Work.",
-      nightPlanItemId: "np-mock-converted",
-      updatedAt: now - 3 * h,
-    }),
-  ].map((w) => ({ ...w, isDemo: true }));
-}
-
 function loadInitial(): State {
   if (typeof window === "undefined") return { items: [] };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as State;
-      if (Array.isArray(p?.items)) return runAddWorkDemoMigration(p);
+      if (Array.isArray(p?.items)) return p;
     }
   } catch {}
-  return { items: seed() };
-}
-
-const DEMO_MIGRATION_KEY = "aih:addwork:demo-recover:v1";
-function runAddWorkDemoMigration(s: State): State {
-  if (typeof window === "undefined") return s;
-  if (localStorage.getItem(DEMO_MIGRATION_KEY)) return s;
-  // Stamp every existing item as demo, then recover real ones with user work.
-  const next: State = {
-    items: s.items.map((i) => {
-      const hasUserWork =
-        (i.notesList?.length ?? 0) > 0 ||
-        (i.snips?.length ?? 0) > 0 ||
-        (i.completionFinalNotes?.trim()?.length ?? 0) > 0;
-      return hasUserWork ? { ...i, isDemo: false } : { ...i, isDemo: true };
-    }),
-  };
-  try { localStorage.setItem(DEMO_MIGRATION_KEY, "1"); } catch {}
-  return next;
+  return { items: [] };
 }
 
 function ensureLoaded() {
@@ -303,31 +212,13 @@ export const additionalWorkStore = {
     state = { ...state, items: state.items.filter((i) => i.id !== id) };
     persist();
   },
-  recoverRealWork(): number {
-    ensureLoaded();
-    let recovered = 0;
-    const items = state.items.map((i) => {
-      if (!i.isDemo) return i;
-      const hasUserWork =
-        (i.notesList?.length ?? 0) > 0 ||
-        (i.snips?.length ?? 0) > 0 ||
-        (i.completionFinalNotes?.trim()?.length ?? 0) > 0;
-      if (hasUserWork) { recovered++; return { ...i, isDemo: false }; }
-      return i;
-    });
-    state = { ...state, items };
-    persist();
-    return recovered;
-  },
+  recoverRealWork(): number { return 0; },
 };
 
 export function useAdditionalWork() {
-  const snap = useSyncExternalStore(
+  return useSyncExternalStore(
     additionalWorkStore.subscribe,
     () => additionalWorkStore.getState(),
     () => ({ items: [] as AdditionalWork[] }),
   );
-  const demo = useDemoMode();
-  if (demo) return snap;
-  return { ...snap, items: snap.items.filter((i) => !i.isDemo) };
 }
