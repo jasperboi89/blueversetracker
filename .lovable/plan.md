@@ -1,64 +1,95 @@
-## What's happening
 
-Two real problems, both rooted in seed/demo data not being treated as demo everywhere:
+# Quantum Bloom — Phase 1
 
-### 1. Dashboard still shows demo data with Demo Mode OFF
-Last round only gated the static `mockAlerts` and demo Freshdesk tickets. These other surfaces still slip through and look like ghost data:
+BlueVerse stays the default. Quantum Bloom is an opt-in theme selectable from Settings → Themes. Phase 1 ships the visual environment and theme switch only. Discovery Log, Sanctuary, Adaptive Learning (Quantum Bloom Core), Constellations, Archive, Cosmic Weather, Celebrations, Sleep Mode learning, and event/particle controls are deferred to later phases — the settings UI will list them as "Coming soon".
 
-- **`RecentlyCompleted`** unconditionally spreads `getMockCompleted()` into the list — that's the demo "Recently Completed Work" you can't clear.
-- **Dispatch sessions** (`src/lib/dispatch-store.ts` `seed()`) have no `isDemo` flag and `useDispatch()` doesn't filter — demo dispatch sessions feed `RecentlyCompleted` ("Ready for Activation") and the Contact Dispatch index.
-- **Additional Work items** (`src/lib/additional-work-store.ts` `seed()`) have no `isDemo` flag and `useAdditionalWork()` doesn't filter — demo items feed `RecentlyCompleted` and the Additional Work index.
-- **Reports seeds** (`src/lib/mock/reports-seed.ts`) push demo tickets via `ticketsStore._seedExtra` and a demo dispatch session via `dispatchStore._seedExtra` without `isDemo`. Those drive `useRecurringRows()`, so the "Recurring Scripting Issues" alerts in Alert Center are demo-driven even though they look "dynamic."
-- **Night Plan history** (`src/lib/reports/night-plan-history.ts` `seed()`) seeds archived items without `isDemo`. Those drive the "Night Plan Archive cleanup" alert.
-- **Alert dismissals** are only `useState` in `AlertCenter` — they come back on every refresh, which feels like "won't clear out."
+## What you get in Phase 1
 
-### 2. "My ticket work today / the account I added isn't showing"
-Two likely causes, both fixable in the same pass:
+- A new theme called **Quantum Bloom** selectable from **Settings → Themes**.
+- A **WebGL nebula** rendered behind the entire portal when Quantum Bloom is active (replaces the current GalaxyBackground only while active).
+- **Aurora color phases** that gradually shift the nebula and accent glow across the 10 PM → 6 AM Central window:
+  10 PM cyan/electric → 11 PM blue→violet → 12 AM deep violet → 1 AM violet/magenta → 2 AM indigo → 3 AM royal+gold → 4 AM indigo→blue → 5 AM cyan → 6 AM completion.
+  Outside the shift window the nebula slows down and dims (basic Daytime Sleep Mode — visual only, no learning).
+- **Entry sequence** on theme load:
+  - First-ever open: 2–3 s sequence — darkness → stars → nebula ignite → crystal materialize → "Quantum Bloom Core Online" / "Aurora Engine Initialized" / "Good Evening, Luke" → dashboard fades in. A simple **Night Forecast** card appears in the dashboard header using real data (open tickets, active alerts, night plan status).
+  - Subsequent opens: 0.5–1 s — nebula pulse + glass shimmer → dashboard.
+- **Holographic Crystal Glass** surface variant for cards/drawers/modals when the theme is active (refraction, spectral edge, bloom reflections) — applied via CSS tokens so every existing panel benefits automatically.
+- Per-user persistence in Lovable Cloud so the theme choice + "has seen first entry" follow the user across devices.
 
-- With Demo Mode OFF, the recent-ticket list and Active sections look empty because the page is also filtering tickets the user actually pulled/worked, when those tickets ended up tagged `isDemo` by mistake (e.g. when re-imported via a seed code path, or because an older build assigned `isDemo: true` and the flag stuck in localStorage). Need a one-time migration that strips `isDemo` from any ticket that has real user work on it (any `hubHistory` entry authored by the user, any `hubSnips`, a non-empty `workSession`, or `accountSource === "manual"`).
-- `RecentlyCompleted` only shows real tickets when `status === "completed" && completedAt` is set. If a ticket the user is "working on" hasn't been marked completed it won't appear here — that's expected, but the demo entries crowding it make it look broken. Filtering demo entries solves the visible symptom.
+## What's deferred (later phases)
 
-## Plan
+Discovery Log, Constellation View, Archive, Sanctuary, Quantum Bloom Core (adaptive learning), Cosmic Weather events, Celebration system (ticket / testing / night plan / shift completions), event-frequency + particle-density + visual-intensity sliders. Settings panels for these will render as disabled "Coming soon" placeholders so the structure exists for later phases to fill in.
 
-### A. Tag everything seeded as `isDemo` and filter it
-1. `src/lib/dispatch-store.ts`
-   - Add `isDemo?: boolean` to `DispatchSession`.
-   - Mark every record returned by `seed()` and `_seedExtra()` with `isDemo: true`.
-   - In `useDispatch()`, read `useDemoMode()`; when off, filter `sessions` to `!s.isDemo`.
-2. `src/lib/additional-work-store.ts`
-   - Add `isDemo?: boolean` to `AdditionalWork`.
-   - Mark `seed()` results `isDemo: true`.
-   - In `useAdditionalWork()`, gate by `useDemoMode()` the same way.
-3. `src/lib/reports/night-plan-history.ts`
-   - Add `isDemo?: boolean` to `NPHistoryItem`, mark seed entries demo, and skip demo items in `readyForCleanup()` and the hook used by `AlertCenter` when demo mode is off.
-4. `src/lib/mock/reports-seed.ts`
-   - When calling `ticketsStore._seedExtra` / `dispatchStore._seedExtra`, mark the records `isDemo: true` so recurring-issues and reports lists also disappear when demo mode is off.
-5. `src/lib/reports/recurring-issues.ts`
-   - `useRecurringRows()` should ignore demo tickets/sessions when demo mode is off (so the "Account X recurring scripting" alerts go away).
+## User flow
 
-### B. Stop demo entries leaking into the home dashboard
-6. `src/components/home/RecentlyCompleted.tsx`
-   - Only include `getMockCompleted()` results when demo mode is on.
-   - `ticketCompleted`, `dispatchReady`, `addWorkCompleted` are already sourced from the filtered hooks above, so they'll naturally drop demo rows once steps A1–A2 land.
-7. `src/components/home/AlertCenter.tsx`
-   - Already filters `mockAlerts`. After step A3/A5 the "recurring" and "night-plan cleanup" dynamic alerts will also disappear when demo is off.
-   - Persist dismissed alert IDs to `localStorage` (per shift key) so dismissals survive refresh.
+1. Open Settings → new **Themes** section appears with two cards: BlueVerse (default) and Quantum Bloom.
+2. Select Quantum Bloom → entry sequence plays → portal re-renders with nebula behind everything and crystal-glass surfaces.
+3. All existing pages (Home, Freshdesk, Additional Work, Contact Dispatch, Accounts, Reports, Settings, drawers, modals) work unchanged — only the background and surface tokens differ.
+4. Switch back to BlueVerse any time from the same screen.
 
-### C. Recover the user's real work
-8. `src/lib/tickets-store.ts` — add a one-time migration inside `loadInitial()` (versioned, e.g. `aih:tickets:demo-cleanup:v1`):
-   - For each persisted ticket, if it has any of: `hubHistory.some(h => h.initials === "LTP" || h.kind === "note" || h.kind === "snip")`, any `hubSnips.length > 0`, `accountSource === "manual"`, or a populated `workSessions[id]` (non-default `issueText`, `changesText`, `resultStatus`, or `generatedNote`), then set `isDemo: false`.
-   - Same idea for dispatch sessions and additional-work items (any user-authored snip/note/status change clears `isDemo`).
-9. Add a Settings → Data / Cleanup action "Restore my real work" that runs the migration again on demand, and confirm the existing "Clear all demo data" button now also removes seeded dispatch sessions, additional-work items, and night-plan history.
+## Technical section
 
-### D. Verification
-- Toggle Demo Mode off on `/` and confirm: Alert Center is empty (or only shows truly user-generated alerts), `RecentlyCompleted` is empty or only shows the user's completed work, Freshdesk index shows only the Sheboygan ticket, Contact Dispatch and Additional Work indexes show only the user's real records.
-- Toggle Demo Mode back on and confirm all seed content returns intact (no destructive deletes).
-- Dismiss an alert, refresh, confirm it stays dismissed.
+**Dependencies**
+- Add `three` and `@react-three/fiber` for the WebGL nebula + bloom. Postprocessing via `@react-three/postprocessing` for the bloom pass. All client-only (lazy-loaded; SSR-safe behind `<ClientOnly>`).
 
-## Technical notes
-- No backend/schema changes; everything is localStorage.
-- `_seedExtra` is the join point that quietly bypasses the per-store seed, so it must also stamp `isDemo`.
-- The migration in step 8 is conservative — it only un-flags a ticket when there is clear evidence of human work on it, so seed tickets that were never touched stay flagged.
-- Persisting dismissed alert IDs uses the existing `createPersistedStore` helper to match the Settings pattern.
+**Theme store**
+- `src/lib/settings/theme-store.ts` — Zustand-style persisted store mirroring `demo-mode-store.ts`. Values: `'blueverse' | 'quantum-bloom'`. Cached in localStorage for instant first paint; hydrated from Supabase on sign-in.
+- `useApplyTheme()` hook sets `document.documentElement.dataset.theme` so CSS can branch.
 
-Scope intentionally excludes accounts-store and night-plan-store seeding because those weren't called out; happy to extend if you want those gated too.
+**CSS tokens (`src/styles.css`)**
+- New `[data-theme="quantum-bloom"]` block overrides `--background`, `--card`, `--border`, plus introduces `--qb-phase-primary`, `--qb-phase-secondary`, `--qb-phase-accent` driven by a single timer.
+- New `@utility crystal-glass` variant of `glass-panel` (stronger blur, spectral border via conic gradient, inner bloom). `glass-panel` itself remains untouched for BlueVerse.
+- Aurora phase variables animated via a top-level `<QuantumBloomDriver />` component that writes CSS vars to `:root` every minute using `getShiftPhase(now)` derived from existing `src/lib/shift.ts`.
+
+**Nebula**
+- `src/components/quantum-bloom/NebulaCanvas.tsx` — `<Canvas>` with a single full-screen plane running a fragment shader (FBM noise + domain warping) and an `EffectComposer` bloom pass. Reads phase colors from CSS vars via `getComputedStyle` on mount + on phase change.
+- Mounted in `__root.tsx` inside `<ClientOnly>`, gated by `theme === 'quantum-bloom'`. Replaces `<GalaxyBackground />` only while active.
+- WebGPU is not used — Three.js WebGL with a fallback: if `WebGLRenderingContext` is unavailable, render the existing GalaxyBackground instead and surface a one-line toast.
+- DPR clamped to 1.5, paused via `document.visibilitychange`, and frame-rate-throttled to 30 fps outside the shift window for Sleep Mode.
+
+**Entry sequence**
+- `src/components/quantum-bloom/EntryOverlay.tsx` — full-screen overlay with the 6-step animation. State: `'first' | 'returning' | 'done'`. First-time flag read from Supabase (`quantum_bloom_state.first_entry_completed`); falls back to localStorage if offline.
+- Night Forecast computed from existing stores (`useTickets`, `useAlerts`, `night-plan-store`) — no new business logic.
+
+**Persistence (Lovable Cloud)**
+- New table `public.user_theme_prefs`:
+  - `user_id uuid PK references auth.users`
+  - `theme text not null default 'blueverse'` (check: in `('blueverse','quantum-bloom')`)
+  - `qb_first_entry_completed boolean not null default false`
+  - `updated_at timestamptz`
+- GRANTs to `authenticated` + `service_role`; RLS policies scoped to `auth.uid() = user_id` for select/insert/update.
+- Read/write through two server fns in `src/lib/settings/theme.functions.ts` using `requireSupabaseAuth`:
+  - `getThemePrefs()` — returns row, upserting defaults on first call.
+  - `setThemePrefs({ theme?, qbFirstEntryCompleted? })`.
+- Hook `useThemeSync()` mounted in `_authenticated/route.tsx` — pulls prefs on sign-in into the local store, pushes on change (debounced).
+
+**Settings UI**
+- New section `src/components/settings/ThemesSection.tsx` in `src/routes/_authenticated/settings.tsx`:
+  - Two large preview cards (BlueVerse / Quantum Bloom) with a "Use this theme" button.
+  - Below, a collapsed **Quantum Bloom Settings** group with the full list of toggles from the spec rendered disabled with a "Coming soon" badge — except Night Shift Synchronization, which is on by default and read-only in Phase 1.
+
+**Files to add**
+- `src/lib/settings/theme-store.ts`
+- `src/lib/settings/theme.functions.ts`
+- `src/hooks/use-theme-sync.ts`
+- `src/components/quantum-bloom/NebulaCanvas.tsx`
+- `src/components/quantum-bloom/EntryOverlay.tsx`
+- `src/components/quantum-bloom/QuantumBloomDriver.tsx`
+- `src/components/quantum-bloom/NightForecast.tsx`
+- `src/components/settings/ThemesSection.tsx`
+
+**Files to edit**
+- `src/styles.css` — add `[data-theme="quantum-bloom"]` tokens, `@utility crystal-glass`, phase keyframes.
+- `src/routes/__root.tsx` — mount `<QuantumBloomDriver />`, conditional `<NebulaCanvas />` vs `<GalaxyBackground />`, `<EntryOverlay />`.
+- `src/routes/_authenticated/route.tsx` — mount `useThemeSync()`.
+- `src/routes/_authenticated/settings.tsx` — render `<ThemesSection />`.
+- `src/components/home/GreetingPanel.tsx` (or sibling) — render `<NightForecast />` when Quantum Bloom is active.
+- `src/start.ts` — already has `attachSupabaseAuth`; no change needed unless missing.
+
+**Verification**
+- Toggle Quantum Bloom in Settings → entry sequence plays → nebula appears → all pages render with crystal-glass surfaces → readability preserved.
+- Toggle back to BlueVerse → reverts cleanly, no leftover styles.
+- Refresh during shift window → nebula phase matches current Central hour; outside window it visibly slows.
+- Sign out / sign in on a second device → theme choice follows the user.
+
+If this Phase 1 plan looks right, approve and I'll build it. Phase 2 (Discovery Log + Celebrations) and Phase 3 (Quantum Bloom Core learning, Sanctuary, Constellations, Archive, Cosmic Weather) can each be a separate approved plan.
