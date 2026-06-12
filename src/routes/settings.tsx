@@ -105,8 +105,7 @@ function FreshdeskSection() {
     try {
       const res = await freshdeskTestConnection();
       if (res.ok) {
-        const apiTail = (process.env.FRESHDESK_API_KEY ?? "").slice(-4) || "****";
-        markFreshdeskConnected(domainInput || cfg.domain || (res.domain ?? ""), apiTail, res.agentName);
+        markFreshdeskConnected(domainInput || cfg.domain || (res.domain ?? ""), "****", res.agentName);
         toast.success(`Connected to Freshdesk as ${res.agentName}`);
       } else {
         markFreshdeskError(res.error ?? "Unknown error");
