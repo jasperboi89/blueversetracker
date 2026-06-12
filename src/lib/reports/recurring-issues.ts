@@ -10,6 +10,8 @@ const KEY = "aih:recurring:v1";
 let state: ReviewState = { reviewed: {} };
 let initialized = false;
 const listeners = new Set<() => void>();
+let cached: RecurringRow[] | null = null;
+let dirty = true;
 
 function load(): ReviewState {
   if (typeof window === "undefined") return { reviewed: {} };
@@ -29,6 +31,7 @@ function persist() {
   if (typeof window !== "undefined") {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   }
+  dirty = true;
   listeners.forEach((l) => l());
 }
 
@@ -84,7 +87,7 @@ export interface RecurringRow {
   active: boolean;
 }
 
-export function getRecurringRows(): RecurringRow[] {
+function computeRecurringRows(): RecurringRow[] {
   ensureLoaded();
   const by = scriptingTicketsByAccount();
   const rows: RecurringRow[] = [];
@@ -113,6 +116,14 @@ export function getRecurringRows(): RecurringRow[] {
   });
 }
 
+export function getRecurringRows(): RecurringRow[] {
+  if (dirty || cached === null) {
+    cached = computeRecurringRows();
+    dirty = false;
+  }
+  return cached;
+}
+
 export function getActiveRecurringAccounts(): RecurringRow[] {
   return getRecurringRows().filter((r) => r.active);
 }
@@ -123,9 +134,10 @@ export function isAccountActiveRecurring(num: string): RecurringRow | undefined 
 
 export const recurringStore = {
   subscribe(l: () => void) {
-    listeners.add(l);
-    const unsubTickets = ticketsStore.subscribe(l);
-    return () => { listeners.delete(l); unsubTickets(); };
+    const wrapped = () => { dirty = true; l(); };
+    listeners.add(wrapped);
+    const unsubTickets = ticketsStore.subscribe(wrapped);
+    return () => { listeners.delete(wrapped); unsubTickets(); };
   },
   markReviewed(accountNumber: string) {
     ensureLoaded();
