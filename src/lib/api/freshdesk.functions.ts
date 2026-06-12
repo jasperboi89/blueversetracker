@@ -66,9 +66,20 @@ function detectAccount(t: FreshdeskTicketDTO): { number?: string; name?: string 
     if (typeof c === "number") { acctNum = String(c); break; }
   }
   if (!acctNum) {
-    // Try subject pattern like "[1234]" or "Acct 1234"
-    const m = (t.subject ?? "").match(/(?:\[|Acct\s*|Account\s*#?\s*)(\d{3,8})/i);
-    if (m) acctNum = m[1];
+    const haystacks: string[] = [
+      t.subject ?? "",
+      t.description_text ?? "",
+      (t.tags ?? []).join(" "),
+      t.company?.name ?? "",
+      t.requester?.name ?? "",
+      t.requester?.email ?? "",
+    ];
+    const labeled = /(?:\[|Acct\.?\s*|Account\s*#?\s*|#\s*)(\d{3,8})\b/i;
+    const bare = /\b(\d{3,8})\b/;
+    for (const h of haystacks) {
+      const m = h.match(labeled) ?? h.match(bare);
+      if (m) { acctNum = m[1]; break; }
+    }
   }
   const acctName = t.company?.name;
   return { number: acctNum, name: acctName };
