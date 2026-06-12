@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -45,6 +46,7 @@ import { CelebrationOverlay } from "./CelebrationOverlay";
 import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ConvertFromNightPlanModal } from "@/components/additional-work/ConvertFromNightPlanModal";
 
 const priorityMeta: Record<Priority, { label: string; color: string; icon: typeof Star }> = {
   must: { label: "Must Do Tonight", color: "var(--gold-glow)", icon: Star },
@@ -563,14 +565,7 @@ function NightPlanDrawer({
           <TabsContent value="converted" className="mt-3 space-y-2">
             {converted.length === 0 && <Empty text="No converted items." />}
             {converted.map((i) => (
-              <div key={i.id}>
-                <PlanRow item={i} onClick={() => onOpenItem(i.id)} />
-                <div className="mt-1 px-3">
-                  <Button size="sm" variant="ghost" disabled className="text-xs">
-                    Open Additional Work (later phase)
-                  </Button>
-                </div>
-              </div>
+              <ConvertedRow key={i.id} item={i} onOpen={() => onOpenItem(i.id)} />
             ))}
           </TabsContent>
         </Tabs>
@@ -581,6 +576,29 @@ function NightPlanDrawer({
 
 function Empty({ text }: { text: string }) {
   return <div className="rounded-lg border border-dashed border-border/40 p-6 text-center text-sm text-muted-foreground">{text}</div>;
+}
+
+function ConvertedRow({ item, onOpen }: { item: NightPlanItem; onOpen: () => void }) {
+  const nav = useNavigate();
+  return (
+    <div>
+      <PlanRow item={item} onClick={onOpen} />
+      <div className="mt-1 px-3">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-xs"
+          disabled={!item.additionalWorkId}
+          onClick={() =>
+            item.additionalWorkId &&
+            nav({ to: "/additional-work/$workId/work", params: { workId: item.additionalWorkId } })
+          }
+        >
+          Open Additional Work
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () => void }) {
