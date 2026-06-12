@@ -1,47 +1,26 @@
-## Fix: Account Number handling in Freshdesk Ticket Workspace
+## Goal
+Honor the existing **Demo Mode** toggle so seeded demo Freshdesk tickets and seeded mock alerts disappear from the portal when Demo Mode is off. Real tickets (e.g. the Sheboygan Internal Medicine ticket you pulled in yourself) stay visible.
 
-Right now the ticket header shows `Account {accountNumber} — {accountName}` as plain text with no way to edit, and when Freshdesk doesn't supply an account number the ticket falls back to `"----"`. We'll improve detection, surface an editable field when missing, persist manual entries, and link to the Accounts table.
+Today the toggle exists in Settings → Data / Cleanup, and tickets are already tagged with `isDemo: true` at seed time — but nothing in the UI actually filters them out. Mock alerts are always shown unconditionally.
 
-### 1. Broaden Freshdesk auto-detect
+## Changes
 
-In `src/lib/api/freshdesk.functions.ts` (`detectAccount`):
-- Keep custom-field check first.
-- Then scan, in order: `subject`, `description_text`, `tags[]`, `company.name`, `requester.name`/`email`.
-- Match a 3–8 digit number, with optional prefixes like `Acct`, `Account #`, `[1234]`, or a bare numeric token.
-- Pass `tags` and `description_text` through (already in DTO).
-- Return both `accountNumber` and `accountName` (prefer company name).
+### 1. Filter demo tickets when Demo Mode is off
+`src/lib/tickets-store.ts`
+- Update the `useTickets()` hook (and any related selectors used by the lookup card, active sections, and ticket preview list) to read `useDemoMode()` and exclude tickets where `isDemo === true` when demo mode is off.
+- Tickets you pulled from real Freshdesk (created via `createFromFreshdesk`) do **not** get `isDemo`, so the Sheboygan ticket remains.
+- Recent-tickets list filters demo IDs the same way.
 
-### 2. Track account source on the ticket
+### 2. Filter mock alerts when Demo Mode is off
+`src/components/home/AlertCenter.tsx`
+- Import `useDemoMode`.
+- Only spread `mockAlerts` into the visible list when demo mode is on. Dynamic alerts (recurring scripting issues, Night Plan cleanup) continue to show in both modes because they come from real data.
 
-In `src/lib/tickets-store.ts`:
-- Add `accountSource?: "freshdesk" | "manual"` to `Ticket`.
-- `createFromFreshdesk`: leave `accountNumber` empty (`""`) instead of `"----"` when none detected; set `accountSource: "freshdesk"` only when detected.
-- New action `setAccountNumber(ticketId, number, name?)`:
-  - Validates numeric (digits only, 3–8 chars).
-  - Looks up `accountsStore.get(number)`; if found, uses its name and links; if not, creates a new Account via `accountsStore.create({ number, name: name || "Unlinked Account" })`.
-  - Updates ticket `accountNumber`, `accountName`, `accountSource: "manual"`, pushes a hub history entry.
-- New action `refreshAccountFromFreshdesk(ticketId)`: re-runs `freshdeskPullTicket`, replaces the account fields, resets `accountSource` to `"freshdesk"`.
-- `mergeFreshdeskData` (sync): only overwrite `accountNumber`/`accountName` when `accountSource !== "manual"`.
+### 3. No data deletion required
+The seeded ticket records stay in localStorage so toggling Demo Mode back on restores them. If you'd rather permanently wipe them, the existing **"Clear all demo data"** button in Settings → Data / Cleanup already does that — no change needed there.
 
-### 3. Workspace header UI
-
-In `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx`, replace the static "Account {n} — {name}" line with a small inline component:
-
-- **Has account number** (linked): show `Account {n} — {name}` with a small "Edit" pencil and a "Refresh from Freshdesk" button. Account number is a `Link` to `/accounts/{n}`.
-- **No account number**: show an amber warning panel:
-  > No account number found from Freshdesk. Enter one manually to link this ticket to an account.
-  
-  Below it: a numeric `Input` + "Link Account" button. If the entered number doesn't exist in Accounts, surface an inline "Create new account" row with an optional Account Name field, then `setAccountNumber`.
-- **Edit mode** (from pencil): same input flow but pre-filled; "Replace Account Number" confirm before saving over a manual value.
-
-### 4. Ticket lookup fallback
-
-`src/components/freshdesk/TicketLookupCard.tsx`: no logic change required — manual create already exists, and pulled tickets will now render the warning + editor in the workspace when account number is missing.
-
-### Files changed
-- `src/lib/api/freshdesk.functions.ts` — broader detection
-- `src/lib/tickets-store.ts` — `accountSource`, `setAccountNumber`, `refreshAccountFromFreshdesk`, sync guard, default empty string
-- `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx` — header editor + warning
-- (new) `src/components/freshdesk/AccountLinker.tsx` — small reusable inline editor/warning component
-
-No backend/migration changes — accounts live in `accountsStore` (localStorage), matching existing patterns.
+## Technical notes
+- `Ticket.isDemo` flag already exists and is set in `seed()` (line 253).
+- `demoModeStore` / `useDemoMode()` already exist (`src/lib/settings/demo-mode-store.ts`).
+- No backend or schema changes.
+- Scope is intentionally limited to Freshdesk tickets + alerts (what you called out). Demo dispatch sessions, additional-work items, and accounts are not touched — say the word if you'd like those gated too.
