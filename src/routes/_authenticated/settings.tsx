@@ -99,6 +99,41 @@ function SettingsPage() {
 
 /* ---------------- Freshdesk ---------------- */
 function FreshdeskSection() {
+  return <FreshdeskSectionImpl />;
+}
+
+function SecurityAccessSection() {
+  const { data } = useQuery({
+    queryKey: ["admin-access-summary"],
+    queryFn: () => adminGetAccessSummary(),
+  });
+  const minutes = Math.round(INACTIVITY_LOGOUT_MS / 60000);
+  return (
+    <SectionCard id="security" title="Security & Access" icon={Lock}>
+      <div className="grid gap-2 text-sm">
+        <Row label="Authentication" value="Active" />
+        <Row label="Authorized users" value={`${data?.active ?? "—"} active / ${data?.total ?? "—"} total`} />
+        <Row label="Auto-logoff" value={`${minutes} minutes`} />
+        <Row label="Roles enabled" value="Admin · Programmer · Viewer" />
+        <Row label="Audit logging" value="Enabled" />
+      </div>
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        HIPAA-Safeguarded · Internal Use. User management UI is not enabled in this phase.
+      </p>
+    </SectionCard>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between border-b border-border/20 py-1.5 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function FreshdeskSectionImpl() {
   const cfg = useFreshdeskConfig();
   const [testing, setTesting] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
