@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Bell, Info, X } from "lucide-react";
-import { mockAlerts, type AlertPriority, type MockAlert } from "@/lib/mock/alerts";
+type AlertPriority = "critical" | "warning" | "info";
+interface MockAlert {
+  id: string;
+  priority: AlertPriority;
+  title: string;
+  detail: string;
+  updatedMinutesAgo: number;
+}
 import { formatCentralShort } from "@/lib/shift";
 import { Button } from "@/components/ui/button";
 import { useRecurringRows } from "@/lib/reports/recurring-issues";
 import { useNightPlanHistory, nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useNavigate } from "@tanstack/react-router";
-import { useDemoMode } from "@/lib/settings/demo-mode-store";
 
 const order: AlertPriority[] = ["critical", "warning", "info"];
 const styles: Record<AlertPriority, { color: string; bg: string; icon: typeof AlertTriangle }> = {
@@ -50,10 +56,9 @@ export function AlertCenter() {
   useEffect(() => setMounted(true), []);
   const navigate = useNavigate();
   const recurring = useRecurringRows();
-  const demo = useDemoMode();
   useNightPlanHistory(); // re-render on changes
   const cleanupCount = mounted
-    ? nightPlanHistory.readyForCleanup().filter((i) => demo || !i.isDemo).length
+    ? nightPlanHistory.readyForCleanup().length
     : 0;
   const activeRecurring = recurring.filter((r) => r.active);
 
@@ -80,7 +85,7 @@ export function AlertCenter() {
     return out;
   }, [activeRecurring, cleanupCount]);
 
-  const seedAlerts = demo ? mockAlerts : [];
+  const seedAlerts: MockAlert[] = [];
   const visible = useMemo(
     () =>
       [...dynamic, ...seedAlerts]

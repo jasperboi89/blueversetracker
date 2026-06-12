@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ClipboardList, PhoneOutgoing, Ticket } from "lucide-react";
-import { getMockCompleted, type CompletedKind, type CompletedItem } from "@/lib/mock/completed";
+type CompletedKind = "freshdesk" | "dispatch" | "additional";
+interface CompletedItem {
+  id: string;
+  kind: CompletedKind;
+  title: string;
+  reference: string;
+  completedAt: Date;
+}
 import { formatCentralShort } from "@/lib/shift";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -10,7 +17,6 @@ import { cn } from "@/lib/utils";
 import { useTickets } from "@/lib/tickets-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
-import { useDemoMode } from "@/lib/settings/demo-mode-store";
 
 const kindMeta: Record<CompletedKind, { label: string; icon: typeof Ticket; color: string }> = {
   freshdesk: { label: "Freshdesk", icon: Ticket, color: "var(--cyan-glow)" },
@@ -24,12 +30,12 @@ export function RecentlyCompleted() {
   const { tickets } = useTickets();
   const { sessions } = useDispatch();
   const { items: workItems } = useAdditionalWork();
-  const demo = useDemoMode();
   // Lock the base time after mount so SSR (which uses 0) and client agree initially,
   // then re-render once with the real "now" anchor.
   const [baseMs, setBaseMs] = useState<number>(0);
   useEffect(() => setBaseMs(Date.now()), []);
-  const mockCompleted = demo && baseMs > 0 ? getMockCompleted(baseMs) : [];
+  // baseMs is referenced only so future time-derived logic re-renders after mount.
+  void baseMs;
   const ticketCompleted: CompletedItem[] = tickets
     .filter((t) => t.status === "completed" && t.completedAt)
     .map((t) => ({
@@ -57,7 +63,7 @@ export function RecentlyCompleted() {
       reference: w.accountNumber ? `${w.accountName} · Account ${w.accountNumber}` : "No account linked",
       completedAt: new Date(w.completedAt!),
     }));
-  const combined = [...ticketCompleted, ...dispatchReady, ...addWorkCompleted, ...mockCompleted];
+  const combined = [...ticketCompleted, ...dispatchReady, ...addWorkCompleted];
   const top5 = [...combined].sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime()).slice(0, 5);
 
   return (
