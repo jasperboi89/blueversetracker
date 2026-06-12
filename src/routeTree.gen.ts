@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as FreshdeskTicketsRouteImport } from './routes/freshdesk-tickets'
 import { Route as ContactDispatchRouteImport } from './routes/contact-dispatch'
@@ -26,6 +27,11 @@ import { Route as AdditionalWorkWorkIdWorkRouteImport } from './routes/additiona
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/contact-dispatch': typeof ContactDispatchRouteWithChildren
   '/freshdesk-tickets': typeof FreshdeskTicketsRouteWithChildren
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/accounts/$accountNumber': typeof AccountsAccountNumberRoute
   '/additional-work/$workId/work': typeof AdditionalWorkWorkIdWorkRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/contact-dispatch'
     | '/freshdesk-tickets'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/accounts/$accountNumber'
     | '/additional-work/$workId/work'
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   ContactDispatchRoute: typeof ContactDispatchRouteWithChildren
   FreshdeskTicketsRoute: typeof FreshdeskTicketsRouteWithChildren
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -350,6 +370,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactDispatchRoute: ContactDispatchRouteWithChildren,
   FreshdeskTicketsRoute: FreshdeskTicketsRouteWithChildren,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
