@@ -3,6 +3,8 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { getActivePhase, isShiftActive } from "./phases";
 import { GalaxyBackground } from "@/components/layout/GalaxyBackground";
+import { intensityToFactor, useQbTuning } from "@/lib/settings/qb-tuning-store";
+import { useSanctuary } from "@/lib/quantum-bloom/sanctuary-store";
 
 const vertexShader = /* glsl */ `
   varying vec2 vUv;
@@ -22,6 +24,7 @@ const fragmentShader = /* glsl */ `
   uniform vec3  uColorB;
   uniform vec3  uColorC;
   uniform float uActivity; // 1.0 = active shift, 0.25 = day rest
+  uniform float uIntensity; // tuning multiplier (~0.4-1.4)
 
   // hash & noise
   float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -64,7 +67,7 @@ const fragmentShader = /* glsl */ `
     col += vec3(s) * 0.6;
 
     // Overall energy/exposure dampened in sleep mode
-    col *= mix(0.45, 1.0, uActivity);
+    col *= mix(0.45, 1.0, uActivity) * uIntensity;
 
     gl_FragColor = vec4(col, 1.0);
   }
@@ -84,9 +87,13 @@ function parseOklch(str: string): THREE.Color {
   return new THREE.Color(parts[0] / 255, parts[1] / 255, parts[2] / 255);
 }
 
-function NebulaPlane() {
+function NebulaPlane({ intensity, sleepMode, sanctuary }: { intensity: number; sleepMode: boolean; sanctuary: boolean }) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const phaseRef = useRef({ a: new THREE.Color(), b: new THREE.Color(), c: new THREE.Color(), active: 1 });
+  const intensityRef = useRef(intensity);
+  const sanctuaryRef = useRef(sanctuary);
+  useEffect(() => { intensityRef.current = intensity; }, [intensity]);
+  useEffect(() => { sanctuaryRef.current = sanctuary; }, [sanctuary]);
 
   const uniforms = useMemo(
     () => ({
@@ -96,6 +103,7 @@ function NebulaPlane() {
       uColorB:  { value: new THREE.Color() },
       uColorC:  { value: new THREE.Color() },
       uActivity:{ value: 1.0 },
+      uIntensity:{ value: 1.0 },
     }),
     [],
   );
@@ -107,7 +115,8 @@ function NebulaPlane() {
       phaseRef.current.a = parseOklch(p.primary);
       phaseRef.current.b = parseOklch(p.secondary);
       phaseRef.current.c = parseOklch(p.accent);
-      phaseRef.current.active = isShiftActive(new Date()) ? 1.0 : 0.25;
+      const shifting = isShiftActive(new Date());
+      phaseRef.current.active = shifting ? 1.0 : (sleepMode ? 0.25 : 0.7);
     }
     readPhase();
     const id = setInterval(readPhase, 60_000);
@@ -118,7 +127,8 @@ function NebulaPlane() {
     const m = matRef.current;
     if (!m) return;
     const u = m.uniforms;
-    u.uTime.value += delta * (0.5 + phaseRef.current.active);
+    const speedScale = sanctuaryRef.current ? 0.3 : 1.0;
+    u.uTime.value += delta * (0.5 + phaseRef.current.active) * speedScale;
     const size = state.size;
     u.uRes.value.set(size.width, size.height);
     const lerp = Math.min(1, delta * 1.2);
@@ -126,6 +136,8 @@ function NebulaPlane() {
     (u.uColorB.value as THREE.Color).lerp(phaseRef.current.b, lerp);
     (u.uColorC.value as THREE.Color).lerp(phaseRef.current.c, lerp);
     u.uActivity.value += (phaseRef.current.active - u.uActivity.value) * lerp;
+    const targetI = intensityRef.current * (sanctuaryRef.current ? 0.55 : 1.0);
+    u.uIntensity.value += (targetI - u.uIntensity.value) * lerp;
   });
 
   return (
@@ -156,6 +168,9 @@ function webglSupported(): boolean {
 export function NebulaCanvas() {
   const [mounted, setMounted] = useState(false);
   const [supported, setSupported] = useState<boolean | null>(null);
+  const tuning = useQbTuning();
+  const sanctuary = useSanctuary();
+  const intensity = intensityToFactor(tuning.visualIntensity);
   useEffect(() => {
     setMounted(true);
     setSupported(webglSupported());
@@ -177,7 +192,7 @@ export function NebulaCanvas() {
         style={{ width: "100%", height: "100%" }}
         frameloop="always"
       >
-        <NebulaPlane />
+        <NebulaPlane intensity={intensity} sleepMode={tuning.sleepMode} sanctuary={sanctuary} />
       </Canvas>
       {/* Soft top-vignette so glass panels read cleanly */}
       <div
