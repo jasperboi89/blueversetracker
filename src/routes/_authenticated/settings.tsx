@@ -44,6 +44,7 @@ import { formatCentralExact } from "@/lib/shift";
 import { useQuery } from "@tanstack/react-query";
 import { adminGetAccessSummary } from "@/lib/auth/admin-users.functions";
 import { INACTIVITY_LOGOUT_MS } from "@/lib/auth/inactivity-config";
+import { ThemesSection } from "@/components/settings/ThemesSection";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Account Intel Hub" }] }),
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 const SECTIONS = [
   { id: "security",   title: "Security & Access",     icon: Lock },
+  { id: "themes",     title: "Themes",                icon: Sparkles },
   { id: "freshdesk",  title: "Freshdesk Integration", icon: Plug },
   { id: "ai",         title: "AI Summary Settings",   icon: Sparkles },
   { id: "templates",  title: "Contact Dispatch Templates", icon: PhoneOutgoing },
@@ -87,6 +89,7 @@ function SettingsPage() {
 
           <div className="space-y-4">
             <SecurityAccessSection />
+            <ThemesSection />
             <FreshdeskSection />
             <AISection />
             <TemplatesSection />

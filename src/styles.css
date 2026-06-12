@@ -143,6 +143,80 @@
   }
 }
 
+/* ---------- Quantum Bloom theme ---------- */
+
+/* Holographic crystal glass — richer variant of glass-panel used when Quantum Bloom is active. */
+@utility crystal-glass {
+  position: relative;
+  background: linear-gradient(
+    140deg,
+    oklch(0.24 0.08 270 / 0.45),
+    oklch(0.16 0.06 268 / 0.32)
+  );
+  border: 1px solid color-mix(in oklab, var(--qb-phase-accent, oklch(0.85 0.16 210)) 35%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  border-radius: var(--radius);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    0 1px 0 color-mix(in oklab, var(--qb-phase-accent, oklch(0.85 0.16 210)) 25%, transparent),
+    0 10px 50px -22px oklch(0 0 0 / 0.7),
+    0 0 30px -10px color-mix(in oklab, var(--qb-phase-accent, oklch(0.85 0.16 210)) 45%, transparent);
+  transition: border-color 1.6s ease, box-shadow 1.6s ease;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+      120% 80% at 0% 0%,
+      color-mix(in oklab, var(--qb-phase-primary, var(--electric)) 14%, transparent),
+      transparent 60%
+    );
+    mix-blend-mode: screen;
+    opacity: 0.7;
+  }
+}
+
+/* When Quantum Bloom is active, upgrade every glass-panel to crystal-glass styling. */
+html[data-theme="quantum-bloom"] {
+  /* Default phase colors — overridden each minute by QuantumBloomDriver. */
+  --qb-phase-primary: oklch(0.7 0.22 250);
+  --qb-phase-secondary: oklch(0.7 0.22 295);
+  --qb-phase-accent: oklch(0.85 0.16 210);
+
+  /* Slightly warmer ring/border tint that tracks the active phase. */
+  --ring: var(--qb-phase-accent);
+  --border: color-mix(in oklab, var(--qb-phase-accent) 22%, transparent);
+
+  /* Phase-tinted glows replace BlueVerse glows. */
+  --shadow-glow-cyan: 0 0 24px color-mix(in oklab, var(--qb-phase-accent) 45%, transparent),
+                      0 0 60px color-mix(in oklab, var(--qb-phase-accent) 20%, transparent);
+  --shadow-glow-violet: 0 0 24px color-mix(in oklab, var(--qb-phase-secondary) 45%, transparent),
+                        0 0 60px color-mix(in oklab, var(--qb-phase-secondary) 20%, transparent);
+}
+
+html[data-theme="quantum-bloom"] body {
+  /* Hide the BlueVerse galaxy gradient — the WebGL nebula takes over. */
+  background: oklch(0.05 0.02 270);
+}
+
+/* Promote every existing glass surface to crystal styling under Quantum Bloom. */
+html[data-theme="quantum-bloom"] .glass-panel {
+  background: linear-gradient(
+    140deg,
+    oklch(0.24 0.08 270 / 0.45),
+    oklch(0.16 0.06 268 / 0.32)
+  );
+  border-color: color-mix(in oklab, var(--qb-phase-accent) 32%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    0 10px 50px -22px oklch(0 0 0 / 0.7),
+    0 0 30px -14px color-mix(in oklab, var(--qb-phase-accent) 45%, transparent);
+  transition: border-color 1.6s ease, box-shadow 1.6s ease;
+}
+
 @keyframes float-y {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }

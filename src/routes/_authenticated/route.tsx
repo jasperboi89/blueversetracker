@@ -2,6 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthorizationGuard } from "@/components/auth/AuthorizationGuard";
 import { InactivityWatcher } from "@/components/auth/InactivityWatcher";
+import { useThemeSync } from "@/hooks/use-theme-sync";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  useThemeSync();
   return (
     <AuthorizationGuard>
       <AppShell>
