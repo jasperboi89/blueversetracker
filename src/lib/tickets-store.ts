@@ -708,8 +708,11 @@ export const ticketsStore = {
     const t: Ticket = {
       id: newId("t"),
       number: input.number,
-      accountNumber: input.accountNumber ?? "----",
-      accountName: input.accountName ?? input.companyName ?? "Unlinked Account",
+      accountNumber: input.accountNumber ?? "",
+      accountName: input.accountNumber
+        ? (input.accountName ?? input.companyName ?? "Unlinked Account")
+        : (input.companyName ?? ""),
+      accountSource: input.accountNumber ? "freshdesk" : undefined,
       status: input.status ?? "working",
       priority: input.priority,
       dueAt: input.dueAt,
