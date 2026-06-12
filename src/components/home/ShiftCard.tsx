@@ -10,12 +10,15 @@ import {
 } from "@/lib/shift";
 import { useNow } from "@/hooks/use-now";
 import { CelebrationOverlay } from "./CelebrationOverlay";
+import { useTheme } from "@/lib/settings/theme-store";
+import { triggerCelebration } from "@/lib/quantum-bloom/celebration-bus";
 
 const CELEB_KEY = "aih:shift-celebration";
 
 export function ShiftCard() {
   const now = useNow(1000);
   const status = getShiftStatus(now);
+  const theme = useTheme();
   const progress = getShiftProgress(now);
   const pct = Math.round(progress * 100);
   const message = getShiftMessage(status);
@@ -28,6 +31,15 @@ export function ShiftCard() {
     const sk = getShiftKey(now);
     const stored = typeof window !== "undefined" ? localStorage.getItem(CELEB_KEY) : null;
     if (stored === sk) return;
+    if (theme === "quantum-bloom") {
+      triggerCelebration({
+        kind: "shift",
+        label: "Shift complete",
+        context: { shiftKey: sk },
+      });
+      if (typeof window !== "undefined") localStorage.setItem(CELEB_KEY, sk);
+      return;
+    }
     setPhase("finalizing");
     const t1 = setTimeout(() => setPhase("celebrating"), 3000);
     const t2 = setTimeout(() => {
@@ -39,7 +51,7 @@ export function ShiftCard() {
       clearTimeout(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status === "complete"]);
+  }, [status === "complete", theme]);
 
   const ringSize = 96;
   const stroke = 8;

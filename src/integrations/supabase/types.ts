@@ -83,6 +83,33 @@ export type Database = {
         }
         Relationships: []
       }
+      qb_discoveries: {
+        Row: {
+          context: Json
+          created_at: string
+          id: string
+          kind: string
+          label: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          id?: string
+          kind: string
+          label: string
+          user_id: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_theme_prefs: {
         Row: {
           created_at: string

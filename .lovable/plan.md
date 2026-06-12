@@ -1,95 +1,92 @@
+# Quantum Bloom — Phase 2
 
-# Quantum Bloom — Phase 1
+Phase 1 shipped the theme toggle, WebGL nebula, aurora phases, and entry sequence. Phase 2 layers in two systems on top of the existing Quantum Bloom theme:
 
-BlueVerse stays the default. Quantum Bloom is an opt-in theme selectable from Settings → Themes. Phase 1 ships the visual environment and theme switch only. Discovery Log, Sanctuary, Adaptive Learning (Quantum Bloom Core), Constellations, Archive, Cosmic Weather, Celebrations, Sleep Mode learning, and event/particle controls are deferred to later phases — the settings UI will list them as "Coming soon".
+1. **Celebration system** — visual rewards when meaningful work completes.
+2. **Discovery Log** — a permanent, per-user record of unlocked moments, viewable from a new "Discoveries" entry in Settings → Themes → Quantum Bloom.
 
-## What you get in Phase 1
+Both are gated to `theme === 'quantum-bloom'`. BlueVerse stays untouched. Deferred to Phase 3: Sanctuary, Constellations, Archive, Adaptive Learning (Core), Cosmic Weather, event/particle sliders.
 
-- A new theme called **Quantum Bloom** selectable from **Settings → Themes**.
-- A **WebGL nebula** rendered behind the entire portal when Quantum Bloom is active (replaces the current GalaxyBackground only while active).
-- **Aurora color phases** that gradually shift the nebula and accent glow across the 10 PM → 6 AM Central window:
-  10 PM cyan/electric → 11 PM blue→violet → 12 AM deep violet → 1 AM violet/magenta → 2 AM indigo → 3 AM royal+gold → 4 AM indigo→blue → 5 AM cyan → 6 AM completion.
-  Outside the shift window the nebula slows down and dims (basic Daytime Sleep Mode — visual only, no learning).
-- **Entry sequence** on theme load:
-  - First-ever open: 2–3 s sequence — darkness → stars → nebula ignite → crystal materialize → "Quantum Bloom Core Online" / "Aurora Engine Initialized" / "Good Evening, Luke" → dashboard fades in. A simple **Night Forecast** card appears in the dashboard header using real data (open tickets, active alerts, night plan status).
-  - Subsequent opens: 0.5–1 s — nebula pulse + glass shimmer → dashboard.
-- **Holographic Crystal Glass** surface variant for cards/drawers/modals when the theme is active (refraction, spectral edge, bloom reflections) — applied via CSS tokens so every existing panel benefits automatically.
-- Per-user persistence in Lovable Cloud so the theme choice + "has seen first entry" follow the user across devices.
+## What you get in Phase 2
 
-## What's deferred (later phases)
+**Celebrations** (only fire while Quantum Bloom is active):
+- **Ticket completion** — soft cyan bloom + a single particle burst from the completion button. ~1.2 s. No modal, no blocking.
+- **Contact Dispatch testing completion** — radial spectral wave from screen center, "Test cycle complete" glyph, 2.2 s. Reuses the existing `CelebrationOverlay` design language.
+- **Night Plan completion** — golden bloom ring + "Night Plan complete" caption, 2.6 s.
+- **Shift completion** — full aurora curtain sweep (top-to-bottom gradient wash through all 6 phase colors), 3.5 s, plus a "Shift complete · Good morning" card. The existing BlueVerse shift-complete celebration stays for the default theme; Quantum Bloom gets its own variant.
+- A single global queue prevents two celebrations stacking. If two fire within 400 ms they merge into one wave.
 
-Discovery Log, Constellation View, Archive, Sanctuary, Quantum Bloom Core (adaptive learning), Cosmic Weather events, Celebration system (ticket / testing / night plan / shift completions), event-frequency + particle-density + visual-intensity sliders. Settings panels for these will render as disabled "Coming soon" placeholders so the structure exists for later phases to fill in.
+**Discovery Log**:
+- Each celebration also records a **Discovery** row — type, label, timestamp, optional context (ticket id, dispatch session id, night plan date).
+- New discoveries appear as a subtle 3-second "★ Discovery unlocked: <label>" toast in the bottom-right.
+- Settings → Themes → Quantum Bloom now exposes an enabled **"Discovery Log"** link → opens a drawer listing all discoveries grouped by date, with counts per type and a "Reset Discoveries" button (confirm modal, clears the user's rows).
 
-## User flow
+## What's deferred (Phase 3)
 
-1. Open Settings → new **Themes** section appears with two cards: BlueVerse (default) and Quantum Bloom.
-2. Select Quantum Bloom → entry sequence plays → portal re-renders with nebula behind everything and crystal-glass surfaces.
-3. All existing pages (Home, Freshdesk, Additional Work, Contact Dispatch, Accounts, Reports, Settings, drawers, modals) work unchanged — only the background and surface tokens differ.
-4. Switch back to BlueVerse any time from the same screen.
+Sanctuary, Constellation View, Archive (long-term aggregates), Quantum Bloom Core (adaptive learning), Cosmic Weather, event-frequency / particle-density / visual-intensity sliders.
 
 ## Technical section
 
-**Dependencies**
-- Add `three` and `@react-three/fiber` for the WebGL nebula + bloom. Postprocessing via `@react-three/postprocessing` for the bloom pass. All client-only (lazy-loaded; SSR-safe behind `<ClientOnly>`).
+**New table — `public.qb_discoveries`**
+- `id uuid pk default gen_random_uuid()`
+- `user_id uuid not null references auth.users(id) on delete cascade`
+- `kind text not null check (kind in ('ticket','dispatch','night_plan','shift'))`
+- `label text not null`
+- `context jsonb not null default '{}'::jsonb`
+- `created_at timestamptz not null default now()`
+- RLS: user can select/insert/delete own rows (`auth.uid() = user_id`). GRANTs for `authenticated` + `service_role`. Index on `(user_id, created_at desc)`.
 
-**Theme store**
-- `src/lib/settings/theme-store.ts` — Zustand-style persisted store mirroring `demo-mode-store.ts`. Values: `'blueverse' | 'quantum-bloom'`. Cached in localStorage for instant first paint; hydrated from Supabase on sign-in.
-- `useApplyTheme()` hook sets `document.documentElement.dataset.theme` so CSS can branch.
+**Server functions** — `src/lib/quantum-bloom/discoveries.functions.ts`
+- `listDiscoveries()` → returns user's rows, newest first, capped at 500.
+- `recordDiscovery({ kind, label, context })` → inserts.
+- `resetDiscoveries()` → deletes all of caller's rows.
+All use `requireSupabaseAuth`.
 
-**CSS tokens (`src/styles.css`)**
-- New `[data-theme="quantum-bloom"]` block overrides `--background`, `--card`, `--border`, plus introduces `--qb-phase-primary`, `--qb-phase-secondary`, `--qb-phase-accent` driven by a single timer.
-- New `@utility crystal-glass` variant of `glass-panel` (stronger blur, spectral border via conic gradient, inner bloom). `glass-panel` itself remains untouched for BlueVerse.
-- Aurora phase variables animated via a top-level `<QuantumBloomDriver />` component that writes CSS vars to `:root` every minute using `getShiftPhase(now)` derived from existing `src/lib/shift.ts`.
+**Celebration runtime** — `src/lib/quantum-bloom/celebration-bus.ts`
+- Tiny event bus (`emit`, `subscribe`) with debounced merge window (400 ms).
+- `triggerCelebration({ kind, label, context })` — emits + fires `recordDiscovery` (best-effort, swallowed on error).
+- Gated by `useTheme() === 'quantum-bloom'` at the call sites — bus is a no-op otherwise.
 
-**Nebula**
-- `src/components/quantum-bloom/NebulaCanvas.tsx` — `<Canvas>` with a single full-screen plane running a fragment shader (FBM noise + domain warping) and an `EffectComposer` bloom pass. Reads phase colors from CSS vars via `getComputedStyle` on mount + on phase change.
-- Mounted in `__root.tsx` inside `<ClientOnly>`, gated by `theme === 'quantum-bloom'`. Replaces `<GalaxyBackground />` only while active.
-- WebGPU is not used — Three.js WebGL with a fallback: if `WebGLRenderingContext` is unavailable, render the existing GalaxyBackground instead and surface a one-line toast.
-- DPR clamped to 1.5, paused via `document.visibilitychange`, and frame-rate-throttled to 30 fps outside the shift window for Sleep Mode.
+**Components**
+- `src/components/quantum-bloom/CelebrationLayer.tsx` — mounted in `__root.tsx` inside the Quantum Bloom branch. Renders the active celebration via Framer Motion / CSS keyframes. Variants: `ticket`, `dispatch`, `nightPlan`, `shift`.
+- `src/components/quantum-bloom/DiscoveryToast.tsx` — bottom-right slide-in for the 3-second unlock toast (subscribes to the same bus).
+- `src/components/quantum-bloom/DiscoveryLogDrawer.tsx` — Sheet listing discoveries grouped by day with type icons and "Reset" action.
+- Update `src/components/settings/ThemesSection.tsx` — flip "Discovery Log" from disabled "Coming soon" to an enabled button that opens the drawer; counts shown next to label.
 
-**Entry sequence**
-- `src/components/quantum-bloom/EntryOverlay.tsx` — full-screen overlay with the 6-step animation. State: `'first' | 'returning' | 'done'`. First-time flag read from Supabase (`quantum_bloom_state.first_entry_completed`); falls back to localStorage if offline.
-- Night Forecast computed from existing stores (`useTickets`, `useAlerts`, `night-plan-store`) — no new business logic.
+**Call sites that emit celebrations**
+- `src/lib/tickets-store.ts` — in the function that marks a ticket complete, after persisting, call `triggerCelebration({ kind: 'ticket', label: 'Ticket completed', context: { ticketId } })`.
+- `src/lib/dispatch-store.ts` — on overall result transitioning to `complete`, emit `kind: 'dispatch'`.
+- `src/lib/night-plan-store.ts` — on plan marked complete, emit `kind: 'night_plan'`.
+- Existing shift-complete trigger (currently rendering BlueVerse `CelebrationOverlay`) — when theme is `quantum-bloom`, route to the bus with `kind: 'shift'` instead, suppressing the BlueVerse overlay.
 
-**Persistence (Lovable Cloud)**
-- New table `public.user_theme_prefs`:
-  - `user_id uuid PK references auth.users`
-  - `theme text not null default 'blueverse'` (check: in `('blueverse','quantum-bloom')`)
-  - `qb_first_entry_completed boolean not null default false`
-  - `updated_at timestamptz`
-- GRANTs to `authenticated` + `service_role`; RLS policies scoped to `auth.uid() = user_id` for select/insert/update.
-- Read/write through two server fns in `src/lib/settings/theme.functions.ts` using `requireSupabaseAuth`:
-  - `getThemePrefs()` — returns row, upserting defaults on first call.
-  - `setThemePrefs({ theme?, qbFirstEntryCompleted? })`.
-- Hook `useThemeSync()` mounted in `_authenticated/route.tsx` — pulls prefs on sign-in into the local store, pushes on change (debounced).
-
-**Settings UI**
-- New section `src/components/settings/ThemesSection.tsx` in `src/routes/_authenticated/settings.tsx`:
-  - Two large preview cards (BlueVerse / Quantum Bloom) with a "Use this theme" button.
-  - Below, a collapsed **Quantum Bloom Settings** group with the full list of toggles from the spec rendered disabled with a "Coming soon" badge — except Night Shift Synchronization, which is on by default and read-only in Phase 1.
+**Performance**
+- Celebrations use CSS transforms + GPU compositing only. No new shaders, no per-frame React state.
+- Toast and overlay both auto-unmount after their animation ends.
+- Visibility-change listener pauses the queue when the tab is hidden (consistent with the nebula).
 
 **Files to add**
-- `src/lib/settings/theme-store.ts`
-- `src/lib/settings/theme.functions.ts`
-- `src/hooks/use-theme-sync.ts`
-- `src/components/quantum-bloom/NebulaCanvas.tsx`
-- `src/components/quantum-bloom/EntryOverlay.tsx`
-- `src/components/quantum-bloom/QuantumBloomDriver.tsx`
-- `src/components/quantum-bloom/NightForecast.tsx`
-- `src/components/settings/ThemesSection.tsx`
+- `supabase/migrations/<ts>_qb_discoveries.sql`
+- `src/lib/quantum-bloom/celebration-bus.ts`
+- `src/lib/quantum-bloom/discoveries.functions.ts`
+- `src/hooks/use-discoveries.ts` (small wrapper around the server fns + local cache)
+- `src/components/quantum-bloom/CelebrationLayer.tsx`
+- `src/components/quantum-bloom/DiscoveryToast.tsx`
+- `src/components/quantum-bloom/DiscoveryLogDrawer.tsx`
 
 **Files to edit**
-- `src/styles.css` — add `[data-theme="quantum-bloom"]` tokens, `@utility crystal-glass`, phase keyframes.
-- `src/routes/__root.tsx` — mount `<QuantumBloomDriver />`, conditional `<NebulaCanvas />` vs `<GalaxyBackground />`, `<EntryOverlay />`.
-- `src/routes/_authenticated/route.tsx` — mount `useThemeSync()`.
-- `src/routes/_authenticated/settings.tsx` — render `<ThemesSection />`.
-- `src/components/home/GreetingPanel.tsx` (or sibling) — render `<NightForecast />` when Quantum Bloom is active.
-- `src/start.ts` — already has `attachSupabaseAuth`; no change needed unless missing.
+- `src/routes/__root.tsx` — mount `<CelebrationLayer />` and `<DiscoveryToast />` inside the Quantum Bloom branch.
+- `src/components/settings/ThemesSection.tsx` — enable Discovery Log row + wire drawer.
+- `src/lib/tickets-store.ts`, `src/lib/dispatch-store.ts`, `src/lib/night-plan-store.ts` — add `triggerCelebration` call at completion points.
+- Existing shift-complete code path (the component currently rendering `CelebrationOverlay` on shift end) — branch on theme.
+- `src/styles.css` — add `@keyframes qb-bloom-pulse`, `qb-aurora-sweep`, `qb-golden-ring`, `qb-spectral-wave`, `qb-discovery-toast-in`.
 
 **Verification**
-- Toggle Quantum Bloom in Settings → entry sequence plays → nebula appears → all pages render with crystal-glass surfaces → readability preserved.
-- Toggle back to BlueVerse → reverts cleanly, no leftover styles.
-- Refresh during shift window → nebula phase matches current Central hour; outside window it visibly slows.
-- Sign out / sign in on a second device → theme choice follows the user.
+- Quantum Bloom active → complete a ticket → cyan bloom plays, "★ Discovery unlocked: Ticket completed" toast appears, row visible in Discovery Log drawer.
+- Complete dispatch testing → spectral wave plays + discovery row.
+- Mark night plan complete → golden ring + row.
+- End shift → aurora curtain (Quantum Bloom variant); BlueVerse overlay does not also fire.
+- Switch to BlueVerse → no celebrations fire from the new system, no discovery rows added, drawer not reachable.
+- Sign in on second device → Discovery Log shows the same rows.
+- Reset Discoveries → list empties on both devices after refresh.
 
-If this Phase 1 plan looks right, approve and I'll build it. Phase 2 (Discovery Log + Celebrations) and Phase 3 (Quantum Bloom Core learning, Sanctuary, Constellations, Archive, Cosmic Weather) can each be a separate approved plan.
+Approve and I'll build it. Phase 3 (Sanctuary, Constellations, Archive, Quantum Bloom Core, Cosmic Weather, intensity sliders) stays as its own future plan.
