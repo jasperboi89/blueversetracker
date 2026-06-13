@@ -592,6 +592,18 @@ export const ticketsStore = {
       });
     }
   },
+  reopen(ticketId: string) {
+    ensureLoaded();
+    state = {
+      ...state,
+      tickets: state.tickets.map((t) =>
+        t.id === ticketId
+          ? { ...t, status: "working", completedAt: undefined, updatedAt: Date.now() }
+          : t,
+      ),
+    };
+    persist();
+  },
   setIssueClassification(ticketId: string, classification: IssueClassification | null) {
     ensureLoaded();
     state = {
