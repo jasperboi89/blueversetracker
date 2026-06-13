@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { copyRichSummary, copyMarkdownSummary, snipCounts } from "@/lib/summary/rich-copy";
 
 export function SummaryNotesSection({ session, onMarkPostedRequest }: { session: DispatchSession; onMarkPostedRequest: () => void }) {
   const [onlyIssues, setOnlyIssues] = useState(false);
@@ -98,9 +99,26 @@ export function SummaryNotesSection({ session, onMarkPostedRequest }: { session:
         />
       </div>
 
+      {session.snips.length > 0 && (() => {
+        const c = snipCounts(session.snips);
+        return (
+          <div className="text-[11px] text-muted-foreground">
+            Bundled with copy: {c.images} image{c.images === 1 ? "" : "s"}, {c.files} file{c.files === 1 ? "" : "s"} from snips.
+          </div>
+        );
+      })()}
+
       <div className="flex flex-wrap gap-1.5">
-        <Button size="sm" variant="ghost" disabled={!session.summaryNotes} onClick={() => { navigator.clipboard.writeText(session.summaryNotes); toast.success("Copied."); }}>
-          <Copy className="mr-1 h-3.5 w-3.5" /> Copy Final Version
+        <Button
+          size="sm"
+          disabled={!session.summaryNotes}
+          onClick={() => copyRichSummary(session.summaryNotes, session.snips)}
+          style={{ background: "linear-gradient(110deg, oklch(0.4 0.16 240 / 0.7), oklch(0.4 0.18 290 / 0.55))", border: "1px solid oklch(0.78 0.18 220 / 0.45)" }}
+        >
+          <Copy className="mr-1 h-3.5 w-3.5" /> Copy with Snips (Rich)
+        </Button>
+        <Button size="sm" variant="ghost" disabled={!session.summaryNotes} onClick={() => copyMarkdownSummary(session.summaryNotes, session.snips)}>
+          Copy Markdown
         </Button>
         <Button size="sm" variant="ghost" disabled={!session.summaryNotes} onClick={() => { navigator.clipboard.writeText(session.summaryNotes.replace(/^\s*[-•].*$/gm, "").trim()); toast.success("Copied text only."); }}>
           Copy Text Only
