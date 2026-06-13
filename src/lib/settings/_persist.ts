@@ -36,6 +36,13 @@ export function createPersistedStore<T>(key: string, initial: T) {
     set(next: T) { load(); state = next; persist(); },
     update(updater: (cur: T) => T) { load(); state = updater(state); persist(); },
     reset() { load(); state = initial; persist(); },
+    /** Replace in-memory state from a server snapshot (used by cloud-sync). */
+    applyServerSnapshot(next: T) {
+      load();
+      const merged = (next && typeof next === "object") ? ({ ...initial, ...next } as T) : next;
+      state = merged;
+      persist();
+    },
   };
 }
 
