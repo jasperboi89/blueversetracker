@@ -8,6 +8,7 @@ import {
   FileBarChart,
   Settings,
   Sparkles,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const baseItems = [
   { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing },
   { title: "Additional Work", url: "/additional-work", icon: ClipboardList },
   { title: "Accounts", url: "/accounts", icon: Building2 },
+  { title: "Completed Work", url: "/completed-work", icon: CheckCircle2 },
   { title: "Reports", url: "/reports", icon: FileBarChart },
 ] as const;
 

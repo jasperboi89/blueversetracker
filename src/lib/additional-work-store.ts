@@ -192,6 +192,13 @@ export const additionalWorkStore = {
       completionFinalNotes: opts.finalNotes ?? i.completionFinalNotes,
     }));
   },
+  reopen(id: string) {
+    patchItem(id, (i) => ({
+      ...i,
+      status: "working",
+      completedAt: undefined,
+    }));
+  },
 
   fromNightPlan(
     np: { id: string; task: string; notes?: string },
