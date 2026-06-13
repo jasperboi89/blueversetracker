@@ -390,6 +390,9 @@ export const dispatchStore = {
       });
     });
   },
+  reopen(id: string) {
+    patchSession(id, (s) => ({ ...s, status: "not-ready", completedAt: undefined }));
+  },
 
   addSummaryVersion(id: string, label: SummaryVersionLabel, body: string) {
     patchSession(id, (s) => {
