@@ -1,4 +1,5 @@
 import { createPersistedStore, useStoreValue } from "./_persist";
+import { attachCloudSync } from "@/lib/cloud-sync/blob-sync";
 
 export type DispatchTemplateType = "routine" | "urgent" | "blank";
 
