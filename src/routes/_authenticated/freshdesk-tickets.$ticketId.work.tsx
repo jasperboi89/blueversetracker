@@ -39,6 +39,7 @@ import {
 } from "@/lib/tickets-store";
 import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
 import { AccountLinker } from "@/components/freshdesk/AccountLinker";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ function WorkspacePage() {
   const [syncMsg, setSyncMsg] = useState<null | { ok: boolean; text: string }>(null);
   const [snipOpen, setSnipOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -162,6 +164,14 @@ function WorkspacePage() {
             </Button>
             <Button size="sm" variant="ghost" onClick={() => window.open(ticket.details.freshdeskUrl, "_blank")}>
               <ExternalLink className="mr-1 h-3.5 w-3.5" /> Open Freshdesk
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmDelete(true)}
+              style={{ color: "oklch(0.82 0.18 25)" }}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete Ticket
             </Button>
             <Button
               size="sm"
