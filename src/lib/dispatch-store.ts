@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type DispatchStatus =
   | "ready"
@@ -597,3 +598,14 @@ export function buildDispatchSummary(
 export function reasonCardStatus(r: ReasonCard): SectionStatus {
   return reasonStatus(r);
 }
+attachCloudSync<State>({
+  storeKey: "dispatch",
+  subscribe: (cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
+  getSnapshot: () => { ensureLoaded(); return state; },
+  applyServerSnapshot: (next) => {
+    state = { sessions: Array.isArray(next.sessions) ? next.sessions : [] };
+    initialized = true;
+    persist();
+  },
+  isEmpty: (s) => (s.sessions?.length ?? 0) === 0,
+});

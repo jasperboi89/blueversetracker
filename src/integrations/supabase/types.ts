@@ -140,6 +140,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_store_blobs: {
+        Row: {
+          data: Json
+          store_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          data?: Json
+          store_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          store_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_theme_prefs: {
         Row: {
           created_at: string

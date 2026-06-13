@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
 import { accountsStore } from "./accounts-store";
+import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
@@ -863,3 +864,18 @@ export function buildGeneratedNote(
   lines.push("— LTP");
   return lines.join("\n");
 }
+attachCloudSync<State>({
+  storeKey: "tickets",
+  subscribe: (cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
+  getSnapshot: () => { ensureLoaded(); return state; },
+  applyServerSnapshot: (next) => {
+    state = {
+      tickets: Array.isArray(next.tickets) ? next.tickets : [],
+      workSessions: next.workSessions ?? {},
+      recentIds: next.recentIds ?? {},
+    };
+    initialized = true;
+    persist();
+  },
+  isEmpty: (s) => (s.tickets?.length ?? 0) === 0 && Object.keys(s.workSessions ?? {}).length === 0,
+});

@@ -1,4 +1,5 @@
 import { createPersistedStore, useStoreValue } from "./_persist";
+import { attachCloudSync } from "@/lib/cloud-sync/blob-sync";
 
 export type DropdownGroup =
   | "region"
@@ -227,3 +228,9 @@ export const DROPDOWN_GROUP_SECTIONS: { title: string; groups: DropdownGroup[] }
     groups: ["qbEventFrequency", "qbParticleDensity"],
   },
 ];
+attachCloudSync<DropdownState>({
+  storeKey: "settings:dropdowns",
+  subscribe: dropdownsStore.subscribe,
+  getSnapshot: () => dropdownsStore.get(),
+  applyServerSnapshot: (next) => dropdownsStore.applyServerSnapshot(next),
+});

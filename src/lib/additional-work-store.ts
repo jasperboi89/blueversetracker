@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type AdditionalWorkStatus = "working" | "completed";
 export type AddWorkIssueClassification = "Scripting Issue" | "Client Change" | "Other";
@@ -222,3 +223,14 @@ export function useAdditionalWork() {
     () => ({ items: [] as AdditionalWork[] }),
   );
 }
+attachCloudSync<State>({
+  storeKey: "additional-work",
+  subscribe: (cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
+  getSnapshot: () => { ensureLoaded(); return state; },
+  applyServerSnapshot: (next) => {
+    state = { items: Array.isArray(next.items) ? next.items : [] };
+    initialized = true;
+    persist();
+  },
+  isEmpty: (s) => (s.items?.length ?? 0) === 0,
+});
