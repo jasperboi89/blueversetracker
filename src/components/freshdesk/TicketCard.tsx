@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Building2, ExternalLink, Eye, RefreshCw } from "lucide-react";
+import { Building2, ExternalLink, Eye, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ticketsStore, isOverdue, STATUS_LABEL, type Ticket } from "@/lib/tickets-store";
 import { formatCentralShort } from "@/lib/shift";
 import { cn } from "@/lib/utils";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { toast } from "sonner";
 
 export function TicketCard({
   ticket,
@@ -19,6 +21,7 @@ export function TicketCard({
   const overdue = isOverdue(ticket);
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState<null | { ok: boolean; text: string }>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const onSync = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -115,6 +118,17 @@ export function TicketCard({
           <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")}
             style={syncing ? { color: "var(--cyan-glow)" } : undefined} />
         </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setConfirmDelete(true);
+          }}
+          aria-label="Delete ticket"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-white/5"
+          style={{ color: "oklch(0.78 0.18 25 / 0.9)" }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
 
       {msg && (
@@ -153,6 +167,19 @@ export function TicketCard({
           <Building2 className="mr-1.5 h-3.5 w-3.5" /> Open Account
         </Button>
       </div>
+      <ConfirmModal
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete ticket #${ticket.number}?`}
+        description="This permanently removes the ticket, its notes, snips, attachments, and hub history. This cannot be undone."
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={() => {
+          const { ok } = ticketsStore.deleteTicket(ticket.id);
+          setConfirmDelete(false);
+          if (ok) toast.success(`Ticket #${ticket.number} deleted.`);
+        }}
+      />
     </div>
   );
 }
