@@ -85,3 +85,10 @@ export const dispatchTemplatesActions = {
     });
   },
 };
+attachCloudSync<DispatchTemplatesState>({
+  storeKey: "settings:dispatch-templates",
+  subscribe: dispatchTemplatesStore.subscribe,
+  getSnapshot: () => dispatchTemplatesStore.get(),
+  applyServerSnapshot: (next) => dispatchTemplatesStore.applyServerSnapshot(next),
+  isEmpty: (s) => (s.templates?.length ?? 0) === 0,
+});
