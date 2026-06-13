@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type DispatchStatus =
   | "ready"

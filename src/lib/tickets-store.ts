@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
 import { accountsStore } from "./accounts-store";
+import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
