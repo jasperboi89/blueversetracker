@@ -49,10 +49,8 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
     try {
       await supabase
         .from(TABLE)
-        .upsert(
-          { user_id: activeUserId, store_key: opts.storeKey, data: snap as unknown as Record<string, unknown> },
-          { onConflict: "user_id,store_key" },
-        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .upsert({ user_id: activeUserId, store_key: opts.storeKey, data: snap as any }, { onConflict: "user_id,store_key" });
     } catch (err) {
       console.error(`[cloud-sync:${opts.storeKey}] push failed`, err);
     }
