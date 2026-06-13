@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { CheckCircle2, ClipboardList, PhoneOutgoing, Ticket } from "lucide-react";
 type CompletedKind = "freshdesk" | "dispatch" | "additional";
 interface CompletedItem {
@@ -73,8 +74,8 @@ export function RecentlyCompleted() {
           <CheckCircle2 className="h-4 w-4" style={{ color: "var(--green-glow)" }} />
           <h2 className="text-sm font-semibold text-foreground">Recently Completed Work</h2>
         </div>
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setOpen(true)}>
-          View All Completed Work
+        <Button asChild variant="ghost" size="sm" className="text-xs">
+          <Link to="/completed-work">View All Completed Work</Link>
         </Button>
       </div>
       <div className="mt-3 divide-y divide-border/30">
