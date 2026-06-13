@@ -491,6 +491,23 @@ function WorkspacePage() {
         }}
       />
       <AddSnipModal ticketId={ticketId} open={snipOpen} onOpenChange={setSnipOpen} />
+      <ConfirmModal
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete ticket #${ticket.number}?`}
+        description="This permanently removes the ticket, its notes, snips, attachments, and hub history. This cannot be undone."
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={() => {
+          const num = ticket.number;
+          const { ok } = ticketsStore.deleteTicket(ticketId);
+          setConfirmDelete(false);
+          if (ok) {
+            toast.success(`Ticket #${num} deleted.`);
+            navigate({ to: "/freshdesk-tickets" });
+          }
+        }}
+      />
     </div>
   );
 }
