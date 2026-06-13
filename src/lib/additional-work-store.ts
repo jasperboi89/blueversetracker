@@ -223,3 +223,14 @@ export function useAdditionalWork() {
     () => ({ items: [] as AdditionalWork[] }),
   );
 }
+attachCloudSync<State>({
+  storeKey: "additional-work",
+  subscribe: (cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
+  getSnapshot: () => { ensureLoaded(); return state; },
+  applyServerSnapshot: (next) => {
+    state = { items: Array.isArray(next.items) ? next.items : [] };
+    initialized = true;
+    persist();
+  },
+  isEmpty: (s) => (s.items?.length ?? 0) === 0,
+});

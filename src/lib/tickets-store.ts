@@ -864,3 +864,18 @@ export function buildGeneratedNote(
   lines.push("— LTP");
   return lines.join("\n");
 }
+attachCloudSync<State>({
+  storeKey: "tickets",
+  subscribe: (cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
+  getSnapshot: () => { ensureLoaded(); return state; },
+  applyServerSnapshot: (next) => {
+    state = {
+      tickets: Array.isArray(next.tickets) ? next.tickets : [],
+      workSessions: next.workSessions ?? {},
+      recentIds: next.recentIds ?? {},
+    };
+    initialized = true;
+    persist();
+  },
+  isEmpty: (s) => (s.tickets?.length ?? 0) === 0 && Object.keys(s.workSessions ?? {}).length === 0,
+});
