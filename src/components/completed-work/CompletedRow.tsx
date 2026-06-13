@@ -21,12 +21,20 @@ export function CompletedRow({ item }: { item: CompletedRecord }) {
   const Icon = m.icon;
   const [confirming, setConfirming] = useState(false);
 
-  const openLink =
-    item.kind === "freshdesk"
-      ? { to: "/freshdesk-tickets/$ticketId/work" as const, params: { ticketId: item.sourceId } }
-      : item.kind === "dispatch"
-        ? { to: "/contact-dispatch/$sessionId/work" as const, params: { sessionId: item.sourceId } }
-        : { to: "/additional-work/$workId/work" as const, params: { workId: item.sourceId } };
+  const openButton =
+    item.kind === "freshdesk" ? (
+      <Link to="/freshdesk-tickets/$ticketId/work" params={{ ticketId: item.sourceId }}>
+        Open
+      </Link>
+    ) : item.kind === "dispatch" ? (
+      <Link to="/contact-dispatch/$sessionId/work" params={{ sessionId: item.sourceId }}>
+        Open
+      </Link>
+    ) : (
+      <Link to="/additional-work/$workId/work" params={{ workId: item.sourceId }}>
+        Open
+      </Link>
+    );
 
   const reopen = () => {
     if (item.kind === "freshdesk") ticketsStore.reopen(item.sourceId);
@@ -60,7 +68,7 @@ export function CompletedRow({ item }: { item: CompletedRecord }) {
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button asChild variant="ghost" size="sm" className="text-xs">
-          <Link {...(openLink as { to: string; params: Record<string, string> })}>Open</Link>
+          {openButton}
         </Button>
         <Button
           variant="ghost"
