@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
+import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type AccountStatus = "active" | "archived";
 
@@ -296,3 +297,23 @@ export function useAccounts() {
     () => ({ accounts: [], notes: [], templates: [], recent: {} } as State),
   );
 }
+
+attachCloudSync<State>({
+  storeKey: "accounts",
+  subscribe: (cb) => {
+    listeners.add(cb);
+    return () => { listeners.delete(cb); };
+  },
+  getSnapshot: () => { ensureLoaded(); return state; },
+  applyServerSnapshot: (next) => {
+    state = {
+      accounts: next.accounts ?? [],
+      notes: next.notes ?? [],
+      templates: next.templates ?? [],
+      recent: next.recent ?? {},
+    };
+    initialized = true;
+    persist();
+  },
+  isEmpty: (s) => (s.accounts?.length ?? 0) === 0 && (s.notes?.length ?? 0) === 0 && (s.templates?.length ?? 0) === 0,
+});

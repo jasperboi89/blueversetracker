@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getShiftKey } from "./shift";
 import { additionalWorkStore } from "./additional-work-store";
+import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type Priority = "must" | "important" | "normal";
 export type Status = "todo" | "in-progress" | "done" | "carried" | "dismissed" | "converted";
@@ -133,3 +134,18 @@ export function priorityRank(p: Priority): number {
 export function isActive(s: Status) {
   return s === "todo" || s === "in-progress" || s === "carried";
 }
+
+attachCloudSync<PlanState>({
+  storeKey: "night-plan",
+  subscribe: (cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
+  getSnapshot: () => { ensureLoaded(); return state; },
+  applyServerSnapshot: (next) => {
+    state = {
+      shiftKey: next.shiftKey || getShiftKey(),
+      items: Array.isArray(next.items) ? next.items : [],
+      celebrationShown: next.celebrationShown,
+    };
+    persist();
+  },
+  isEmpty: (s) => (s.items?.length ?? 0) === 0,
+});
