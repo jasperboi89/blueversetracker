@@ -43,6 +43,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { copyRichSummary, copyMarkdownSummary, snipCounts } from "@/lib/summary/rich-copy";
 
 export const Route = createFileRoute("/_authenticated/freshdesk-tickets/$ticketId/work")({
   head: () => ({ meta: [{ title: "Ticket Work — Account Intel Hub" }] }),
@@ -445,7 +446,15 @@ function WorkspacePage() {
 
           <div className="flex flex-wrap gap-1.5">
             <Button size="sm" onClick={() => generate(false)}><Wand2 className="mr-1 h-3.5 w-3.5" /> Generate Note</Button>
-            <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(session.generatedNote)} disabled={!session.generatedNote}><Copy className="mr-1 h-3.5 w-3.5" /> Copy Final Version</Button>
+            <Button
+              size="sm"
+              disabled={!session.generatedNote}
+              onClick={() => copyRichSummary(session.generatedNote, ticket.hubSnips)}
+              style={{ background: "linear-gradient(110deg, oklch(0.4 0.16 240 / 0.7), oklch(0.4 0.18 290 / 0.55))", border: "1px solid oklch(0.78 0.18 220 / 0.45)" }}
+            >
+              <Copy className="mr-1 h-3.5 w-3.5" /> Copy with Snips (Rich)
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!session.generatedNote} onClick={() => copyMarkdownSummary(session.generatedNote, ticket.hubSnips)}>Copy Markdown</Button>
             <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(session.generatedNote.replace(/\[.*?\]/g, "").trim())} disabled={!session.generatedNote}>Copy Text Only</Button>
             <Button size="sm" variant="ghost" onClick={() => {
               ticket.hubSnips.filter((s) => s.dataUrl).forEach((s) => {
@@ -459,6 +468,15 @@ function WorkspacePage() {
             <Button size="sm" variant="ghost" onClick={() => setPostedOpen(true)} disabled={!session.generatedNote}><Send className="mr-1 h-3.5 w-3.5" /> Mark Posted Manually</Button>
             <Button size="sm" variant="ghost" onClick={() => { ticketsStore.updateSession(ticketId, {}); toast.success("Work session saved."); }}><Save className="mr-1 h-3.5 w-3.5" /> Save Work Session</Button>
           </div>
+
+          {ticket.hubSnips.length > 0 && (() => {
+            const c = snipCounts(ticket.hubSnips);
+            return (
+              <div className="text-[11px] text-muted-foreground">
+                Bundled with copy: {c.images} image{c.images === 1 ? "" : "s"}, {c.files} file{c.files === 1 ? "" : "s"} from snips.
+              </div>
+            );
+          })()}
 
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Generated Note Preview (editable)</label>
