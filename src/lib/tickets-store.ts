@@ -222,6 +222,24 @@ export const ticketsStore = {
     state = { tickets: [], workSessions: {}, recentIds: {} };
     persist();
   },
+  deleteTicket(id: string): { ok: boolean } {
+    ensureLoaded();
+    const exists = state.tickets.some((t) => t.id === id);
+    if (!exists) return { ok: false };
+    const { [id]: _removed, ...remainingSessions } = state.workSessions;
+    const recentIds: Record<string, string[]> = {};
+    for (const [sk, ids] of Object.entries(state.recentIds)) {
+      recentIds[sk] = ids.filter((x) => x !== id);
+    }
+    state = {
+      ...state,
+      tickets: state.tickets.filter((t) => t.id !== id),
+      workSessions: remainingSessions,
+      recentIds,
+    };
+    persist();
+    return { ok: true };
+  },
   getTicket(id: string): Ticket | undefined {
     ensureLoaded();
     return state.tickets.find((t) => t.id === id);

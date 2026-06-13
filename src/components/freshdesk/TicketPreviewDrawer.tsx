@@ -10,6 +10,7 @@ import {
   Play,
   RefreshCw,
   Building2,
+  Trash2,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { AddNoteModal } from "./AddNoteModal";
 import { AddSnipModal } from "./AddSnipModal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { toast } from "sonner";
 
 export function TicketPreviewDrawer({
@@ -34,6 +36,7 @@ export function TicketPreviewDrawer({
   const navigate = useNavigate();
   const [noteOpen, setNoteOpen] = useState(false);
   const [snipOpen, setSnipOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [syncMsg, setSyncMsg] = useState<null | { ok: boolean; text: string }>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -93,6 +96,14 @@ export function TicketPreviewDrawer({
             <Button size="sm" variant="ghost" disabled><Building2 className="mr-1 h-3.5 w-3.5" /> Open Account Profile</Button>
             <Button size="sm" variant="ghost" onClick={() => window.open(ticket.details.freshdeskUrl, "_blank")}>
               <ExternalLink className="mr-1 h-3.5 w-3.5" /> Open Freshdesk
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmDelete(true)}
+              style={{ color: "oklch(0.82 0.18 25)" }}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete Ticket
             </Button>
           </div>
           {syncMsg && (
@@ -184,6 +195,23 @@ export function TicketPreviewDrawer({
 
         <AddNoteModal ticketId={ticket.id} open={noteOpen} onOpenChange={setNoteOpen} />
         <AddSnipModal ticketId={ticket.id} open={snipOpen} onOpenChange={setSnipOpen} />
+        <ConfirmModal
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title={`Delete ticket #${ticket.number}?`}
+          description="This permanently removes the ticket, its notes, snips, attachments, and hub history. This cannot be undone."
+          confirmLabel="Delete"
+          tone="danger"
+          onConfirm={() => {
+            const num = ticket.number;
+            const { ok } = ticketsStore.deleteTicket(ticket.id);
+            setConfirmDelete(false);
+            if (ok) {
+              toast.success(`Ticket #${num} deleted.`);
+              onOpenChange(false);
+            }
+          }}
+        />
       </SheetContent>
     </Sheet>
   );
