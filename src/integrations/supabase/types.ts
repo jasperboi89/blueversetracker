@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          archived: boolean
+          created_at: string
+          data: Json
+          id: string
+          name: string
+          notes: string | null
+          number: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          data?: Json
+          id?: string
+          name: string
+          notes?: string | null
+          number: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          notes?: string | null
+          number?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      additional_work: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       auth_audit_log: {
         Row: {
           created_at: string
@@ -83,6 +146,102 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_sessions: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dispatch_templates: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dropdown_labels: {
+        Row: {
+          group_key: string
+          options: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          group_key: string
+          options?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          group_key?: string
+          options?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      night_plan_items: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          shift_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id: string
+          shift_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          shift_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       qb_discoveries: {
         Row: {
           context: Json
@@ -137,6 +296,75 @@ export type Database = {
           updated_at?: string
           user_id?: string
           visual_intensity?: number
+        }
+        Relationships: []
+      }
+      recent_tickets: {
+        Row: {
+          shift_key: string
+          ticket_ids: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          shift_key: string
+          ticket_ids?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          shift_key?: string
+          ticket_ids?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ticket_work_sessions: {
+        Row: {
+          data: Json
+          ticket_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          data?: Json
+          ticket_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          ticket_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          number: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id: string
+          number: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          number?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
