@@ -754,16 +754,21 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
   );
 }
 
-function SetupModal({ open, onOpenChange, onChoose }: { open: boolean; onOpenChange: (v: boolean) => void; onChoose: (w: ShiftWindow) => void }) {
+function SetupModal({ open, onOpenChange, onChoose }: { open: boolean; onOpenChange: (ws: ShiftWindow[]) => void | ((v: boolean) => void); onChoose: (ws: ShiftWindow[]) => void }) {
   const current = currentShiftWindow();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const recent = useMemo(() => recentNightlyShiftWindows(14), []);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const toggleKey = (k: string) =>
+    setSelectedKeys((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
+  const shiftKey = (w: ShiftWindow) => `${w.start.getTime()}`;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange as (v: boolean) => void}>
       <DialogContent className="glass-panel border-0 sm:max-w-md">
         <DialogHeader><DialogTitle>Choose Email Window</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <button onClick={() => onChoose(current)} className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-3 text-left hover:border-cyan-glow">
+          <button onClick={() => onChoose([current])} className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-3 text-left hover:border-cyan-glow">
             <div className="text-sm font-medium text-foreground">Use Current Shift</div>
             <div className="text-xs text-muted-foreground">Shift: {current.label}</div>
             <div className="text-xs text-muted-foreground">Window: {current.timeLabel}</div>
@@ -776,8 +781,35 @@ function SetupModal({ open, onOpenChange, onChoose }: { open: boolean; onOpenCha
             </div>
             <Button size="sm" className="mt-2 w-full" variant="ghost"
               disabled={!fromDate || !toDate}
-              onClick={() => onChoose(windowFromRange(new Date(fromDate).toISOString(), new Date(toDate).toISOString()))}>
+              onClick={() => onChoose([windowFromRange(new Date(fromDate).toISOString(), new Date(toDate).toISOString())])}>
               Use Custom Range
+            </Button>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-white/[0.03] p-3">
+            <div className="text-sm font-medium text-foreground">Combine Multiple Shifts</div>
+            <div className="mt-1 text-[10px] text-muted-foreground">
+              Pick 2+ recent nightly shifts. The email body groups items under each shift heading.
+            </div>
+            <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1">
+              {recent.map((w) => {
+                const k = shiftKey(w);
+                return (
+                  <label key={k} className="flex items-center gap-2 rounded-md border border-border/30 bg-white/[0.02] p-1.5 text-xs">
+                    <input type="checkbox" checked={selectedKeys.includes(k)} onChange={() => toggleKey(k)} />
+                    <span className="text-foreground">{w.label}</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground">{w.timeLabel}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <Button
+              size="sm"
+              className="mt-2 w-full"
+              variant="ghost"
+              disabled={selectedKeys.length < 2}
+              onClick={() => onChoose(recent.filter((w) => selectedKeys.includes(shiftKey(w))))}
+            >
+              Use {selectedKeys.length || 0} Selected Shifts
             </Button>
           </div>
         </div>
