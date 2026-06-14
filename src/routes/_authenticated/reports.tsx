@@ -548,12 +548,12 @@ function RecordRow({ label, when, children }: { label: string; when: number; chi
 /* ----------------------- Report 5: Programming Status Email ----------------------- */
 function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; from?: string; to?: string }) {
   useProgEmail();
-  const [window, setWindow] = useState<ShiftWindow | null>(() => {
-    if (initialWindow === "custom" && from && to) return windowFromRange(from, to);
-    if (initialWindow === "current") return currentShiftWindow();
+  const [windows, setWindows] = useState<ShiftWindow[] | null>(() => {
+    if (initialWindow === "custom" && from && to) return [windowFromRange(from, to)];
+    if (initialWindow === "current") return [currentShiftWindow()];
     return null;
   });
-  const [setupOpen, setSetupOpen] = useState(window === null);
+  const [setupOpen, setSetupOpen] = useState(windows === null);
   const [body, setBody] = useState("");
   const [draftId, setDraftId] = useState<string | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -566,11 +566,11 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
   const hiddenSections = draft?.hiddenSectionKeys ?? [];
 
   const regenerate = () => {
-    if (!window) return;
-    const d = draftId ? progEmailStore.get(draftId) : progEmailStore.findOrCreate(window);
+    if (!windows) return;
+    const d = draftId ? progEmailStore.get(draftId) : progEmailStore.findOrCreateMulti(windows);
     if (!d) return;
     setDraftId(d.id);
-    const result = buildEmail({ window, attentionIds: d.attentionIds, hiddenSectionKeys: d.hiddenSectionKeys });
+    const result = buildEmailMulti({ windows, attentionIds: d.attentionIds, hiddenSectionKeys: d.hiddenSectionKeys });
     setBody(result.body);
     progEmailStore.saveVersion(d.id, "Generated", result.body);
     if (result.warnings.length) {
@@ -578,11 +578,11 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
     }
   };
 
-  const choose = (w: ShiftWindow) => {
-    setWindow(w);
-    const d = progEmailStore.findOrCreate(w);
+  const choose = (ws: ShiftWindow[]) => {
+    setWindows(ws);
+    const d = progEmailStore.findOrCreateMulti(ws);
     setDraftId(d.id);
-    const result = buildEmail({ window: w, attentionIds: d.attentionIds, hiddenSectionKeys: d.hiddenSectionKeys });
+    const result = buildEmailMulti({ windows: ws, attentionIds: d.attentionIds, hiddenSectionKeys: d.hiddenSectionKeys });
     setBody(result.body);
     if (d.versions.length === 0) progEmailStore.saveVersion(d.id, "Generated", result.body);
     setSetupOpen(false);
@@ -594,7 +594,18 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
     progEmailStore.setAttention(draft.id, has ? attentionIds.filter((x) => x !== id) : [...attentionIds, id]);
   };
 
-  if (!window) {
+  const copyRichEmail = async () => {
+    if (!windows) return;
+    const r = buildEmailHtml({ windows, attentionIds, hiddenSectionKeys: hiddenSections, plainBody: body });
+    const ok = await copyRich(r.html, body);
+    if (!ok) { toast.error("Rich copy failed. Try Copy Email."); return; }
+    const parts = [`Copied with snips embedded.`];
+    if (r.imageCount || r.fileCount) parts.push(`${r.imageCount} image${r.imageCount === 1 ? "" : "s"}, ${r.fileCount} file${r.fileCount === 1 ? "" : "s"}.`);
+    if (r.truncated) parts.push("Some snips too large to embed — included as links.");
+    toast.success(parts.join(" "));
+  };
+
+  if (!windows) {
     return (
       <ReportShell title="Programming Status Email Generator">
         <Empty label="Choose a shift window to begin." />
@@ -604,6 +615,21 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
     );
   }
 
+  const headerLabel = windows.length === 1
+    ? windows[0].label
+    : `${windows.length} shifts combined`;
+  const headerTime = windows.length === 1
+    ? windows[0].timeLabel
+    : windows.map((w) => w.label).join(" • ");
+
+  // Snip count preview (counts only — does not embed yet).
+  const snipPreview = (() => {
+    let images = 0, files = 0;
+    const r = buildEmailHtml({ windows, attentionIds, hiddenSectionKeys: hiddenSections, plainBody: "" });
+    images = r.imageCount; files = r.fileCount;
+    return { images, files };
+  })();
+
   return (
     <ReportShell title="Programming Status Email Generator" actions={
       <>
@@ -612,8 +638,8 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
       </>
     }>
       <div className="mb-3 rounded-md border border-border/40 bg-white/[0.02] p-3 text-xs">
-        <div className="font-medium text-foreground">Shift: {window.label}</div>
-        <div className="text-muted-foreground">Window: {window.timeLabel}</div>
+        <div className="font-medium text-foreground">Shift: {headerLabel}</div>
+        <div className="text-muted-foreground">Window: {headerTime}</div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
@@ -659,6 +685,10 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
             if (draft) progEmailStore.saveVersion(draft.id, "User Edited", e.target.value);
           }} className="font-mono text-xs" />
           <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={copyRichEmail}
+              style={{ background: "linear-gradient(110deg, oklch(0.45 0.16 200 / 0.7), oklch(0.4 0.18 290 / 0.55))", border: "1px solid oklch(0.78 0.18 220 / 0.5)" }}>
+              <Copy className="mr-1 h-3.5 w-3.5" />Copy Email with Snips (Rich)
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => copyText(body, "Email copied")}><Copy className="mr-1 h-3.5 w-3.5" />Copy Email</Button>
             <Button size="sm" variant="ghost" onClick={() => copyText(body.replace(/\u00a0/g, " "), "Plain text copied")}><Copy className="mr-1 h-3.5 w-3.5" />Copy Plain Text</Button>
             <Button size="sm" variant="ghost" onClick={() => { if (draft) { progEmailStore.saveVersion(draft.id, "User Edited", body); toast.success("Draft saved."); } }}>
@@ -668,6 +698,9 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
               style={{ background: "linear-gradient(110deg, oklch(0.4 0.16 240 / 0.7), oklch(0.4 0.18 290 / 0.55))", border: "1px solid oklch(0.78 0.18 220 / 0.5)" }}>
               <Send className="mr-1 h-3.5 w-3.5" />Mark Sent Manually
             </Button>
+          </div>
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Snips that will embed when you use Rich Copy: {snipPreview.images} image{snipPreview.images === 1 ? "" : "s"}, {snipPreview.files} file{snipPreview.files === 1 ? "" : "s"}.
           </div>
         </div>
       </div>
