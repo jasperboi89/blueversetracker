@@ -754,7 +754,7 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
   );
 }
 
-function SetupModal({ open, onOpenChange, onChoose }: { open: boolean; onOpenChange: (ws: ShiftWindow[]) => void | ((v: boolean) => void); onChoose: (ws: ShiftWindow[]) => void }) {
+function SetupModal({ open, onOpenChange, onChoose }: { open: boolean; onOpenChange: (v: boolean) => void; onChoose: (ws: ShiftWindow[]) => void }) {
   const current = currentShiftWindow();
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -764,7 +764,7 @@ function SetupModal({ open, onOpenChange, onChoose }: { open: boolean; onOpenCha
     setSelectedKeys((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
   const shiftKey = (w: ShiftWindow) => `${w.start.getTime()}`;
   return (
-    <Dialog open={open} onOpenChange={onOpenChange as (v: boolean) => void}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-panel border-0 sm:max-w-md">
         <DialogHeader><DialogTitle>Choose Email Window</DialogTitle></DialogHeader>
         <div className="space-y-3">
