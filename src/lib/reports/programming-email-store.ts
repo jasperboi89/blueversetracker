@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { ShiftWindow } from "./shift-window";
+import { windowsKey as makeWindowsKey, combinedWindowsLabel } from "./shift-window";
 
 export type EmailVersionLabel =
   | "Generated"
@@ -22,6 +23,8 @@ export interface EmailDraft {
   windowTimeLabel: string;
   windowStartMs: number;
   windowEndMs: number;
+  /** When multiple shifts are combined into one email. Single-shift drafts leave this empty. */
+  windowKeys?: string[];
   attentionIds: string[];           // explicitly selected attention items (kind:id)
   hiddenSectionKeys: string[];      // section keys hidden by user
   versions: EmailVersion[];
@@ -95,6 +98,33 @@ export const progEmailStore = {
       windowTimeLabel: w.timeLabel,
       windowStartMs: w.start.getTime(),
       windowEndMs: w.end.getTime(),
+      attentionIds: [],
+      hiddenSectionKeys: [],
+      versions: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    state = { drafts: [draft, ...state.drafts] };
+    persist();
+    return draft;
+  },
+
+  findOrCreateMulti(ws: ShiftWindow[]): EmailDraft {
+    ensureLoaded();
+    if (ws.length === 1) return this.findOrCreate(ws[0]);
+    const key = makeWindowsKey(ws);
+    const existing = state.drafts.find((d) => d.windowKey === key && !d.sentAt);
+    if (existing) return existing;
+    const now = Date.now();
+    const sorted = [...ws].sort((a, b) => a.start.getTime() - b.start.getTime());
+    const draft: EmailDraft = {
+      id: newId("pem"),
+      windowKey: key,
+      windowKeys: ws.map((w) => windowKey(w)),
+      windowLabel: combinedWindowsLabel(ws),
+      windowTimeLabel: `${ws.length} shifts combined`,
+      windowStartMs: sorted[0].start.getTime(),
+      windowEndMs: sorted[sorted.length - 1].end.getTime(),
       attentionIds: [],
       hiddenSectionKeys: [],
       versions: [],
