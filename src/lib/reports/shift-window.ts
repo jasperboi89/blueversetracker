@@ -119,3 +119,36 @@ export function shiftLabelFromKey(shiftKey: string): string {
     }).format(dt);
   return `${fmt(start)} into ${fmt(end)}`;
 }
+
+/**
+ * Returns the last N nightly 10pm→6am Central shift windows, most recent first.
+ * Index 0 is the current/just-ended shift; index N-1 is N-1 nights earlier.
+ */
+export function recentNightlyShiftWindows(count: number, now = new Date()): ShiftWindow[] {
+  const base = currentShiftWindow(now);
+  const out: ShiftWindow[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const start = new Date(base.start.getTime() - i * 24 * 60 * 60 * 1000);
+    const end = new Date(base.end.getTime() - i * 24 * 60 * 60 * 1000);
+    out.push({
+      start,
+      end,
+      kind: i === 0 ? "current" : "custom",
+      label: `${fmtDay(start)} into ${fmtDay(end)}`,
+      timeLabel: `${fmtTime(start)} – ${fmtTime(end)} Central`,
+    });
+  }
+  return out;
+}
+
+/** Stable key for an array of windows (used by the email draft store). */
+export function windowsKey(ws: ShiftWindow[]): string {
+  return ws.map((w) => `${w.kind}:${w.start.getTime()}:${w.end.getTime()}`).join("|");
+}
+
+/** Combined label for one or more shifts. */
+export function combinedWindowsLabel(ws: ShiftWindow[]): string {
+  if (ws.length <= 1) return ws[0]?.label ?? "";
+  const sorted = [...ws].sort((a, b) => a.start.getTime() - b.start.getTime());
+  return `${sorted[0].label.split(" into ")[0]} → ${sorted[sorted.length - 1].label.split(" into ")[1] ?? sorted[sorted.length - 1].label}`;
+}

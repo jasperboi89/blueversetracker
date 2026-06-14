@@ -423,3 +423,41 @@ export function getAttentionCandidates(): AttentionCandidate[] {
 }
 
 export { stamp as formatStamp };
+
+/**
+ * Multi-shift wrapper: produces one combined text email with a shift heading
+ * before each window's sections. Single-window arrays behave like buildEmail.
+ */
+export function buildEmailMulti(opts: {
+  windows: ShiftWindow[];
+  attentionIds: string[];
+  hiddenSectionKeys?: string[];
+}): BuildResult {
+  const { windows, attentionIds, hiddenSectionKeys = [] } = opts;
+  if (windows.length === 0) return { body: "", warnings: [], empty: true };
+  if (windows.length === 1) {
+    return buildEmail({ window: windows[0], attentionIds, hiddenSectionKeys });
+  }
+  const sorted = [...windows].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const warnings: InsufficientWarning[] = [];
+  const out: string[] = [];
+  out.push("Programming Status Summary");
+  out.push(`Shifts: ${windows.length} combined`);
+  out.push(
+    `Range: ${sorted[0].label.split(" into ")[0]} → ${sorted[sorted.length - 1].label.split(" into ")[1] ?? sorted[sorted.length - 1].label}`,
+  );
+  out.push("");
+  sorted.forEach((w) => {
+    const r = buildEmail({ window: w, attentionIds, hiddenSectionKeys });
+    // Strip the inner header (first 4 lines) added by buildEmail.
+    const inner = r.body.split("\n").slice(4).join("\n").trimEnd();
+    if (!inner) return;
+    out.push(`────── Shift: ${w.label} (${w.timeLabel}) ──────`);
+    out.push("");
+    out.push(inner);
+    out.push("");
+    warnings.push(...r.warnings);
+  });
+  while (out.length && out[out.length - 1] === "") out.pop();
+  return { body: out.join("\n"), warnings, empty: out.length <= 4 };
+}
