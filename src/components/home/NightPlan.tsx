@@ -49,6 +49,8 @@ import { useNow } from "@/hooks/use-now";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConvertFromNightPlanModal } from "@/components/additional-work/ConvertFromNightPlanModal";
+import { NightPlanRolloverWatcher } from "./NightPlanRolloverWatcher";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 const priorityMeta: Record<Priority, { label: string; color: string; icon: typeof Star }> = {
   must: { label: "Must Do Tonight", color: "var(--gold-glow)", icon: Star },
@@ -77,6 +79,7 @@ export function NightPlan() {
   const [detail, setDetail] = useState<{ id: string; from: typeof drawerTab } | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const celebKey = useRef<string>("");
+  const [resetOpen, setResetOpen] = useState(false);
 
   const active = items.filter((i) => isActive(i.status));
   const done = items.filter((i) => i.status === "done");
@@ -167,6 +170,11 @@ export function NightPlan() {
               <ListChecks className="mr-1.5 h-4 w-4" /> {expanded ? "Hide" : "Open Night Plan"}
             </Button>
           )}
+          {!isEmpty && (
+            <Button variant="ghost" size="sm" onClick={() => setResetOpen(true)} title="Archive current items and start a fresh plan">
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
+            </Button>
+          )}
           <BlueverseButton onClick={() => setAddOpen(true)}>
             <Plus className="mr-1.5 h-4 w-4" /> Add Item
           </BlueverseButton>
@@ -236,6 +244,26 @@ export function NightPlan() {
           subtitle={`Tonight's plan is cleared.\nBlueVerse focus restored.\nNice work, Luke.`}
         />
       )}
+
+      <NightPlanRolloverWatcher />
+
+      <ConfirmModal
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title="Reset Night Plan?"
+        description={
+          active.length > 0
+            ? `${active.length} active item${active.length === 1 ? " is" : "s are"} still open. Resetting will archive them as dismissed and clear the plan.`
+            : "This archives the current plan and starts a fresh 0% slate."
+        }
+        confirmLabel="Reset Plan"
+        tone="danger"
+        onConfirm={() => {
+          nightPlanStore.archiveAndReset(active.length > 0 ? "dismiss-active" : "done-as-is");
+          setResetOpen(false);
+          toast("Night plan reset.");
+        }}
+      />
     </div>
   );
 }
