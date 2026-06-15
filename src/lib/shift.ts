@@ -139,6 +139,21 @@ export function getShiftKey(now = new Date()): string {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+/** Shift key for the NEXT nightly shift (today's date if before 10pm, else tomorrow). */
+export function getNextShiftKey(now = new Date()): string {
+  const current = getShiftKey(now);
+  const [y, m, d] = current.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** Central-time hour/minute helper for time-of-day watchers. */
+export function getCentralHM(now = new Date()): { hour: number; minute: number } {
+  const p = centralParts(now);
+  return { hour: p.hour, minute: p.minute };
+}
+
 export function getCurrentShiftWindow(now = new Date()): { start: Date; end: Date } {
   // Returns the shift window covering "now" if in shift, or the upcoming shift
   const p = centralParts(now);
