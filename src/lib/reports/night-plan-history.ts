@@ -87,6 +87,15 @@ export const nightPlanHistory = {
     state = { items: state.items.filter((i) => !set.has(i.id)) };
     persist();
   },
+  addMany(items: NPHistoryItem[]) {
+    if (!items.length) return;
+    ensureLoaded();
+    const existing = new Set(state.items.map((i) => i.id));
+    const fresh = items.filter((i) => !existing.has(i.id));
+    if (!fresh.length) return;
+    state = { items: [...fresh, ...state.items] };
+    persist();
+  },
   clearAll() {
     ensureLoaded();
     state = { items: [] };
