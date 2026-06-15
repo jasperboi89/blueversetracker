@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Copy, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Copy, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub,
   DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 const globalReasonTemplates: { id: string; text: string; type: ReasonType; expectedFlow: string }[] = [];
 const accountReasonTemplates: Record<string, { id: string; text: string; type: ReasonType; expectedFlow: string }[]> = {};
 import { StatusChip } from "./StatusChip";
@@ -24,6 +25,31 @@ import { cn } from "@/lib/utils";
 
 export function ReasonFlowSection({ session }: { session: DispatchSession }) {
   const accountTemplates = accountReasonTemplates[session.accountNumber] ?? [];
+
+  // Track which reason cards are expanded. Only the most recent (or manually
+  // re-opened) cards are open; adding a new reason auto-collapses the rest.
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const last = session.reasons[session.reasons.length - 1];
+    return new Set(last ? [last.id] : []);
+  });
+  const prevCountRef = useRef(session.reasons.length);
+
+  useEffect(() => {
+    const count = session.reasons.length;
+    if (count > prevCountRef.current) {
+      const last = session.reasons[count - 1];
+      if (last) setExpanded(new Set([last.id]));
+    }
+    prevCountRef.current = count;
+  }, [session.reasons]);
+
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const addManual = () => dispatchStore.addReason(session.id, "manual");
   const addFromTemplate = (
@@ -84,13 +110,28 @@ export function ReasonFlowSection({ session }: { session: DispatchSession }) {
         </div>
       )}
       <div className="space-y-3">
-        {session.reasons.map((r) => <ReasonCardView key={r.id} session={session} reason={r} />)}
+        {session.reasons.map((r) => (
+          <ReasonCardView
+            key={r.id}
+            session={session}
+            reason={r}
+            open={expanded.has(r.id)}
+            onToggle={() => toggle(r.id)}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function ReasonCardView({ session, reason }: { session: DispatchSession; reason: ReasonCard }) {
+function ReasonCardView({
+  session, reason, open, onToggle,
+}: {
+  session: DispatchSession;
+  reason: ReasonCard;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const status = reasonCardStatus(reason);
   const [snipOpen, setSnipOpen] = useState(false);
   const [retestOpen, setRetestOpen] = useState(false);
@@ -112,10 +153,25 @@ function ReasonCardView({ session, reason }: { session: DispatchSession; reason:
   return (
     <div className="rounded-xl border border-border/40 bg-white/[0.02] p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-          <span>{reason.source === "global" ? "Global" : reason.source === "account" ? "Account" : "Manual"}</span>
-          {reason.type && <span>· {reasonTypeLabel}</span>}
-        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          aria-expanded={open}
+        >
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", !open && "-rotate-90")}
+          />
+          <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+            <span>{reason.source === "global" ? "Global" : reason.source === "account" ? "Account" : "Manual"}</span>
+            {reason.type && <span>· {reasonTypeLabel}</span>}
+          </span>
+          {!open && (
+            <span className="ml-2 truncate text-xs text-foreground/80 normal-case tracking-normal">
+              {reason.text.trim() || <span className="text-muted-foreground italic">Untitled reason</span>}
+            </span>
+          )}
+        </button>
         <div className="flex items-center gap-2">
           <StatusChip status={status} />
           <Button size="sm" variant="ghost" onClick={() => dispatchStore.duplicateReason(session.id, reason.id)}>
@@ -127,7 +183,8 @@ function ReasonCardView({ session, reason }: { session: DispatchSession; reason:
         </div>
       </div>
 
-      <div className="space-y-3">
+      <Collapsible open={open}>
+        <CollapsibleContent className="space-y-3 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden">
         <div className="grid gap-2 sm:grid-cols-[1fr_180px]">
           <Input value={reason.text} onChange={(e) => update({ text: e.target.value })} placeholder="Reason for Call" />
           <Select value={reason.type ?? ""} onValueChange={(v) => update({ type: v as ReasonType })}>
@@ -201,7 +258,8 @@ function ReasonCardView({ session, reason }: { session: DispatchSession; reason:
           </div>
           {cardSnips.length > 0 && <SnipGrid snips={cardSnips} onRemove={(id) => dispatchStore.removeSnip(session.id, id)} />}
         </div>
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       <AddSnipModal
         sessionId={session.id}
