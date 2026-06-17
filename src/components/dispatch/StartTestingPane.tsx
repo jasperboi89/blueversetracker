@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Search, Ticket as TicketIcon, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dispatchStore } from "@/lib/dispatch-store";
 import { accountsStore } from "@/lib/accounts-store";
 import { ticketsStore } from "@/lib/tickets-store";
@@ -13,10 +14,45 @@ export function StartTestingPane() {
   const [q, setQ] = useState("");
   const [ticket, setTicket] = useState("");
   const [picked, setPicked] = useState<{ number: string; name: string } | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newNumber, setNewNumber] = useState("");
+  const [newName, setNewName] = useState("");
 
   const matches = q.trim() ? accountsStore.search(q, { includeArchived: true }) : [];
 
   const linkedTicket = ticket.trim() ? ticketsStore.getByNumber(ticket.trim()) : undefined;
+
+  const openCreate = () => {
+    // Seed the modal with whatever the user typed so far.
+    const trimmed = q.trim();
+    const numMatch = trimmed.match(/^\d+/);
+    if (numMatch) {
+      setNewNumber(numMatch[0]);
+      setNewName(trimmed.slice(numMatch[0].length).replace(/^[\s—-]+/, ""));
+    } else {
+      setNewNumber("");
+      setNewName(trimmed);
+    }
+    setCreateOpen(true);
+  };
+
+  const submitCreate = () => {
+    const num = newNumber.trim();
+    const name = newName.trim();
+    if (!num || !name) {
+      toast.error("Account number and name are required.");
+      return;
+    }
+    try {
+      const a = accountsStore.create({ number: num, name });
+      setPicked({ number: a.number, name: a.name });
+      setQ(`${a.number} — ${a.name}`);
+      setCreateOpen(false);
+      toast.success(`Created account ${a.number}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create account.");
+    }
+  };
 
   const start = () => {
     if (!picked) return;
@@ -96,7 +132,7 @@ export function StartTestingPane() {
           )) : (
             <div className="rounded-md border border-dashed border-border/40 p-3 text-xs text-muted-foreground">
               No account matches “{q}”.
-              <Button size="sm" variant="ghost" className="ml-2" onClick={() => toast.info("Full account creation will come in a later phase.")}>Create Account Later</Button>
+              <Button size="sm" variant="ghost" className="ml-2" onClick={openCreate}>Create Account</Button>
             </div>
           )}
         </div>
@@ -110,6 +146,29 @@ export function StartTestingPane() {
           <span className="text-muted-foreground">· {linkedTicket.accountName}</span>
         </div>
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="glass-panel border-0 sm:max-w-md">
+          <DialogHeader><DialogTitle>Create Account</DialogTitle></DialogHeader>
+          <div className="space-y-3 text-sm">
+            <label className="block">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Account Number</span>
+              <Input value={newNumber} onChange={(e) => setNewNumber(e.target.value)} className="mt-1" placeholder="e.g. 1042" inputMode="numeric" autoFocus />
+            </label>
+            <label className="block">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">Account Name</span>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} className="mt-1" placeholder="e.g. Riverbend Clinic" />
+            </label>
+            <p className="text-[11px] text-muted-foreground">
+              You can add region, notes, and reason templates later from the Accounts page.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={submitCreate}>Create &amp; Select</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
