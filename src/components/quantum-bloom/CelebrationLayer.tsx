@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { subscribeCelebrations, type CelebrationEvent } from "@/lib/quantum-bloom/celebration-bus";
+import { useQbTuning } from "@/lib/settings/qb-tuning-store";
 
 const DURATIONS: Record<CelebrationEvent["kind"], number> = {
   ticket: 1200,
@@ -15,15 +16,20 @@ const DURATIONS: Record<CelebrationEvent["kind"], number> = {
  */
 export function CelebrationLayer() {
   const [active, setActive] = useState<CelebrationEvent | null>(null);
+  const { celebrations } = useQbTuning();
 
   useEffect(() => {
+    if (!celebrations) {
+      setActive(null);
+      return;
+    }
     const unsub = subscribeCelebrations((e) => {
       if (document.hidden) return;
       setActive(e);
       setTimeout(() => setActive(null), DURATIONS[e.kind] + 100);
     });
     return () => { unsub(); };
-  }, []);
+  }, [celebrations]);
 
   if (!active) return null;
 

@@ -71,7 +71,10 @@ export function ThemesSection() {
               Color phases follow 10 PM → 6 AM Central. Active in Phase 1.
             </div>
           </div>
-          <Switch checked disabled />
+          <Switch
+            checked={tuning.nightShiftSync}
+            onCheckedChange={(v) => setQbTuning({ nightShiftSync: v })}
+          />
         </div>
 
         <div className="mt-2 flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-2 text-xs">
@@ -81,7 +84,10 @@ export function ThemesSection() {
               Bloom pulses on ticket, dispatch, night plan, and shift completion.
             </div>
           </div>
-          <Switch checked disabled />
+          <Switch
+            checked={tuning.celebrations}
+            onCheckedChange={(v) => setQbTuning({ celebrations: v })}
+          />
         </div>
 
         <div className="mt-2 flex items-center justify-between rounded-md bg-white/[0.02] px-3 py-2 text-xs">
