@@ -25,6 +25,7 @@ import { copyRich } from "@/lib/summary/rich-copy";
 import { progEmailStore, useProgEmail } from "@/lib/reports/programming-email-store";
 import { useRecurringRows, recurringStore } from "@/lib/reports/recurring-issues";
 import { nightPlanHistory, useNightPlanHistory } from "@/lib/reports/night-plan-history";
+import { buildCsv, downloadCsv, isoCentralDate } from "@/lib/reports/csv";
 
 const reportSchema = z.object({
   r: z.enum(["ticket-history","dispatch-status","add-work","account-history","prog-email","recurring","night-plan"]).optional().catch(undefined),
@@ -157,8 +158,13 @@ function copyText(text: string, label = "Copied") {
   navigator.clipboard.writeText(text).then(() => toast.success(label));
 }
 
-function exportPlaceholder() {
-  toast.message("Export available in a later phase.");
+function exportRows(name: string, headers: string[], rows: (string | number | null | undefined)[][]) {
+  if (rows.length === 0) {
+    toast.message("Nothing to export with the current filters.");
+    return;
+  }
+  downloadCsv(`${name}-${isoCentralDate()}.csv`, buildCsv(headers, rows));
+  toast.success(`Exported ${rows.length} row${rows.length === 1 ? "" : "s"}.`);
 }
 
 /* ----------------------- Filter primitives ----------------------- */
