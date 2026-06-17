@@ -24,6 +24,12 @@ import { RetestModal } from "./RetestModal";
 import { formatCentralShort } from "@/lib/shift";
 import { cn } from "@/lib/utils";
 
+function mapAccountTemplateType(t: AccountTemplateType): ReasonType {
+  if (t === "routine") return "routine";
+  if (t === "urgent") return "urgent";
+  return "unsure";
+}
+
 export function ReasonFlowSection({ session }: { session: DispatchSession }) {
   // Reactively re-render when accounts/templates change.
   useAccounts();
