@@ -74,8 +74,10 @@ function Workspace() {
             <Button size="sm" variant="ghost" asChild>
               <Link to="/contact-dispatch"><ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to Contact Dispatch</Link>
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => toast.info("Account profile opens in a later phase.")}>
-              <Building2 className="mr-1 h-3.5 w-3.5" /> Open Account
+            <Button size="sm" variant="ghost" asChild>
+              <Link to="/accounts/$accountNumber" params={{ accountNumber: session.accountNumber }}>
+                <Building2 className="mr-1 h-3.5 w-3.5" /> Open Account
+              </Link>
             </Button>
             {session.ticketNumber && (
               <Button size="sm" variant="ghost" onClick={() => toast.info(`Freshdesk ticket #${session.ticketNumber} (mock).`)}>
