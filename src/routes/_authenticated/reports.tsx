@@ -25,6 +25,7 @@ import { copyRich } from "@/lib/summary/rich-copy";
 import { progEmailStore, useProgEmail } from "@/lib/reports/programming-email-store";
 import { useRecurringRows, recurringStore } from "@/lib/reports/recurring-issues";
 import { nightPlanHistory, useNightPlanHistory } from "@/lib/reports/night-plan-history";
+import { buildCsv, downloadCsv, isoCentralDate } from "@/lib/reports/csv";
 
 const reportSchema = z.object({
   r: z.enum(["ticket-history","dispatch-status","add-work","account-history","prog-email","recurring","night-plan"]).optional().catch(undefined),
@@ -157,8 +158,13 @@ function copyText(text: string, label = "Copied") {
   navigator.clipboard.writeText(text).then(() => toast.success(label));
 }
 
-function exportPlaceholder() {
-  toast.message("Export available in a later phase.");
+function exportRows(name: string, headers: string[], rows: (string | number | null | undefined)[][]) {
+  if (rows.length === 0) {
+    toast.message("Nothing to export with the current filters.");
+    return;
+  }
+  downloadCsv(`${name}-${isoCentralDate()}.csv`, buildCsv(headers, rows));
+  toast.success(`Exported ${rows.length} row${rows.length === 1 ? "" : "s"}.`);
 }
 
 /* ----------------------- Filter primitives ----------------------- */
@@ -215,7 +221,15 @@ function FreshdeskHistoryReport() {
   return (
     <ReportShell title="Freshdesk Ticket Work History"
       actions={<><Button size="sm" variant="ghost" onClick={() => copyText(rows.map(r => `#${r.number} ${r.accountNumber} ${r.accountName}`).join("\n"), "Report copied")}><Copy className="mr-1 h-3.5 w-3.5" />Copy</Button>
-        <Button size="sm" variant="ghost" onClick={exportPlaceholder}><Download className="mr-1 h-3.5 w-3.5" />Export</Button></>}>
+        <Button size="sm" variant="ghost" onClick={() => exportRows("freshdesk-history",
+          ["Ticket #","Account #","Account","Status","Classification","Updated (ISO)","Completed (ISO)","Subject","Issue","Changes","Result Notes","Failure Reason","Waiting Reason"],
+          rows.map((t) => {
+            const s = ticketsStore.getSession(t.id);
+            return [t.number, t.accountNumber, t.accountName, STATUS_LABEL[t.status], t.issueClassification ?? "",
+              new Date(t.updatedAt).toISOString(),
+              t.completedAt ? new Date(t.completedAt).toISOString() : "",
+              t.details.subject ?? "", s.issueText, s.changesText, s.resultNotes, s.failureReason, s.waitingReason];
+          }))}><Download className="mr-1 h-3.5 w-3.5" />Export</Button></>}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RangeFilter days={days} onChange={setDays} />
         <select className="rounded-md border border-border/40 bg-background/50 px-2 py-1 text-xs" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -303,7 +317,15 @@ function DispatchStatusReport() {
 
   return (
     <ReportShell title="Contact Dispatch Testing Status"
-      actions={<Button size="sm" variant="ghost" onClick={exportPlaceholder}><Download className="mr-1 h-3.5 w-3.5" />Export</Button>}>
+      actions={<Button size="sm" variant="ghost" onClick={() => exportRows("dispatch-status",
+        ["Account #","Account","Ticket #","Status","Readiness %","Reasons","Phone","Repeat","Save/Summary","Status Reason","Updated (ISO)","Completed (ISO)"],
+        rows.map((s) => [s.accountNumber, s.accountName, s.ticketNumber ?? "",
+          s.status ? DISPATCH_STATUS_LABEL[s.status] : "(in progress)",
+          computeReadiness(s).percent,
+          s.reasons.map((r) => r.text || "(untitled)").join(" / "),
+          s.phone.status, s.repeat.status, s.saveSummary.status, s.statusReason,
+          new Date(s.updatedAt).toISOString(),
+          s.completedAt ? new Date(s.completedAt).toISOString() : ""]))}><Download className="mr-1 h-3.5 w-3.5" />Export</Button>}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RangeFilter days={days} onChange={setDays} />
         <select className="rounded-md border border-border/40 bg-background/50 px-2 py-1 text-xs" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -383,7 +405,14 @@ function AddWorkHistoryReport() {
 
   return (
     <ReportShell title="Additional Work History"
-      actions={<Button size="sm" variant="ghost" onClick={exportPlaceholder}><Download className="mr-1 h-3.5 w-3.5" />Export</Button>}>
+      actions={<Button size="sm" variant="ghost" onClick={() => exportRows("additional-work",
+        ["Title","Account #","Account","Status","Classification","What Needs Done","Completion Summary","Notes","Programming Status Notes","Updated (ISO)","Completed (ISO)"],
+        rows.map((a) => [a.title, a.accountNumber ?? "", a.accountName ?? "",
+          a.status === "completed" ? "Completed" : "Currently Working On",
+          a.issueClassification ?? "", a.whatNeedsDone, a.completionSummary ?? "",
+          a.notes, a.programmingStatusNotes,
+          new Date(a.updatedAt).toISOString(),
+          a.completedAt ? new Date(a.completedAt).toISOString() : ""]))}><Download className="mr-1 h-3.5 w-3.5" />Export</Button>}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <RangeFilter days={days} onChange={setDays} />
         <select className="rounded-md border border-border/40 bg-background/50 px-2 py-1 text-xs" value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -517,7 +546,14 @@ function AccountHistoryReport() {
               </Group>
               <div className="mt-3 flex gap-2">
                 <Link to="/accounts/$accountNumber" params={{ accountNumber: a.number }}><Button size="sm" variant="ghost">Open Account Profile</Button></Link>
-                <Button size="sm" variant="ghost" onClick={exportPlaceholder}><Download className="mr-1 h-3.5 w-3.5" />Export Account History</Button>
+                <Button size="sm" variant="ghost" onClick={() => exportRows(`account-${a.number}-history`,
+                  ["Type","Title / Subject","Status","Date (ISO)","Detail"],
+                  [
+                    ...fd.map((t) => ["Freshdesk", `#${t.number} ${t.details.subject ?? ""}`, STATUS_LABEL[t.status], new Date(t.updatedAt).toISOString(), ticketsStore.getSession(t.id).resultNotes] as (string | number)[]),
+                    ...cd.map((s) => ["Contact Dispatch", s.accountName, s.status ? DISPATCH_STATUS_LABEL[s.status] : "(in progress)", new Date(s.updatedAt).toISOString(), s.statusReason] as (string | number)[]),
+                    ...aw.map((w) => ["Additional Work", w.title, w.status === "completed" ? "Completed" : "Currently Working On", new Date(w.updatedAt).toISOString(), w.programmingStatusNotes || w.notes] as (string | number)[]),
+                    ...notes.map((n) => ["Note", n.text.slice(0, 60), "", new Date(n.createdAt).toISOString(), n.text] as (string | number)[]),
+                  ])}><Download className="mr-1 h-3.5 w-3.5" />Export Account History</Button>
               </div>
             </ExpandableSection>
           );

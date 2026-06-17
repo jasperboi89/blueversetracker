@@ -9,22 +9,39 @@ import {
   type DispatchSession, type ReasonCard, type ReasonType,
 } from "@/lib/dispatch-store";
 import { useDropdownGroup, useDropdownLabel } from "@/lib/settings/dropdowns-store";
+import { useGlobalReasonTemplates } from "@/lib/settings/reason-templates-store";
+import { accountsStore, useAccounts } from "@/lib/accounts-store";
+import type { AccountTemplateType } from "@/lib/accounts-store";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub,
   DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-const globalReasonTemplates: { id: string; text: string; type: ReasonType; expectedFlow: string }[] = [];
-const accountReasonTemplates: Record<string, { id: string; text: string; type: ReasonType; expectedFlow: string }[]> = {};
 import { StatusChip } from "./StatusChip";
 import { AddSnipModal } from "./AddSnipModal";
 import { RetestModal } from "./RetestModal";
 import { formatCentralShort } from "@/lib/shift";
 import { cn } from "@/lib/utils";
 
+function mapAccountTemplateType(t: AccountTemplateType): ReasonType {
+  if (t === "routine") return "routine";
+  if (t === "urgent") return "urgent";
+  return "unsure";
+}
+
 export function ReasonFlowSection({ session }: { session: DispatchSession }) {
-  const accountTemplates = accountReasonTemplates[session.accountNumber] ?? [];
+  // Reactively re-render when accounts/templates change.
+  useAccounts();
+  const globalReasonTemplates = useGlobalReasonTemplates();
+  const accountTemplates = accountsStore
+    .templatesFor(session.accountNumber)
+    .map((t) => ({
+      id: t.id,
+      text: t.name,
+      type: mapAccountTemplateType(t.type),
+      expectedFlow: t.expectedFlow,
+    }));
 
   // Track which reason cards are expanded. Only the most recent (or manually
   // re-opened) cards are open; adding a new reason auto-collapses the rest.

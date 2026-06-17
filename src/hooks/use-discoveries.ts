@@ -26,8 +26,8 @@ export function useDiscoveries(active: boolean) {
     try {
       const r = await list();
       setRows(r as Discovery[]);
-    } catch {
-      // silent
+    } catch (err) {
+      console.warn("[useDiscoveries] failed to load discoveries", err);
     } finally {
       setLoading(false);
     }

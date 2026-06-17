@@ -5,7 +5,6 @@ import {
   computeReadiness, DISPATCH_STATUS_LABEL, useDispatch,
 } from "@/lib/dispatch-store";
 import { formatCentralShort } from "@/lib/shift";
-import { toast } from "sonner";
 
 export function ActiveSessionsList() {
   const { sessions } = useDispatch();
@@ -45,8 +44,10 @@ export function ActiveSessionsList() {
                   </div>
                 </div>
                 <div className="flex gap-1.5">
-                  <Button size="sm" variant="ghost" onClick={() => toast.info("Account profile opens in a later phase.")}>
-                    <Building2 className="mr-1 h-3.5 w-3.5" /> Open Account
+                  <Button size="sm" variant="ghost" asChild>
+                    <Link to="/accounts/$accountNumber" params={{ accountNumber: s.accountNumber }}>
+                      <Building2 className="mr-1 h-3.5 w-3.5" /> Open Account
+                    </Link>
                   </Button>
                   <Button size="sm" asChild
                     style={{ background: "linear-gradient(110deg, oklch(0.4 0.16 240 / 0.7), oklch(0.4 0.18 290 / 0.55))", border: "1px solid oklch(0.78 0.18 220 / 0.45)" }}

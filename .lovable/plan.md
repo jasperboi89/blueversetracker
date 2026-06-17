@@ -1,56 +1,52 @@
-## Goal
+# Finish-the-build Plan
 
-At shift end, automatically reset the Night Plan to 0 if everything is complete. If items are still active, prompt at 5:50 AM Central asking whether to carry them into tomorrow's plan — accepting wipes the next plan and seeds it with those leftovers; declining archives them as dismissed so the next shift starts fresh.
+Audit of the whole app found a handful of unfinished pieces. The recently-built features (night plan rollover, programming email, ReasonFlowSection collapsibles, reports panels, auth routes) are wired correctly — these are the gaps.
 
-## Behavior
+## Blockers (functional holes users will hit)
 
-1. **Auto-reset when clean (shift rollover):**
-   - When the current Central time crosses out of the shift window (hour reaches 6 AM, i.e. shift key changes), and zero items are `todo` / `in-progress` / `carried`, archive everything to `nightPlanHistory` and clear `nightPlanStore` so the new shift opens at 0 / 0%.
-   - Already-finished items (`done`, `dismissed`, `converted`) get pushed to history with their current status, then removed.
+### 1. Reason Flow templates are empty arrays
+`src/components/dispatch/ReasonFlowSection.tsx` declares `globalReasonTemplates = []` and `accountReasonTemplates = {}` at module scope, so the "Global Template" / "Account Template" submenus in the add-reason dropdown are always empty.
 
-2. **5:50 AM Central carry-over prompt (only when leftovers exist):**
-   - A small daily watcher fires at 5:50 AM Central. If there are active items, open a modal: "X items are still open. Move them to tomorrow's plan?"
-   - **Move them over** → mark each active item as `carried` in history, clear the current plan, and re-add fresh `todo` items (one per leftover, preserving task / notes / priority, new id, new `createdAt`, `carryTrail` updated). The new plan is the next shift's plan (the rollover at 6 AM uses the same items because the shift key has not changed yet — at 5:50 AM the key is still tonight; we seed under the *next* shift key explicitly).
-   - **Start fresh** → archive leftovers to history as `dismissed`, clear the current plan. Next shift opens at 0.
-   - **Dismiss / no answer by 6:00 AM** → default to "Start fresh" so the new shift is always clean.
-   - Snooze "remind me in 10 min" option for the prompt; auto-defaults at 6:00 AM regardless.
-   - Suppress if already answered for this shift key (store `rolloverAnsweredShiftKey` in plan state).
+Fix: read globals from `dropdowns-store` (or a new `reason-templates-store`) and per-account templates from `accountsStore` (the Accounts page already saves them there). Render real items in the submenus and auto-fill the new reason card when selected.
 
-3. **Manual override:** add a "Reset Plan" button in the Night Plan header so the user can trigger the same logic on demand (archives current items, clears state). Confirms first.
+### 2. "View Account" buttons go nowhere
+- `src/components/dispatch/ActiveSessionsList.tsx` — line ~48 toast stub
+- `src/routes/_authenticated/contact-dispatch.$sessionId.work.tsx` — line ~77 toast stub
 
-## Technical notes
+Both should `navigate({ to: "/accounts/$accountNumber", params: { accountNumber } })` (route already exists). Disable the button when no account is linked.
 
-**`src/lib/night-plan-store.ts`**
-- Add `rolloverAnsweredShiftKey?: string` to `PlanState`.
-- New actions:
-  - `archiveAndReset(disposition: "done-as-is" | "dismiss-active" | "carry-active")` — pushes current items into `nightPlanHistory` with the right statuses, then resets `items` to `[]`, sets `shiftKey` to current `getShiftKey()`, clears `celebrationShown`.
-  - `seedNextShiftFromCarry(items: NightPlanItem[])` — overrides `shiftKey` to tomorrow's key and replaces `items` with fresh `todo` clones (new id, `createdAt = now`, status `todo`, retains priority/task/notes).
-  - `markRolloverAnswered(shiftKey: string)`.
-- On `ensureLoaded`, if stored `shiftKey !== getShiftKey()` AND no leftover-active items, auto-archive any leftover finished items and reset (covers the "everything complete" path automatically on next load).
+### 3. "Create Account Later" stub in dispatch start pane
+`src/components/dispatch/StartTestingPane.tsx` line ~99 — replace toast with the same "create account" path used on the Accounts page (open `accountsStore.create()` minimal modal, then link it to the session).
 
-**`src/lib/reports/night-plan-history.ts`**
-- Add `addMany(items: NPHistoryItem[])` to push a batch (current store has `delete` / `clearAll` but no add).
+### 4. Forgot-password link missing on LoginCard
+`/reset-password` route exists but nothing triggers it. Add a "Forgot password?" link under the password field that calls `supabase.auth.resetPasswordForEmail(email, { redirectTo: <origin>/reset-password })` and toasts success.
 
-**`src/lib/shift.ts`**
-- Add `getNextShiftKey(now?)` returning tomorrow's shift key for seeding.
-- Add `isAt(hour, minute, now?)` helper or expose central minute-of-day so the watcher can fire at exactly 5:50.
+### 5. Google OAuth (only if required)
+No `signInWithOAuth` anywhere. If Google sign-in is required, add a "Continue with Google" button to `LoginCard` that calls `supabase.auth.signInWithOAuth({ provider: "google" })` and configure the provider. **Need confirmation — see Open Questions.**
 
-**New `src/components/home/NightPlanRolloverWatcher.tsx`** (mounted once inside the home shell where `NightPlan` already lives)
-- `useNow()` (already exists per `src/hooks/use-now.ts`) → every minute check Central time.
-- When `hour===5 && minute===50` and shift not yet answered and active items exist → open `<RolloverPromptModal />`.
-- At hour===6 minute===0, if not answered, run default "dismiss-active" reset.
-- The "shift just ended and was clean" path also runs here: if stored shiftKey differs from current and active items === 0, call `archiveAndReset("done-as-is")` immediately.
+## Polish
 
-**New `src/components/home/RolloverPromptModal.tsx`**
-- Three buttons: Move to Tomorrow / Start Fresh / Snooze 10 min.
-- Shows list of leftover items grouped by priority for quick review.
+### 6. Report Export buttons are stubs
+`src/routes/_authenticated/reports.tsx` has 5 Export buttons all calling `exportPlaceholder()`. Reuse the existing `src/components/completed-work/exportCsv.ts` pattern to emit CSVs for: Ticket History, Dispatch Status, Additional Work, Account History, Night Plan History.
 
-**`src/components/home/NightPlan.tsx`**
-- Add "Reset Plan" button in the header with a confirm dialog (uses `ConfirmModal`).
-- Mount `<NightPlanRolloverWatcher />` near the top so it lives wherever NightPlan is visible (or mount it once in `AppShell` so it runs site-wide).
+### 7. `progNotes` on additional-work not consumed by email
+`src/routes/_authenticated/additional-work.$workId.work.tsx` saves a `progNotes` field labelled "used later in the Programming Status Email", but `src/lib/reports/prog-email-format.ts` ignores it. Add an "Additional Work" section to the email builder that pulls items in the window with non-empty `progNotes`.
 
-## Out of scope
+### 8. Silent catch in discoveries hook
+`src/hooks/use-discoveries.ts` line ~29 swallows Supabase errors. Log via `console.warn` and surface a toast on hard failures so users know the panel is stale.
 
-- Configurable prompt time (hard-coded to 5:50 AM Central; can be made user-tunable later).
-- Pre-shift email / push notification — modal only.
-- Carrying over snip attachments or sub-state beyond task/notes/priority.
+### 9. Quantum Bloom Settings inert controls
+`src/components/settings/ThemesSection.tsx` — either wire the remaining sliders/toggles to `qbTuningStore` or hide them behind a "Coming soon" disabled state instead of looking interactive. Recommend wiring (store already exists).
+
+## Cosmetic (low priority — flag, don't necessarily fix)
+- `src/components/layout/PlaceholderPage.tsx` — no route uses it; safe to delete.
+- `src/lib/api/example.functions.ts` — scaffold leftover, never called; safe to delete.
+
+## Open Questions
+1. Is **Google OAuth** required for this hub? (If no, skip item 5 and the audit blocker is dropped.)
+2. For item 7, should `progNotes` appear in a new "Additional Work" section in the prog-status email, or merged into the existing Items list?
+3. For item 6, should CSV exports include attachments/snip URLs, or text fields only?
+
+## Out of Scope
+- Real outbound email send for the programming status email (current copy-rich + manual-sent workflow is intentional unless you say otherwise).
+- Building anything new on top of `PlaceholderPage`.
