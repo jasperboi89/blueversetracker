@@ -546,7 +546,14 @@ function AccountHistoryReport() {
               </Group>
               <div className="mt-3 flex gap-2">
                 <Link to="/accounts/$accountNumber" params={{ accountNumber: a.number }}><Button size="sm" variant="ghost">Open Account Profile</Button></Link>
-                <Button size="sm" variant="ghost" onClick={exportPlaceholder}><Download className="mr-1 h-3.5 w-3.5" />Export Account History</Button>
+                <Button size="sm" variant="ghost" onClick={() => exportRows(`account-${a.number}-history`,
+                  ["Type","Title / Subject","Status","Date (ISO)","Detail"],
+                  [
+                    ...fd.map((t) => ["Freshdesk", `#${t.number} ${t.details.subject ?? ""}`, STATUS_LABEL[t.status], new Date(t.updatedAt).toISOString(), ticketsStore.getSession(t.id).resultNotes] as (string | number)[]),
+                    ...cd.map((s) => ["Contact Dispatch", s.accountName, s.status ? DISPATCH_STATUS_LABEL[s.status] : "(in progress)", new Date(s.updatedAt).toISOString(), s.statusReason] as (string | number)[]),
+                    ...aw.map((w) => ["Additional Work", w.title, w.status === "completed" ? "Completed" : "Currently Working On", new Date(w.updatedAt).toISOString(), w.programmingStatusNotes || w.notes] as (string | number)[]),
+                    ...notes.map((n) => ["Note", n.text.slice(0, 60), "", new Date(n.createdAt).toISOString(), n.text] as (string | number)[]),
+                  ])}><Download className="mr-1 h-3.5 w-3.5" />Export Account History</Button>
               </div>
             </ExpandableSection>
           );
