@@ -22,6 +22,7 @@ import { Route as AuthenticatedConstellationsRouteImport } from './routes/_authe
 import { Route as AuthenticatedCompletedWorkRouteImport } from './routes/_authenticated/completed-work'
 import { Route as AuthenticatedAdditionalWorkRouteImport } from './routes/_authenticated/additional-work'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
+import { Route as AuthenticatedAdditionalWorkIndexRouteImport } from './routes/_authenticated/additional-work.index'
 import { Route as AuthenticatedAccountsAccountNumberRouteImport } from './routes/_authenticated/accounts.$accountNumber'
 import { Route as AuthenticatedFreshdeskTicketsTicketIdWorkRouteImport } from './routes/_authenticated/freshdesk-tickets.$ticketId.work'
 import { Route as AuthenticatedContactDispatchSessionIdWorkRouteImport } from './routes/_authenticated/contact-dispatch.$sessionId.work'
@@ -96,6 +97,12 @@ const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdditionalWorkIndexRoute =
+  AuthenticatedAdditionalWorkIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdditionalWorkRoute,
+  } as any)
 const AuthenticatedAccountsAccountNumberRoute =
   AuthenticatedAccountsAccountNumberRouteImport.update({
     id: '/$accountNumber',
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
+  '/additional-work/': typeof AuthenticatedAdditionalWorkIndexRoute
   '/additional-work/$workId/work': typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof AuthenticatedContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof AuthenticatedFreshdeskTicketsTicketIdWorkRoute
@@ -144,7 +152,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
-  '/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
+  '/additional-work': typeof AuthenticatedAdditionalWorkIndexRoute
   '/additional-work/$workId/work': typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof AuthenticatedContactDispatchSessionIdWorkRoute
   '/freshdesk-tickets/$ticketId/work': typeof AuthenticatedFreshdeskTicketsTicketIdWorkRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
+  '/_authenticated/additional-work/': typeof AuthenticatedAdditionalWorkIndexRoute
   '/_authenticated/additional-work/$workId/work': typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
   '/_authenticated/contact-dispatch/$sessionId/work': typeof AuthenticatedContactDispatchSessionIdWorkRoute
   '/_authenticated/freshdesk-tickets/$ticketId/work': typeof AuthenticatedFreshdeskTicketsTicketIdWorkRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/accounts/$accountNumber'
+    | '/additional-work/'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
@@ -202,7 +212,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/accounts'
-    | '/additional-work'
     | '/completed-work'
     | '/constellations'
     | '/contact-dispatch'
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/'
     | '/accounts/$accountNumber'
+    | '/additional-work'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
     | '/freshdesk-tickets/$ticketId/work'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/'
     | '/_authenticated/accounts/$accountNumber'
+    | '/_authenticated/additional-work/'
     | '/_authenticated/additional-work/$workId/work'
     | '/_authenticated/contact-dispatch/$sessionId/work'
     | '/_authenticated/freshdesk-tickets/$ticketId/work'
@@ -335,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/additional-work/': {
+      id: '/_authenticated/additional-work/'
+      path: '/'
+      fullPath: '/additional-work/'
+      preLoaderRoute: typeof AuthenticatedAdditionalWorkIndexRouteImport
+      parentRoute: typeof AuthenticatedAdditionalWorkRoute
+    }
     '/_authenticated/accounts/$accountNumber': {
       id: '/_authenticated/accounts/$accountNumber'
       path: '/$accountNumber'
@@ -381,11 +399,14 @@ const AuthenticatedAccountsRouteWithChildren =
   )
 
 interface AuthenticatedAdditionalWorkRouteChildren {
+  AuthenticatedAdditionalWorkIndexRoute: typeof AuthenticatedAdditionalWorkIndexRoute
   AuthenticatedAdditionalWorkWorkIdWorkRoute: typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
 }
 
 const AuthenticatedAdditionalWorkRouteChildren: AuthenticatedAdditionalWorkRouteChildren =
   {
+    AuthenticatedAdditionalWorkIndexRoute:
+      AuthenticatedAdditionalWorkIndexRoute,
     AuthenticatedAdditionalWorkWorkIdWorkRoute:
       AuthenticatedAdditionalWorkWorkIdWorkRoute,
   }
@@ -464,13 +485,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
