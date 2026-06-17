@@ -1,17 +1,10 @@
-import { useState } from "react";
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { ClipboardList, Plus, CheckCircle2, Building2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAdditionalWorkModal";
-import { useAdditionalWork } from "@/lib/additional-work-store";
-import { formatCentralShort } from "@/lib/shift";
+import { Outlet, createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/additional-work")({
-  head: () => ({ meta: [{ title: "Additional Work — Account Intel Hub" }] }),
-  component: AdditionalWorkPage,
+  component: () => <Outlet />,
 });
 
-function AdditionalWorkPage() {
+function _Unused() {
   const [createOpen, setCreateOpen] = useState(false);
   const { items } = useAdditionalWork();
   const active = items
