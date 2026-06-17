@@ -8,6 +8,8 @@ export interface QbTuningState {
   eventFrequency: EventFrequency;
   particleDensity: ParticleDensity;
   sleepMode: boolean;
+  nightShiftSync: boolean;
+  celebrations: boolean;
 }
 
 const DEFAULT: QbTuningState = {
@@ -15,6 +17,8 @@ const DEFAULT: QbTuningState = {
   eventFrequency: "normal",
   particleDensity: "medium",
   sleepMode: true,
+  nightShiftSync: true,
+  celebrations: true,
 };
 
 export const qbTuningStore = createPersistedStore<QbTuningState>(
