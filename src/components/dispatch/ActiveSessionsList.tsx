@@ -8,7 +8,7 @@ import { formatCentralShort } from "@/lib/shift";
 
 export function ActiveSessionsList() {
   const { sessions } = useDispatch();
-  const active = sessions.filter((s) => s.status !== "ready");
+  const active = sessions.filter((s) => s.status !== "ready" && s.status !== "activated");
 
   return (
     <div className="space-y-3">

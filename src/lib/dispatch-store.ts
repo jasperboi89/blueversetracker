@@ -3,12 +3,14 @@ import { attachCloudSync } from "./cloud-sync/blob-sync";
 
 export type DispatchStatus =
   | "ready"
+  | "activated"
   | "waiting-cs"
   | "waiting-prog"
   | "not-ready";
 
 export const DISPATCH_STATUS_LABEL: Record<DispatchStatus, string> = {
   ready: "Ready for Activation",
+  activated: "Activated",
   "waiting-cs": "Waiting on Review from Customer Service",
   "waiting-prog": "Waiting on Review from Programming",
   "not-ready": "Not Ready, Still Working on Ticket",
@@ -142,6 +144,7 @@ export interface DispatchSession {
   createdAt: number;
   updatedAt: number;
   completedAt?: number;
+  activatedAt?: number;
   reasons: ReasonCard[];
   phone: CheckSection;
   repeat: CheckSection;
@@ -392,6 +395,17 @@ export const dispatchStore = {
   },
   reopen(id: string) {
     patchSession(id, (s) => ({ ...s, status: "not-ready", completedAt: undefined }));
+  },
+  markActivated(id: string) {
+    patchSession(id, (s) => ({
+      ...s,
+      status: "activated",
+      activatedAt: Date.now(),
+      completedAt: s.completedAt ?? Date.now(),
+    }));
+  },
+  reopenFromArchive(id: string) {
+    patchSession(id, (s) => ({ ...s, status: "ready", activatedAt: undefined }));
   },
 
   addSummaryVersion(id: string, label: SummaryVersionLabel, body: string) {

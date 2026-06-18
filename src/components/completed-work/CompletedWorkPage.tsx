@@ -65,7 +65,7 @@ export function CompletedWorkPage() {
         sourceId: t.id,
       }));
     const ds: CompletedRecord[] = sessions
-      .filter((s) => s.status === "ready" && s.completedAt)
+      .filter((s) => (s.status === "ready" || s.status === "activated") && s.completedAt)
       .map((s) => ({
         id: `ds-${s.id}`,
         kind: "dispatch",
