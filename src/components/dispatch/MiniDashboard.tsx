@@ -19,7 +19,7 @@ const cards: { key: Key; label: string; icon: typeof Clock; color: string }[] = 
 ];
 
 function filterFor(key: Key, sessions: DispatchSession[]) {
-  if (key === "active") return sessions.filter((s) => s.status !== "ready");
+  if (key === "active") return sessions.filter((s) => s.status !== "ready" && s.status !== "activated");
   if (key === "ready") return sessions.filter((s) => s.status === "ready");
   return sessions.filter((s) => s.status === key);
 }

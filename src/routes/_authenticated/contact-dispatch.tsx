@@ -3,6 +3,8 @@ import { PhoneOutgoing } from "lucide-react";
 import { StartTestingPane } from "@/components/dispatch/StartTestingPane";
 import { MiniDashboard } from "@/components/dispatch/MiniDashboard";
 import { ActiveSessionsList } from "@/components/dispatch/ActiveSessionsList";
+import { DispatchTabs } from "@/components/dispatch/DispatchTabs";
+import { useDispatch } from "@/lib/dispatch-store";
 
 export const Route = createFileRoute("/_authenticated/contact-dispatch")({
   head: () => ({
@@ -21,6 +23,8 @@ function ContactDispatchRoute() {
 }
 
 function ContactDispatchIndex() {
+  const { sessions } = useDispatch();
+  const archivedCount = sessions.filter((s) => s.status === "activated").length;
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
@@ -40,6 +44,7 @@ function ContactDispatchIndex() {
           </div>
         </div>
       </header>
+      <DispatchTabs archivedCount={archivedCount} />
       <StartTestingPane />
       <MiniDashboard />
       <ActiveSessionsList />

@@ -23,6 +23,7 @@ import { Route as AuthenticatedCompletedWorkRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdditionalWorkRouteImport } from './routes/_authenticated/additional-work'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
 import { Route as AuthenticatedAdditionalWorkIndexRouteImport } from './routes/_authenticated/additional-work.index'
+import { Route as AuthenticatedContactDispatchArchiveRouteImport } from './routes/_authenticated/contact-dispatch.archive'
 import { Route as AuthenticatedAccountsAccountNumberRouteImport } from './routes/_authenticated/accounts.$accountNumber'
 import { Route as AuthenticatedFreshdeskTicketsTicketIdWorkRouteImport } from './routes/_authenticated/freshdesk-tickets.$ticketId.work'
 import { Route as AuthenticatedContactDispatchSessionIdWorkRouteImport } from './routes/_authenticated/contact-dispatch.$sessionId.work'
@@ -103,6 +104,12 @@ const AuthenticatedAdditionalWorkIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAdditionalWorkRoute,
   } as any)
+const AuthenticatedContactDispatchArchiveRoute =
+  AuthenticatedContactDispatchArchiveRouteImport.update({
+    id: '/archive',
+    path: '/archive',
+    getParentRoute: () => AuthenticatedContactDispatchRoute,
+  } as any)
 const AuthenticatedAccountsAccountNumberRoute =
   AuthenticatedAccountsAccountNumberRouteImport.update({
     id: '/$accountNumber',
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
+  '/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
   '/additional-work/': typeof AuthenticatedAdditionalWorkIndexRoute
   '/additional-work/$workId/work': typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof AuthenticatedContactDispatchSessionIdWorkRoute
@@ -160,6 +168,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
+  '/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
   '/additional-work': typeof AuthenticatedAdditionalWorkIndexRoute
   '/additional-work/$workId/work': typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
   '/contact-dispatch/$sessionId/work': typeof AuthenticatedContactDispatchSessionIdWorkRoute
@@ -181,6 +190,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
+  '/_authenticated/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
   '/_authenticated/additional-work/': typeof AuthenticatedAdditionalWorkIndexRoute
   '/_authenticated/additional-work/$workId/work': typeof AuthenticatedAdditionalWorkWorkIdWorkRoute
   '/_authenticated/contact-dispatch/$sessionId/work': typeof AuthenticatedContactDispatchSessionIdWorkRoute
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/accounts/$accountNumber'
+    | '/contact-dispatch/archive'
     | '/additional-work/'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/'
     | '/accounts/$accountNumber'
+    | '/contact-dispatch/archive'
     | '/additional-work'
     | '/additional-work/$workId/work'
     | '/contact-dispatch/$sessionId/work'
@@ -240,6 +252,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/'
     | '/_authenticated/accounts/$accountNumber'
+    | '/_authenticated/contact-dispatch/archive'
     | '/_authenticated/additional-work/'
     | '/_authenticated/additional-work/$workId/work'
     | '/_authenticated/contact-dispatch/$sessionId/work'
@@ -353,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdditionalWorkIndexRouteImport
       parentRoute: typeof AuthenticatedAdditionalWorkRoute
     }
+    '/_authenticated/contact-dispatch/archive': {
+      id: '/_authenticated/contact-dispatch/archive'
+      path: '/archive'
+      fullPath: '/contact-dispatch/archive'
+      preLoaderRoute: typeof AuthenticatedContactDispatchArchiveRouteImport
+      parentRoute: typeof AuthenticatedContactDispatchRoute
+    }
     '/_authenticated/accounts/$accountNumber': {
       id: '/_authenticated/accounts/$accountNumber'
       path: '/$accountNumber'
@@ -417,11 +437,14 @@ const AuthenticatedAdditionalWorkRouteWithChildren =
   )
 
 interface AuthenticatedContactDispatchRouteChildren {
+  AuthenticatedContactDispatchArchiveRoute: typeof AuthenticatedContactDispatchArchiveRoute
   AuthenticatedContactDispatchSessionIdWorkRoute: typeof AuthenticatedContactDispatchSessionIdWorkRoute
 }
 
 const AuthenticatedContactDispatchRouteChildren: AuthenticatedContactDispatchRouteChildren =
   {
+    AuthenticatedContactDispatchArchiveRoute:
+      AuthenticatedContactDispatchArchiveRoute,
     AuthenticatedContactDispatchSessionIdWorkRoute:
       AuthenticatedContactDispatchSessionIdWorkRoute,
   }
@@ -485,13 +508,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
