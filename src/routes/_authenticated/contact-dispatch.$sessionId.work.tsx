@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Building2, CheckCircle2, ExternalLink, Wand2 } from "lucide-react";
+import { Archive, ArrowLeft, Building2, CheckCircle2, ExternalLink, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   canMarkReady, dispatchStore, DISPATCH_STATUS_LABEL,
@@ -15,6 +15,7 @@ import { OverallResultSection } from "@/components/dispatch/OverallResultSection
 import { SummaryNotesSection } from "@/components/dispatch/SummaryNotesSection";
 import { MarkReadyModal } from "@/components/dispatch/MarkReadyModal";
 import { MarkPostedModal } from "@/components/dispatch/MarkPostedModal";
+import { MarkActivatedModal } from "@/components/dispatch/MarkActivatedModal";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 
@@ -32,6 +33,7 @@ function Workspace() {
   const [open, setOpen] = useState<Record<string, boolean>>({ reasons: true });
   const [readyOpen, setReadyOpen] = useState(false);
   const [postedOpen, setPostedOpen] = useState(false);
+  const [activatedOpen, setActivatedOpen] = useState(false);
 
   if (!session) {
     return (
@@ -54,6 +56,8 @@ function Workspace() {
     session.reasons.some((r) => r.result === "failed" && !r.retests.some((x) => x.result === "passed")) ? "still-failed" : "in-progress";
 
   const ready = canMarkReady(session);
+  const canActivate = session.status === "ready";
+  const isActivated = session.status === "activated";
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
@@ -98,6 +102,25 @@ function Workspace() {
               } : undefined}
             >
               <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Mark Ready for Activation
+            </Button>
+            <Button
+              size="sm"
+              disabled={!canActivate}
+              onClick={() => setActivatedOpen(true)}
+              title={
+                isActivated
+                  ? "Already activated — see Archive"
+                  : canActivate
+                    ? "Mark this account Activated and move to Archive"
+                    : "Mark Ready for Activation first"
+              }
+              style={canActivate ? {
+                background: "linear-gradient(110deg, oklch(0.7 0.22 295 / 0.55), oklch(0.4 0.18 240 / 0.55))",
+                border: "1px solid oklch(0.7 0.22 295 / 0.55)",
+                boxShadow: "0 0 16px var(--violet-glow)",
+              } : undefined}
+            >
+              <Archive className="mr-1 h-3.5 w-3.5" /> {isActivated ? "Activated" : "Mark Activated"}
             </Button>
           </div>
         </div>
@@ -157,6 +180,15 @@ function Workspace() {
         open={postedOpen}
         onOpenChange={setPostedOpen}
         onConfirm={() => { dispatchStore.markPosted(session.id); toast.success("Summary note marked posted."); }}
+      />
+      <MarkActivatedModal
+        open={activatedOpen}
+        onOpenChange={setActivatedOpen}
+        onConfirm={() => {
+          dispatchStore.markActivated(session.id);
+          toast.success(`${session.accountName} archived as Activated.`);
+          setTimeout(() => navigate({ to: "/contact-dispatch" }), 700);
+        }}
       />
     </div>
   );
