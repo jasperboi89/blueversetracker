@@ -47,14 +47,19 @@ function createAccountRegex(acct: string): RegExp | null {
   return new RegExp(`(^|[^a-zA-Z0-9])${separated}([^a-zA-Z0-9]|$)`, "i");
 }
 
+function accountLikeCustomFieldEntries(candidate: IntelCandidate) {
+  return candidate.ticket.customFields
+    ? Object.entries(candidate.ticket.customFields).filter(([key]) => /account|acct/i.test(key))
+    : [];
+}
+
 function candidateMatchesAccount(c: IntelCandidate, acct: string): boolean {
   const normalized = normalizeAccountValue(acct);
   const acctRe = createAccountRegex(acct);
   if (!normalized || !acctRe) return true;
   const t = c.ticket;
-  const directValues = [
-    ...(t.customFields ? Object.values(t.customFields) : []),
-  ];
+  const accountFields = accountLikeCustomFieldEntries(c);
+  const directValues = accountFields.map(([, value]) => value);
   if (directValues.some((value) => normalizeAccountValue(value) === normalized)) return true;
   const textValues = [
     t.subject,
@@ -66,7 +71,7 @@ function candidateMatchesAccount(c: IntelCandidate, acct: string): boolean {
     t.groupName,
     t.agentName,
     ...(t.tags ?? []),
-    ...(t.customFields ? Object.entries(t.customFields).map(([key, value]) => `${key} ${String(value ?? "")}`) : []),
+    ...accountFields.map(([key, value]) => `${key} ${String(value ?? "")}`),
   ];
   return textValues.some((value) => acctRe.test(String(value ?? "")));
 }
