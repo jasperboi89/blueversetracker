@@ -228,7 +228,7 @@ export const freshdeskIntelligenceRank = createServerFn({ method: "POST" })
     z
       .object({
         query: z.string().max(500),
-        candidates: z.array(z.any()).max(30),
+        candidates: z.array(z.any()).max(100),
       })
       .parse(input),
   )
