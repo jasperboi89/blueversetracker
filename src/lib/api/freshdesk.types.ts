@@ -61,7 +61,7 @@ export interface NormalizedTicket {
   accountNumber?: string;
   accountName?: string;
   tags?: string[];
-  customFields?: Record<string, unknown>;
+  customFields?: Record<string, string | number | boolean | null>;
   searchableText?: string;
 }
 
