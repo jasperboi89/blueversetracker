@@ -93,6 +93,21 @@ function looksLikeEmail(s: string): boolean {
   return /\S+@\S+\.\S+/.test(s);
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function candidateMentionsAccount(c: IntelCandidate, acct: string): boolean {
+  if (!acct) return true;
+  if (c.ticket.accountNumber && c.ticket.accountNumber === acct) return true;
+  const re = new RegExp(`(?:^|[^0-9])${escapeRegExp(acct)}(?:[^0-9]|$)`);
+  return (
+    re.test(c.ticket.subject ?? "") ||
+    re.test(c.ticket.description ?? "") ||
+    re.test(c.excerpt ?? "")
+  );
+}
+
 /* ----- account custom field auto-detection ----- */
 
 interface FreshdeskFieldDTO {
@@ -239,6 +254,15 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
 
     let { out: candidates, firstError } = await runSearch(queryString);
 
+    // Defensive: even when the cf account clause was applied, only keep tickets
+    // that actually contain the account number in text/account fields.
+    if (filters.accountNumber && candidates.length) {
+      const acct = filters.accountNumber.trim();
+      const filtered = candidates.filter((c) => candidateMentionsAccount(c, acct));
+      if (filtered.length) candidates = filtered;
+      else candidates = [];
+    }
+
     // Account-number query failed or returned nothing (typically because the cf
     // field doesn't exist, has a different name, or the account number lives in
     // free text). Fall back to a recent window and let AI match the number
@@ -260,7 +284,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       );
       if (fallbackQs) {
         const retry = await runSearch(fallbackQs);
-        if (retry.out.length) return { ok: true as const, candidates: retry.out };
+        const acct = filters.accountNumber.trim();
+        const strict = retry.out.filter((c) => candidateMentionsAccount(c, acct));
+        if (strict.length) return { ok: true as const, candidates: strict };
         if (!retry.firstError) {
           return {
             ok: false as const,
