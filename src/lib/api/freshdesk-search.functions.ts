@@ -173,8 +173,9 @@ async function conversationsMentionAccount(ticketNumber: string, acct: string): 
   if (!matcher) return true;
   const conv = await fetchAllConversations(ticketNumber);
   if (!conv.ok) return false;
-  return conv.conversations.some((note) =>
-    textMentionsAccount(note.body_text, matcher) ||
+  return conv.conversations.some(
+    (note) =>
+      textMentionsAccount(note.body_text, matcher) ||
       textMentionsAccount(note.body, matcher) ||
       textMentionsAccount(note.from_email, matcher),
   );
