@@ -60,6 +60,9 @@ export interface NormalizedTicket {
   updatedAt: number;
   accountNumber?: string;
   accountName?: string;
+  tags?: string[];
+  customFields?: Record<string, unknown>;
+  searchableText?: string;
 }
 
 export interface NormalizedNote {
