@@ -107,6 +107,7 @@ async function detectAccountField(): Promise<string | null> {
   if (cachedAccountField !== undefined) return cachedAccountField;
   const res = await fdFetch<FreshdeskFieldDTO[]>(`/api/v2/ticket_fields`);
   if (!res.data) {
+    console.warn("[freshdesk] ticket_fields lookup failed:", res.error ?? `status ${res.status}`);
     cachedAccountField = null;
     return null;
   }
@@ -194,11 +195,22 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       !!filters.agentId ||
       !!filters.updatedAfter;
 
-    const queryString = buildFreshdeskQuery(
+    // If the user supplied an account number but we have no detectable cf field,
+    // fall back to a recent window so the AI re-rank can match the number against
+    // subject/description. Same for free-text queries without filters.
+    const needsRecentWindow =
+      (!hasAnyFilter && !!q) ||
+      (!!filters.accountNumber && !accountField);
+    let queryString = buildFreshdeskQuery(
       filters,
-      !hasAnyFilter && q ? isoDaysAgo(30) : undefined,
+      needsRecentWindow ? (filters.updatedAfter ?? isoDaysAgo(60)) : undefined,
       accountField,
     );
+    // Last-resort safety net: a filter was provided but every clause was dropped
+    // (e.g. includeClosed=true with no other filters and no detected cf field).
+    if (!queryString && hasAnyFilter) {
+      queryString = `updated_at:>'${filters.updatedAfter ?? isoDaysAgo(60)}'`;
+    }
     if (!queryString) {
       return { ok: false as const, error: "Type a search query or apply a filter.", candidates: [] };
     }
@@ -227,19 +239,37 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
 
     let { out: candidates, firstError } = await runSearch(queryString);
 
-    // Account-number query failed (typically because the cf field doesn't exist
-    // or has a different name). Fall back to a recent window and let AI match
-    // the number against subject/description.
-    if (!candidates.length && filters.accountNumber && firstError) {
-      cachedAccountField = null; // invalidate cache; field guess was wrong
+    // Account-number query failed or returned nothing (typically because the cf
+    // field doesn't exist, has a different name, or the account number lives in
+    // free text). Fall back to a recent window and let AI match the number
+    // against subject/description.
+    const accountClauseApplied = !!(filters.accountNumber && accountField);
+    const shouldFallback =
+      filters.accountNumber &&
+      !candidates.length &&
+      (firstError || accountClauseApplied);
+    if (shouldFallback) {
+      // Only invalidate the cached field when Freshdesk explicitly rejected it.
+      if (firstError && /field|cf_/i.test(firstError)) {
+        cachedAccountField = null;
+      }
       const fallbackQs = buildFreshdeskQuery(
         { ...filters, accountNumber: undefined },
-        isoDaysAgo(60),
+        filters.updatedAfter ?? isoDaysAgo(60),
         null,
       );
       if (fallbackQs) {
         const retry = await runSearch(fallbackQs);
         if (retry.out.length) return { ok: true as const, candidates: retry.out };
+        if (!retry.firstError) {
+          return {
+            ok: false as const,
+            error:
+              "No Freshdesk tickets mention that account number in the last 60 days. Try widening 'Updated after' or adding more filters.",
+            candidates: [],
+          };
+        }
+        firstError = retry.firstError;
       }
     }
 
