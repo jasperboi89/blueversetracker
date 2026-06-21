@@ -137,7 +137,7 @@ function FreshdeskIntelligencePage() {
     };
     const byNum = new Map(ranked.map((r) => [r.ticketNumber, r]));
     return candidates
-      .filter(matchesAccount)
+      .filter((candidate) => (acct ? candidateMatchesAccount(candidate, acct) : true))
       .map((c) => ({ candidate: c, ranked: byNum.get(c.ticket.number) }))
       .sort((a, b) => (b.ranked?.confidence ?? 0) - (a.ranked?.confidence ?? 0));
   }, [candidates, ranked, filters.accountNumber]);
