@@ -351,12 +351,12 @@ export const freshdeskSyncCheck = createServerFn({ method: "POST" })
       report: {
         found: true,
         descriptionPulled: !!t.data.description_text?.trim(),
-        conversationsPulled: conv.conversations.length > 0,
+        conversationsPulled: conv.ok,
         conversationCount: conv.conversations.length,
         latestConversationAt: latest || null,
         lastSyncAt: Date.now(),
         errors,
-        fullyIndexed: !!t.data.description_text?.trim() && conv.ok,
+        fullyIndexed: !!t.data.description_text?.trim() && conv.ok && errors.length === 0,
       },
     };
   });
