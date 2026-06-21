@@ -539,9 +539,11 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     const q = data.query.trim();
     const range = resolveDateRange(filters.dateRange);
     const acct = filters.accountNumber?.trim();
-    const accountField = await detectAccountField();
+    const detection = await detectAccountFieldFull();
+    const accountField = detection.name;
     const debugNotes: string[] = [];
     const exclusions: { reason: string; count: number }[] = [];
+    const apiErrors: string[] = [];
 
     const filtersForDebugObj = {
       accountNumber: acct,
@@ -677,7 +679,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         const r = await runFreshdeskSearch(qs, host, MAX_PAGES_ACCOUNT_EXACT);
         scanned += r.out.length;
         if (r.truncated) paginationTruncated = true;
-        if (r.firstError) firstError = r.firstError;
+        if (r.firstError) {
+          firstError = r.firstError;
+          apiErrors.push(`strict (${accountField}): ${r.firstError}`);
+        }
         for (const c of r.out) {
           // Treat all results of this query as exact — the API guaranteed the cf match
           if (!strongMap.has(c.ticket.number)) {
@@ -693,7 +698,12 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         );
       } else {
         debugNotes.push(
-          "No account custom field detected on this Freshdesk account. Strict filter pass skipped; falling back to mention scan only.",
+          "No safe account-number custom field detected. Strict API filter skipped — fetching a broader candidate set and matching locally against accountNumber, company, and tags.",
+        );
+      }
+      if (detection.skipped.length) {
+        debugNotes.push(
+          `Skipped custom fields: ${detection.skipped.map((s) => `${s.name} (${s.reason})`).join("; ")}`,
         );
       }
 
@@ -711,7 +721,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         const r = await runFreshdeskSearch(broadQs, host, MAX_PAGES_ACCOUNT_MENTION);
         scanned += r.out.length;
         if (r.truncated) paginationTruncated = true;
-        if (r.firstError && !firstError) firstError = r.firstError;
+        if (r.firstError) {
+          if (!firstError) firstError = r.firstError;
+          apiErrors.push(`broad: ${r.firstError}`);
+        }
         let mentionExcluded = 0;
         for (const c of r.out) {
           if (strongMap.has(c.ticket.number)) continue;
@@ -796,6 +809,8 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         notes: debugNotes.concat(
           convo.errors.length ? [`Conversation errors: ${convo.errors.join("; ")}`] : [],
         ),
+        skippedFields: detection.skipped,
+        apiErrors,
       };
 
       let notice: string | undefined;
