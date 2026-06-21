@@ -75,7 +75,7 @@ export interface SearchDebug {
   sentToAi: number;
   conversationsPulled: number;
   conversationPages: number;
-  filters: Record<string, unknown>;
+  filters: string;
   groupCounts: { strong: number; possible: number; relatedMentions: number };
   inclusionReasons: { ticketNumber: string; group: ResultGroup; reason: string }[];
   accountFieldDetected?: string | null;
@@ -472,7 +472,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     const debugNotes: string[] = [];
     const exclusions: { reason: string; count: number }[] = [];
 
-    const filtersForDebug: Record<string, unknown> = {
+    const filtersForDebugObj = {
       accountNumber: acct,
       statuses: filters.statuses,
       priorities: filters.priorities,
