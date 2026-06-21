@@ -20,11 +20,61 @@ export const Route = createFileRoute("/_authenticated/freshdesk-intelligence")({
   head: () => ({
     meta: [
       { title: "Freshdesk Intelligence — Account Intel Hub" },
-      { name: "description", content: "Natural-language search across Freshdesk tickets with AI summaries." },
+      {
+        name: "description",
+        content: "Natural-language search across Freshdesk tickets with AI summaries.",
+      },
     ],
   }),
   component: FreshdeskIntelligencePage,
 });
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeAccountValue(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
+}
+
+function createAccountRegex(acct: string): RegExp | null {
+  const normalized = normalizeAccountValue(acct);
+  if (!normalized) return null;
+  const separated = normalized.split("").map(escapeRegExp).join("[^a-zA-Z0-9]*");
+  return new RegExp(`(^|[^a-zA-Z0-9])${separated}([^a-zA-Z0-9]|$)`, "i");
+}
+
+function accountLikeCustomFieldEntries(candidate: IntelCandidate) {
+  return candidate.ticket.customFields
+    ? Object.entries(candidate.ticket.customFields).filter(([key]) => /account|acct/i.test(key))
+    : [];
+}
+
+function candidateMatchesAccount(c: IntelCandidate, acct: string): boolean {
+  const normalized = normalizeAccountValue(acct);
+  const acctRe = createAccountRegex(acct);
+  if (!normalized || !acctRe) return true;
+  const t = c.ticket;
+  const accountFields = accountLikeCustomFieldEntries(c);
+  const directValues = accountFields.map(([, value]) => value);
+  if (directValues.some((value) => normalizeAccountValue(value) === normalized)) return true;
+  const textValues = [
+    t.subject,
+    t.description,
+    c.excerpt,
+    t.accountName,
+    t.companyName,
+    t.requesterName,
+    t.groupName,
+    t.agentName,
+    ...(t.tags ?? []),
+    ...accountFields.map(([key, value]) => `${key} ${String(value ?? "")}`),
+  ];
+  return textValues.some((value) => acctRe.test(String(value ?? "")));
+}
 
 function FreshdeskIntelligencePage() {
   const [query, setQuery] = useState("");
@@ -75,22 +125,9 @@ function FreshdeskIntelligencePage() {
   const merged = useMemo(() => {
     if (!candidates.length) return [];
     const acct = filters.accountNumber?.trim();
-    const acctRe = acct
-      ? new RegExp(`(?:^|[^0-9])${acct.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?:[^0-9]|$)`)
-      : null;
-    const matchesAccount = (c: IntelCandidate) => {
-      if (!acct) return true;
-      const t = c.ticket;
-      if (t.accountNumber && t.accountNumber === acct) return true;
-      return (
-        (acctRe?.test(t.subject ?? "") ?? false) ||
-        (acctRe?.test(t.description ?? "") ?? false) ||
-        (acctRe?.test(c.excerpt ?? "") ?? false)
-      );
-    };
     const byNum = new Map(ranked.map((r) => [r.ticketNumber, r]));
     return candidates
-      .filter(matchesAccount)
+      .filter((candidate) => (acct ? candidateMatchesAccount(candidate, acct) : true))
       .map((c) => ({ candidate: c, ranked: byNum.get(c.ticket.number) }))
       .sort((a, b) => (b.ranked?.confidence ?? 0) - (a.ranked?.confidence ?? 0));
   }, [candidates, ranked, filters.accountNumber]);
@@ -102,7 +139,8 @@ function FreshdeskIntelligencePage() {
           <div
             className="grid h-10 w-10 place-items-center rounded-xl"
             style={{
-              background: "linear-gradient(135deg, oklch(0.78 0.18 220 / 0.4), oklch(0.7 0.22 295 / 0.4))",
+              background:
+                "linear-gradient(135deg, oklch(0.78 0.18 220 / 0.4), oklch(0.7 0.22 295 / 0.4))",
               boxShadow: "var(--shadow-glow-cyan)",
             }}
           >

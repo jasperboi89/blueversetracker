@@ -97,15 +97,119 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function candidateMentionsAccount(c: IntelCandidate, acct: string): boolean {
-  if (!acct) return true;
-  if (c.ticket.accountNumber && c.ticket.accountNumber === acct) return true;
-  const re = new RegExp(`(?:^|[^0-9])${escapeRegExp(acct)}(?:[^0-9]|$)`);
-  return (
-    re.test(c.ticket.subject ?? "") ||
-    re.test(c.ticket.description ?? "") ||
-    re.test(c.excerpt ?? "")
+function normalizeAccountValue(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
+}
+
+interface AccountMatcher {
+  normalized: string;
+  textRegex: RegExp;
+}
+
+function createAccountMatcher(acct: string): AccountMatcher | null {
+  const normalized = normalizeAccountValue(acct);
+  if (!normalized) return null;
+  const separated = normalized.split("").map(escapeRegExp).join("[^a-zA-Z0-9]*");
+  return {
+    normalized,
+    textRegex: new RegExp(`(^|[^a-zA-Z0-9])${separated}([^a-zA-Z0-9]|$)`, "i"),
+  };
+}
+
+function valueMatchesAccount(value: unknown, matcher: AccountMatcher): boolean {
+  return normalizeAccountValue(value) === matcher.normalized;
+}
+
+function textMentionsAccount(value: unknown, matcher: AccountMatcher): boolean {
+  return matcher.textRegex.test(String(value ?? ""));
+}
+
+function isAccountLikeFieldName(key: string): boolean {
+  return /account|acct/i.test(key);
+}
+
+function accountLikeCustomFieldEntries(
+  fields: Record<string, string | number | boolean | null> | undefined,
+): [string, string | number | boolean | null][] {
+  return fields ? Object.entries(fields).filter(([key]) => isAccountLikeFieldName(key)) : [];
+}
+
+function candidateTextFields(c: IntelCandidate): string[] {
+  const t = c.ticket;
+  const customFields = accountLikeCustomFieldEntries(t.customFields).map(
+    ([key, value]) => `${key} ${String(value ?? "")}`,
   );
+  return [
+    t.subject,
+    t.description,
+    c.excerpt,
+    t.accountName,
+    t.companyName,
+    t.requesterName,
+    t.groupName,
+    t.agentName,
+    ...(t.tags ?? []),
+    ...customFields,
+  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+
+function candidateMentionsAccount(c: IntelCandidate, acct: string): boolean {
+  const matcher = createAccountMatcher(acct);
+  if (!matcher) return true;
+  const directValues = accountLikeCustomFieldEntries(c.ticket.customFields).map(
+    ([, value]) => value,
+  );
+  return (
+    directValues.some((value) => valueMatchesAccount(value, matcher)) ||
+    candidateTextFields(c).some((value) => textMentionsAccount(value, matcher))
+  );
+}
+
+async function conversationsMentionAccount(ticketNumber: string, acct: string): Promise<boolean> {
+  const matcher = createAccountMatcher(acct);
+  if (!matcher) return true;
+  const conv = await fetchAllConversations(ticketNumber);
+  if (!conv.ok) return false;
+  return conv.conversations.some(
+    (note) =>
+      textMentionsAccount(note.body_text, matcher) ||
+      textMentionsAccount(note.body, matcher) ||
+      textMentionsAccount(note.from_email, matcher),
+  );
+}
+
+async function filterCandidatesByAccount(
+  candidates: IntelCandidate[],
+  acct: string,
+  includeConversations: boolean,
+): Promise<IntelCandidate[]> {
+  if (!acct) return candidates;
+  const keep = new Set<string>();
+  const needsConversationCheck: IntelCandidate[] = [];
+  for (const candidate of candidates) {
+    if (candidateMentionsAccount(candidate, acct)) keep.add(candidate.ticket.number);
+    else if (includeConversations) needsConversationCheck.push(candidate);
+  }
+  for (let i = 0; i < needsConversationCheck.length; i += 5) {
+    const batch = needsConversationCheck.slice(i, i + 5);
+    const checks = await Promise.all(
+      batch.map(async (candidate) => ({
+        number: candidate.ticket.number,
+        matches: await conversationsMentionAccount(candidate.ticket.number, acct),
+      })),
+    );
+    checks.forEach((check) => {
+      if (check.matches) keep.add(check.number);
+    });
+  }
+  return candidates.filter((candidate) => keep.has(candidate.ticket.number));
+}
+
+function noAccountResultsMessage(): string {
+  return "No Freshdesk tickets or conversations mention that account number in the selected date/status filters. Try widening 'Updated after' or changing filters.";
 }
 
 /* ----- account custom field auto-detection ----- */
@@ -213,9 +317,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     // If the user supplied an account number but we have no detectable cf field,
     // fall back to a recent window so the AI re-rank can match the number against
     // subject/description. Same for free-text queries without filters.
-    const needsRecentWindow =
-      (!hasAnyFilter && !!q) ||
-      (!!filters.accountNumber && !accountField);
+    const needsRecentWindow = (!hasAnyFilter && !!q) || (!!filters.accountNumber && !accountField);
     let queryString = buildFreshdeskQuery(
       filters,
       needsRecentWindow ? (filters.updatedAfter ?? isoDaysAgo(60)) : undefined,
@@ -227,7 +329,11 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       queryString = `updated_at:>'${filters.updatedAfter ?? isoDaysAgo(60)}'`;
     }
     if (!queryString) {
-      return { ok: false as const, error: "Type a search query or apply a filter.", candidates: [] };
+      return {
+        ok: false as const,
+        error: "Type a search query or apply a filter.",
+        candidates: [],
+      };
     }
 
     const runSearch = async (qs: string) => {
@@ -257,10 +363,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     // Defensive: even when the cf account clause was applied, only keep tickets
     // that actually contain the account number in text/account fields.
     if (filters.accountNumber && candidates.length) {
-      const acct = filters.accountNumber.trim();
-      const filtered = candidates.filter((c) => candidateMentionsAccount(c, acct));
-      if (filtered.length) candidates = filtered;
-      else candidates = [];
+      candidates = await filterCandidatesByAccount(candidates, filters.accountNumber.trim(), true);
     }
 
     // Account-number query failed or returned nothing (typically because the cf
@@ -269,9 +372,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     // against subject/description.
     const accountClauseApplied = !!(filters.accountNumber && accountField);
     const shouldFallback =
-      filters.accountNumber &&
-      !candidates.length &&
-      (firstError || accountClauseApplied);
+      filters.accountNumber && !candidates.length && (firstError || accountClauseApplied);
     if (shouldFallback) {
       // Only invalidate the cached field when Freshdesk explicitly rejected it.
       if (firstError && /field|cf_/i.test(firstError)) {
@@ -285,18 +386,21 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       if (fallbackQs) {
         const retry = await runSearch(fallbackQs);
         const acct = (filters.accountNumber ?? "").trim();
-        const strict = retry.out.filter((c) => candidateMentionsAccount(c, acct));
+        const strict = await filterCandidatesByAccount(retry.out, acct, true);
         if (strict.length) return { ok: true as const, candidates: strict };
         if (!retry.firstError) {
           return {
             ok: false as const,
-            error:
-              "No Freshdesk tickets mention that account number in the last 60 days. Try widening 'Updated after' or adding more filters.",
+            error: noAccountResultsMessage(),
             candidates: [],
           };
         }
         firstError = retry.firstError;
       }
+    }
+
+    if (filters.accountNumber && !candidates.length && !firstError) {
+      return { ok: false as const, error: noAccountResultsMessage(), candidates: [] };
     }
 
     if (!candidates.length && firstError) {
@@ -318,7 +422,9 @@ export const freshdeskPullFullConversations = createServerFn({ method: "POST" })
     );
     if (t.error || !t.data) return { ok: false as const, error: t.error ?? "Ticket not found." };
     const conv = await fetchAllConversations(data.number);
-    if (!conv.ok) return { ok: false as const, error: conv.error ?? "Could not fetch conversations." };
+    if (!conv.ok) {
+      return { ok: false as const, error: conv.error ?? "Could not fetch conversations." };
+    }
     const notes = conv.conversations.map(normalizeConversation);
     return {
       ok: true as const,
@@ -357,7 +463,11 @@ export const freshdeskIntelligenceRank = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
-      return { ok: false as const, error: "AI summaries unavailable: LOVABLE_API_KEY not set.", ranked: [] as IntelRanked[] };
+      return {
+        ok: false as const,
+        error: "AI summaries unavailable: LOVABLE_API_KEY not set.",
+        ranked: [] as IntelRanked[],
+      };
     }
     const candidates = (data.candidates as IntelCandidate[]).slice(0, 20);
     if (!candidates.length) return { ok: true as const, ranked: [] as IntelRanked[] };
@@ -399,20 +509,36 @@ export const freshdeskIntelligenceRank = createServerFn({ method: "POST" })
         }),
       });
       if (res.status === 429) {
-        return { ok: false as const, error: "AI rate limit hit. Try again shortly.", ranked: [] as IntelRanked[] };
+        return {
+          ok: false as const,
+          error: "AI rate limit hit. Try again shortly.",
+          ranked: [] as IntelRanked[],
+        };
       }
       if (res.status === 402) {
-        return { ok: false as const, error: "AI credits exhausted. Add credits in workspace billing.", ranked: [] as IntelRanked[] };
+        return {
+          ok: false as const,
+          error: "AI credits exhausted. Add credits in workspace billing.",
+          ranked: [] as IntelRanked[],
+        };
       }
       if (!res.ok) {
-        return { ok: false as const, error: `AI call failed (${res.status}).`, ranked: [] as IntelRanked[] };
+        return {
+          ok: false as const,
+          error: `AI call failed (${res.status}).`,
+          ranked: [] as IntelRanked[],
+        };
       }
       const body = (await res.json()) as {
         choices?: { message?: { content?: string } }[];
       };
       const content = body.choices?.[0]?.message?.content ?? "{}";
       let parsed: { results?: IntelRanked[] } = {};
-      try { parsed = JSON.parse(content); } catch { parsed = {}; }
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        parsed = {};
+      }
       const ranked = (parsed.results ?? []).filter(
         (r): r is IntelRanked => typeof r?.ticketNumber === "string",
       );
