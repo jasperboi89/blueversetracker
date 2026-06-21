@@ -53,7 +53,6 @@ function candidateMatchesAccount(c: IntelCandidate, acct: string): boolean {
   if (!normalized || !acctRe) return true;
   const t = c.ticket;
   const directValues = [
-    t.accountNumber,
     ...(t.customFields ? Object.values(t.customFields) : []),
   ];
   if (directValues.some((value) => normalizeAccountValue(value) === normalized)) return true;
@@ -61,7 +60,6 @@ function candidateMatchesAccount(c: IntelCandidate, acct: string): boolean {
     t.subject,
     t.description,
     c.excerpt,
-    t.searchableText,
     t.accountName,
     t.companyName,
     t.requesterName,
