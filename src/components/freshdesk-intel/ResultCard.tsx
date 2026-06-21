@@ -11,11 +11,16 @@ import {
 
 function signalColor(s?: IntelRanked["signal"]) {
   switch (s) {
-    case "urgent": return "border-rose-400/50 bg-rose-500/10 text-rose-200";
-    case "stale": return "border-amber-400/50 bg-amber-500/10 text-amber-200";
-    case "ready-to-close": return "border-emerald-400/50 bg-emerald-500/10 text-emerald-200";
-    case "duplicate": return "border-violet-400/50 bg-violet-500/10 text-violet-200";
-    default: return "border-white/10 bg-white/5 text-muted-foreground";
+    case "urgent":
+      return "border-rose-400/50 bg-rose-500/10 text-rose-200";
+    case "stale":
+      return "border-amber-400/50 bg-amber-500/10 text-amber-200";
+    case "ready-to-close":
+      return "border-emerald-400/50 bg-emerald-500/10 text-emerald-200";
+    case "duplicate":
+      return "border-violet-400/50 bg-violet-500/10 text-violet-200";
+    default:
+      return "border-white/10 bg-white/5 text-muted-foreground";
   }
 }
 
@@ -29,9 +34,11 @@ function confidenceLabel(c?: number) {
 export function ResultCard({
   candidate,
   ranked,
+  inclusionReason,
 }: {
   candidate: IntelCandidate;
   ranked?: IntelRanked;
+  inclusionReason?: string;
 }) {
   const t = candidate.ticket;
   const [opening, setOpening] = useState(false);
@@ -53,7 +60,9 @@ export function ResultCard({
       ranked?.suggestedAction ? `Action: ${ranked.suggestedAction}` : "",
       ranked?.issue ? `Issue: ${ranked.issue}` : "",
       `Link: ${t.freshdeskUrl}`,
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
     const priority = ranked?.signal === "urgent" ? "must" : "normal";
     nightPlanStore.add(task, notes, priority);
     toast.success("Added to Night Plan");
@@ -82,11 +91,23 @@ export function ResultCard({
       {ranked ? (
         <div className="space-y-2 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={"rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider " + signalColor(ranked.signal)}>
+            <span
+              className={
+                "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider " +
+                signalColor(ranked.signal)
+              }
+            >
               {ranked.signal}
             </span>
-            <span className="text-muted-foreground">Confidence: <span className="text-foreground">{confidenceLabel(ranked.confidence)}</span></span>
-            {ranked.owner && <span className="text-muted-foreground">Owner: <span className="text-foreground">{ranked.owner}</span></span>}
+            <span className="text-muted-foreground">
+              Confidence:{" "}
+              <span className="text-foreground">{confidenceLabel(ranked.confidence)}</span>
+            </span>
+            {ranked.owner && (
+              <span className="text-muted-foreground">
+                Owner: <span className="text-foreground">{ranked.owner}</span>
+              </span>
+            )}
           </div>
           {ranked.matchReason && <Row label="Why">{ranked.matchReason}</Row>}
           {ranked.issue && <Row label="Issue">{ranked.issue}</Row>}
@@ -97,16 +118,28 @@ export function ResultCard({
               "{ranked.snippet}"
             </blockquote>
           )}
+          {inclusionReason && <Row label="Included">{inclusionReason}</Row>}
         </div>
       ) : (
-        candidate.excerpt && (
-          <p className="line-clamp-3 text-xs text-muted-foreground">{candidate.excerpt}</p>
-        )
+        <div className="space-y-1">
+          {candidate.excerpt && (
+            <p className="line-clamp-3 text-xs text-muted-foreground">{candidate.excerpt}</p>
+          )}
+          {inclusionReason && (
+            <div className="text-[11px] text-muted-foreground">
+              <span className="text-foreground">Included:</span> {inclusionReason}
+            </div>
+          )}
+        </div>
       )}
 
       <footer className="flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" onClick={openInFreshdesk} disabled={opening}>
-          {opening ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="mr-1.5 h-3.5 w-3.5" />}
+          {opening ? (
+            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+          )}
           Open in Freshdesk
         </Button>
         <Button size="sm" onClick={addToNightPlan}>
@@ -129,7 +162,9 @@ function Badge({ children }: { children: React.ReactNode }) {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="text-xs">
-      <span className="mr-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{label}:</span>
+      <span className="mr-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+        {label}:
+      </span>
       <span className="text-foreground">{children}</span>
     </div>
   );
