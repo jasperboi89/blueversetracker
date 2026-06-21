@@ -51,9 +51,13 @@ function FreshdeskIntelligencePage() {
       return;
     }
     setLoading(true);
-    setError(null); setRan(true);
-    setStrong([]); setPossible([]); setMentions([]);
-    setNotice(null); setAiNotice(null);
+    setError(null);
+    setRan(true);
+    setStrong([]);
+    setPossible([]);
+    setMentions([]);
+    setNotice(null);
+    setAiNotice(null);
     try {
       const res = await freshdeskSearch({ data: { query, filters } });
       if (!res.ok) {
@@ -111,7 +115,9 @@ function FreshdeskIntelligencePage() {
             placeholder='Try: "PLA outage last 3 nights" or "stale Urgent tickets in Programming". Use Account # for exact account search.'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") onSearch(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSearch();
+            }}
           />
           <Button onClick={onSearch} disabled={loading}>
             <Search className="mr-1.5 h-4 w-4" />
@@ -171,7 +177,9 @@ function FreshdeskIntelligencePage() {
             onClick={() => setShowMentions((v) => !v)}
             className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
           >
-            <ChevronDown className={"h-3.5 w-3.5 transition " + (showMentions ? "" : "-rotate-90")} />
+            <ChevronDown
+              className={"h-3.5 w-3.5 transition " + (showMentions ? "" : "-rotate-90")}
+            />
             Related Mentions ({mentions.length})
           </button>
           {showMentions && (
@@ -207,7 +215,10 @@ function GroupSection({
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="h-1.5 w-8 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+        <span
+          className="h-1.5 w-8 rounded-full"
+          style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+        />
         <h2 className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
           {label} <span className="text-foreground/70">({count})</span>
         </h2>

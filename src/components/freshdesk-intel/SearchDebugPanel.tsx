@@ -116,14 +116,18 @@ function AccountCoverageTester() {
 
   const run = async () => {
     if (!num.trim()) return;
-    setLoading(true); setError(null); setReport(null);
+    setLoading(true);
+    setError(null);
+    setReport(null);
     try {
       const res = await freshdeskAccountCoverage({ data: { accountNumber: num.trim() } });
       if (!res.ok) setError(res.error);
       else setReport(res.report);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Coverage check failed.");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -164,7 +168,8 @@ function AccountCoverageTester() {
             {report.newest ? new Date(report.newest).toLocaleDateString() : "—"}
           </Row>
           <Row label="Mention scan">
-            {report.mentionsScanned} ticket(s) scanned{report.mentionsPagesTruncated && " (truncated)"}
+            {report.mentionsScanned} ticket(s) scanned
+            {report.mentionsPagesTruncated && " (truncated)"}
           </Row>
           {report.errors.length > 0 && (
             <li className="text-rose-300">Errors: {report.errors.join("; ")}</li>
@@ -186,14 +191,18 @@ function ContentCoverageTester() {
 
   const run = async () => {
     if (!num.trim()) return;
-    setLoading(true); setError(null); setReport(null);
+    setLoading(true);
+    setError(null);
+    setReport(null);
     try {
       const res = await freshdeskSyncCheck({ data: { number: num.trim() } });
       if (!res.ok) setError(res.error);
       else setReport(res.report);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Check failed.");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -220,15 +229,22 @@ function ContentCoverageTester() {
           <Item ok={report.customFields} label="Custom fields present" />
           <Item ok={report.tags} label="Tags present" />
           <Item ok={report.account} label="Account/company metadata present" />
-          <Item ok={report.notes} label={`Notes / replies / conversation body (${report.conversationCount} across ${report.conversationPages} pages)`} />
+          <Item
+            ok={report.notes}
+            label={`Notes / replies / conversation body (${report.conversationCount} across ${report.conversationPages} pages)`}
+          />
           <li>
             Latest conversation:{" "}
             <span className="text-foreground">
-              {report.latestConversationAt ? new Date(report.latestConversationAt).toLocaleString() : "—"}
+              {report.latestConversationAt
+                ? new Date(report.latestConversationAt).toLocaleString()
+                : "—"}
             </span>
           </li>
           <Item ok={report.fullyIndexed} label="Fully indexed for AI search" />
-          {report.errors.length > 0 && <li className="text-rose-300">Errors: {report.errors.join("; ")}</li>}
+          {report.errors.length > 0 && (
+            <li className="text-rose-300">Errors: {report.errors.join("; ")}</li>
+          )}
         </ul>
       )}
     </div>

@@ -32,7 +32,8 @@ function dateRangeToKey(dr: DateRange | undefined): DatePresetKey {
 
 function toggle<T>(arr: T[] | undefined, v: T): T[] {
   const set = new Set(arr ?? []);
-  if (set.has(v)) set.delete(v); else set.add(v);
+  if (set.has(v)) set.delete(v);
+  else set.add(v);
   return Array.from(set);
 }
 
@@ -44,8 +45,8 @@ export function FilterRow({
   onChange: (next: IntelFilters) => void;
 }) {
   const dateKey = dateRangeToKey(value.dateRange);
-  const customFrom = value.dateRange?.kind === "custom" ? value.dateRange.from ?? "" : "";
-  const customTo = value.dateRange?.kind === "custom" ? value.dateRange.to ?? "" : "";
+  const customFrom = value.dateRange?.kind === "custom" ? (value.dateRange.from ?? "") : "";
+  const customTo = value.dateRange?.kind === "custom" ? (value.dateRange.to ?? "") : "";
 
   const setDate = (key: DatePresetKey) => {
     if (key === "all") onChange({ ...value, dateRange: { kind: "all" } });
@@ -87,7 +88,11 @@ export function FilterRow({
               onChange={(e) =>
                 onChange({
                   ...value,
-                  dateRange: { kind: "custom", from: e.target.value || undefined, to: customTo || undefined },
+                  dateRange: {
+                    kind: "custom",
+                    from: e.target.value || undefined,
+                    to: customTo || undefined,
+                  },
                 })
               }
             />
@@ -100,7 +105,11 @@ export function FilterRow({
               onChange={(e) =>
                 onChange({
                   ...value,
-                  dateRange: { kind: "custom", from: customFrom || undefined, to: e.target.value || undefined },
+                  dateRange: {
+                    kind: "custom",
+                    from: customFrom || undefined,
+                    to: e.target.value || undefined,
+                  },
                 })
               }
             />

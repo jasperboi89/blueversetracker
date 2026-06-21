@@ -18,7 +18,10 @@ import type {
 
 const DateRangeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("all") }),
-  z.object({ kind: z.literal("preset"), days: z.union([z.literal(7), z.literal(30), z.literal(90)]) }),
+  z.object({
+    kind: z.literal("preset"),
+    days: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+  }),
   z.object({
     kind: z.literal("custom"),
     from: z.string().optional(),
@@ -110,7 +113,10 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function normalizeAccountValue(value: unknown): string {
-  return String(value ?? "").trim().replace(/[^a-z0-9]/gi, "").toUpperCase();
+  return String(value ?? "")
+    .trim()
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
 }
 
 interface AccountMatcher {
@@ -142,7 +148,9 @@ function accountLikeCustomFieldEntries(
 }
 function isAccountLikeTag(tag: string, m: AccountMatcher): boolean {
   // Tag of form "acct-1234", "account_1234", "1234", "acct1234"
-  return valueEqualsAccount(tag, m) || valueEqualsAccount(tag.replace(/^(acct|account)[-_ ]?/i, ""), m);
+  return (
+    valueEqualsAccount(tag, m) || valueEqualsAccount(tag.replace(/^(acct|account)[-_ ]?/i, ""), m)
+  );
 }
 
 /** Classify a candidate for account mode: exact (strong) vs mention-only (related) vs none. */
@@ -385,12 +393,17 @@ async function aiRankCandidates(
       }),
     });
     if (res.status === 429) return { ranked: [], error: "AI rate limit hit. Try again shortly." };
-    if (res.status === 402) return { ranked: [], error: "AI credits exhausted. Add credits in workspace billing." };
+    if (res.status === 402)
+      return { ranked: [], error: "AI credits exhausted. Add credits in workspace billing." };
     if (!res.ok) return { ranked: [], error: `AI call failed (${res.status}).` };
     const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = body.choices?.[0]?.message?.content ?? "{}";
     let parsed: { results?: IntelRanked[] } = {};
-    try { parsed = JSON.parse(content); } catch { parsed = {}; }
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      parsed = {};
+    }
     const valid = new Set(inputs.map((i) => i.candidate.ticket.number));
     const ranked = (parsed.results ?? []).filter(
       (r): r is IntelRanked =>
@@ -448,9 +461,9 @@ async function pullConversationsBatch(
 
 /* -------------------------- main search -------------------------- */
 
-const MAX_PAGES_ACCOUNT_EXACT = 10;       // up to ~300 tickets (Freshdesk search cap)
-const MAX_PAGES_ACCOUNT_MENTION = 5;      // bounded scan for mentions when no cf field
-const MAX_PAGES_GENERAL = 5;              // bounded scan for keyword queries
+const MAX_PAGES_ACCOUNT_EXACT = 10; // up to ~300 tickets (Freshdesk search cap)
+const MAX_PAGES_ACCOUNT_MENTION = 5; // bounded scan for mentions when no cf field
+const MAX_PAGES_GENERAL = 5; // bounded scan for keyword queries
 const MAX_CANDIDATES_FOR_CONVERSATIONS = 15;
 const MAX_CANDIDATES_FOR_AI = 20;
 
@@ -491,7 +504,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       );
       if (t.data) {
         const ticket = await enrichTicket(t.data, host, []);
-        const cand: IntelCandidate = { ticket, excerpt: (t.data.description_text ?? "").slice(0, 400) };
+        const cand: IntelCandidate = {
+          ticket,
+          excerpt: (t.data.description_text ?? "").slice(0, 400),
+        };
         const result: IntelResult = {
           candidate: cand,
           group: "strong",
@@ -528,7 +544,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
 
     /* ---- Email shortcut ---- */
     if (!acct && q && looksLikeEmail(q)) {
-      const contacts = await fdFetch<{ id: number }[]>(`/api/v2/contacts?email=${encodeURIComponent(q)}`);
+      const contacts = await fdFetch<{ id: number }[]>(
+        `/api/v2/contacts?email=${encodeURIComponent(q)}`,
+      );
       const contactId = contacts.data?.[0]?.id;
       if (contactId) {
         const tix = await fdFetch<FreshdeskTicketDTO[]>(
@@ -657,7 +675,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
           }
         }
         if (mentionExcluded > 0) {
-          exclusions.push({ reason: "scanned but no account-number evidence", count: mentionExcluded });
+          exclusions.push({
+            reason: "scanned but no account-number evidence",
+            count: mentionExcluded,
+          });
         }
         debugNotes.push(
           `Mention scan returned ${r.out.length} ticket(s) across ${r.pagesFetched} page(s)${r.truncated ? " (truncated)" : ""}.`,
@@ -714,7 +735,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         })),
         accountFieldDetected: accountField,
         paginationTruncated,
-        notes: debugNotes.concat(convo.errors.length ? [`Conversation errors: ${convo.errors.join("; ")}`] : []),
+        notes: debugNotes.concat(
+          convo.errors.length ? [`Conversation errors: ${convo.errors.join("; ")}`] : [],
+        ),
       };
 
       let notice: string | undefined;
@@ -740,7 +763,12 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     /* ---- GENERAL / KEYWORD MODE ---- */
     if (!q) {
       // Filter-only: just list matching tickets, no AI
-      const qs = buildFreshdeskQuery({ filters, accountField: null, range, includeAccountClause: false });
+      const qs = buildFreshdeskQuery({
+        filters,
+        accountField: null,
+        range,
+        includeAccountClause: false,
+      });
       if (!qs) return { ok: false, error: "Type a search query or set a filter." };
       const r = await runFreshdeskSearch(qs, host, MAX_PAGES_GENERAL);
       const results: IntelResult[] = r.out.map((c) => ({
@@ -773,13 +801,21 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
           })),
           accountFieldDetected: accountField,
           paginationTruncated: r.truncated,
-          notes: r.truncated && !range.active ? ["Result list was truncated; pick a date range to narrow."] : [],
+          notes:
+            r.truncated && !range.active
+              ? ["Result list was truncated; pick a date range to narrow."]
+              : [],
         },
       };
     }
 
     // Keyword mode
-    const qs = buildFreshdeskQuery({ filters, accountField: null, range, includeAccountClause: false });
+    const qs = buildFreshdeskQuery({
+      filters,
+      accountField: null,
+      range,
+      includeAccountClause: false,
+    });
     const effectiveQs = qs || `updated_at:>'2000-01-01'`;
     const r = await runFreshdeskSearch(effectiveQs, host, MAX_PAGES_GENERAL);
     if (r.firstError && !r.out.length) {
@@ -820,7 +856,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     let droppedNoAi = 0;
     for (const c of forAi) {
       const rk = rankedByNum.get(c.ticket.number);
-      if (!rk) { droppedNoAi += 1; continue; }
+      if (!rk) {
+        droppedNoAi += 1;
+        continue;
+      }
       const conf = typeof rk.confidence === "number" ? rk.confidence : 0;
       const result: IntelResult = {
         candidate: c,
@@ -829,14 +868,17 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         inclusionReason: `AI confidence ${conf.toFixed(2)} — ${rk.matchReason || "match"}`,
       };
       if (conf >= 0.45) {
-        if (conf >= 0.75) strong.push(result); else possible.push(result);
+        if (conf >= 0.75) strong.push(result);
+        else possible.push(result);
       } else {
         droppedNoAi += 1;
       }
     }
-    if (droppedNoAi > 0) exclusions.push({ reason: "AI low confidence or no evidence", count: droppedNoAi });
+    if (droppedNoAi > 0)
+      exclusions.push({ reason: "AI low confidence or no evidence", count: droppedNoAi });
     const scannedButNotSent = r.out.length - forAi.length;
-    if (scannedButNotSent > 0) exclusions.push({ reason: "scanned but capped before AI", count: scannedButNotSent });
+    if (scannedButNotSent > 0)
+      exclusions.push({ reason: "scanned but capped before AI", count: scannedButNotSent });
 
     const debug: SearchDebug = {
       mode: "keyword",
@@ -859,7 +901,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       accountFieldDetected: accountField,
       paginationTruncated: r.truncated,
       notes: ([] as string[]).concat(
-        r.truncated && !range.active ? ["Candidate scan capped; pick a date range for fuller coverage."] : [],
+        r.truncated && !range.active
+          ? ["Candidate scan capped; pick a date range for fuller coverage."]
+          : [],
         convo.errors.length ? [`Conversation errors: ${convo.errors.join("; ")}`] : [],
       ),
     };
@@ -889,7 +933,8 @@ export const freshdeskPullFullConversations = createServerFn({ method: "POST" })
     );
     if (t.error || !t.data) return { ok: false as const, error: t.error ?? "Ticket not found." };
     const conv = await fetchAllConversations(data.number);
-    if (!conv.ok) return { ok: false as const, error: conv.error ?? "Could not fetch conversations." };
+    if (!conv.ok)
+      return { ok: false as const, error: conv.error ?? "Could not fetch conversations." };
     const notes = conv.conversations.map(normalizeConversation);
     return {
       ok: true as const,
@@ -931,7 +976,8 @@ export const freshdeskSyncCheck = createServerFn({ method: "POST" })
         },
       };
     }
-    if (t.error || !t.data) return { ok: false as const, error: t.error ?? "Ticket lookup failed." };
+    if (t.error || !t.data)
+      return { ok: false as const, error: t.error ?? "Ticket lookup failed." };
     const conv = await fetchAllConversations(data.number);
     const errors: string[] = [];
     if (!conv.ok && conv.error) errors.push(conv.error);
@@ -982,68 +1028,74 @@ export const freshdeskAccountCoverage = createServerFn({ method: "POST" })
   .inputValidator((input: { accountNumber: string }) =>
     z.object({ accountNumber: z.string().min(1).max(50) }).parse(input),
   )
-  .handler(async ({ data }): Promise<{ ok: true; report: AccountCoverageReport } | { ok: false; error: string }> => {
-    const creds = readFreshdeskCreds();
-    if ("error" in creds && creds.error) return { ok: false, error: creds.error };
-    const { host } = creds as { host: string };
-    const acct = data.accountNumber.trim();
-    const accountField = await detectAccountField();
-    const errors: string[] = [];
-    const notes: string[] = [];
+  .handler(
+    async ({
+      data,
+    }): Promise<{ ok: true; report: AccountCoverageReport } | { ok: false; error: string }> => {
+      const creds = readFreshdeskCreds();
+      if ("error" in creds && creds.error) return { ok: false, error: creds.error };
+      const { host } = creds as { host: string };
+      const acct = data.accountNumber.trim();
+      const accountField = await detectAccountField();
+      const errors: string[] = [];
+      const notes: string[] = [];
 
-    let exactTotal = 0;
-    let exactPages = 0;
-    let exactTruncated = false;
-    let exactQuery: string | null = null;
-    let oldest: number | null = null;
-    let newest: number | null = null;
+      let exactTotal = 0;
+      let exactPages = 0;
+      let exactTruncated = false;
+      let exactQuery: string | null = null;
+      let oldest: number | null = null;
+      let newest: number | null = null;
 
-    if (accountField) {
-      const qs = `${accountField}:'${acct.replace(/'/g, "")}' AND (status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7)`;
-      exactQuery = qs;
-      const r = await runFreshdeskSearch(qs, host, MAX_PAGES_ACCOUNT_EXACT);
-      exactTotal = r.out.length;
-      exactPages = r.pagesFetched;
-      exactTruncated = r.truncated;
-      if (r.firstError) errors.push(r.firstError);
-      for (const c of r.out) {
-        const u = c.ticket.updatedAt;
-        if (oldest === null || u < oldest) oldest = u;
-        if (newest === null || u > newest) newest = u;
+      if (accountField) {
+        const qs = `${accountField}:'${acct.replace(/'/g, "")}' AND (status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7)`;
+        exactQuery = qs;
+        const r = await runFreshdeskSearch(qs, host, MAX_PAGES_ACCOUNT_EXACT);
+        exactTotal = r.out.length;
+        exactPages = r.pagesFetched;
+        exactTruncated = r.truncated;
+        if (r.firstError) errors.push(r.firstError);
+        for (const c of r.out) {
+          const u = c.ticket.updatedAt;
+          if (oldest === null || u < oldest) oldest = u;
+          if (newest === null || u > newest) newest = u;
+        }
+        notes.push(`Strict scan via ${accountField}='${acct}' across all statuses, all time.`);
+      } else {
+        notes.push(
+          "No account custom field detected; strict scan not possible. Falling back to mention scan only.",
+        );
       }
-      notes.push(`Strict scan via ${accountField}='${acct}' across all statuses, all time.`);
-    } else {
-      notes.push("No account custom field detected; strict scan not possible. Falling back to mention scan only.");
-    }
 
-    // Mention scan: broad recent
-    const broad = `(status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7)`;
-    const r2 = await runFreshdeskSearch(broad, host, MAX_PAGES_ACCOUNT_MENTION);
-    if (r2.firstError) errors.push(r2.firstError);
+      // Mention scan: broad recent
+      const broad = `(status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7)`;
+      const r2 = await runFreshdeskSearch(broad, host, MAX_PAGES_ACCOUNT_MENTION);
+      if (r2.firstError) errors.push(r2.firstError);
 
-    const scope: "all-time" | "limited" = exactTruncated || r2.truncated ? "limited" : "all-time";
-    if (scope === "limited") {
-      notes.push(
-        "Result set was truncated by Freshdesk pagination; coverage is partial. Narrow with filters to confirm.",
-      );
-    }
+      const scope: "all-time" | "limited" = exactTruncated || r2.truncated ? "limited" : "all-time";
+      if (scope === "limited") {
+        notes.push(
+          "Result set was truncated by Freshdesk pagination; coverage is partial. Narrow with filters to confirm.",
+        );
+      }
 
-    return {
-      ok: true,
-      report: {
-        accountNumber: acct,
-        accountFieldDetected: accountField,
-        exactQuery,
-        exactTotal,
-        exactPages,
-        exactTruncated,
-        oldest,
-        newest,
-        mentionsScanned: r2.out.length,
-        mentionsPagesTruncated: r2.truncated,
-        scope,
-        errors,
-        notes,
-      },
-    };
-  });
+      return {
+        ok: true,
+        report: {
+          accountNumber: acct,
+          accountFieldDetected: accountField,
+          exactQuery,
+          exactTotal,
+          exactPages,
+          exactTruncated,
+          oldest,
+          newest,
+          mentionsScanned: r2.out.length,
+          mentionsPagesTruncated: r2.truncated,
+          scope,
+          errors,
+          notes,
+        },
+      };
+    },
+  );
