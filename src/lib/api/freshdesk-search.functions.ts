@@ -316,9 +316,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     // If the user supplied an account number but we have no detectable cf field,
     // fall back to a recent window so the AI re-rank can match the number against
     // subject/description. Same for free-text queries without filters.
-    const needsRecentWindow =
-      (!hasAnyFilter && !!q) ||
-      (!!filters.accountNumber && !accountField);
+    const needsRecentWindow = (!hasAnyFilter && !!q) || (!!filters.accountNumber && !accountField);
     let queryString = buildFreshdeskQuery(
       filters,
       needsRecentWindow ? (filters.updatedAfter ?? isoDaysAgo(60)) : undefined,
@@ -330,7 +328,11 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       queryString = `updated_at:>'${filters.updatedAfter ?? isoDaysAgo(60)}'`;
     }
     if (!queryString) {
-      return { ok: false as const, error: "Type a search query or apply a filter.", candidates: [] };
+      return {
+        ok: false as const,
+        error: "Type a search query or apply a filter.",
+        candidates: [],
+      };
     }
 
     const runSearch = async (qs: string) => {
@@ -368,10 +370,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     // free text). Fall back to a recent window and let AI match the number
     // against subject/description.
     const accountClauseApplied = !!(filters.accountNumber && accountField);
-    const shouldFallback =
-      filters.accountNumber &&
-      !candidates.length &&
-      (firstError || accountClauseApplied);
+    const shouldFallback = filters.accountNumber && !candidates.length && (firstError || accountClauseApplied);
     if (shouldFallback) {
       // Only invalidate the cached field when Freshdesk explicitly rejected it.
       if (firstError && /field|cf_/i.test(firstError)) {
