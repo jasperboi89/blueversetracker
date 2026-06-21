@@ -97,15 +97,113 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeAccountValue(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
+}
+
+interface AccountMatcher {
+  normalized: string;
+  textRegex: RegExp;
+}
+
+function createAccountMatcher(acct: string): AccountMatcher | null {
+  const normalized = normalizeAccountValue(acct);
+  if (!normalized) return null;
+  const separated = normalized
+    .split("")
+    .map(escapeRegExp)
+    .join("[^a-zA-Z0-9]*");
+  return {
+    normalized,
+    textRegex: new RegExp(`(^|[^a-zA-Z0-9])${separated}([^a-zA-Z0-9]|$)`, "i"),
+  };
+}
+
+function valueMatchesAccount(value: unknown, matcher: AccountMatcher): boolean {
+  return normalizeAccountValue(value) === matcher.normalized;
+}
+
+function textMentionsAccount(value: unknown, matcher: AccountMatcher): boolean {
+  return matcher.textRegex.test(String(value ?? ""));
+}
+
+function candidateTextFields(c: IntelCandidate): string[] {
+  const t = c.ticket;
+  const customFields = t.customFields
+    ? Object.entries(t.customFields).map(([key, value]) => `${key} ${String(value ?? "")}`)
+    : [];
+  return [
+    t.subject,
+    t.description,
+    c.excerpt,
+    t.searchableText,
+    t.accountName,
+    t.companyName,
+    t.requesterName,
+    t.groupName,
+    t.agentName,
+    ...(t.tags ?? []),
+    ...customFields,
+  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+
 function candidateMentionsAccount(c: IntelCandidate, acct: string): boolean {
-  if (!acct) return true;
-  if (c.ticket.accountNumber && c.ticket.accountNumber === acct) return true;
-  const re = new RegExp(`(?:^|[^0-9])${escapeRegExp(acct)}(?:[^0-9]|$)`);
+  const matcher = createAccountMatcher(acct);
+  if (!matcher) return true;
+  const directValues = [
+    c.ticket.accountNumber,
+    ...(c.ticket.customFields ? Object.values(c.ticket.customFields) : []),
+  ];
   return (
-    re.test(c.ticket.subject ?? "") ||
-    re.test(c.ticket.description ?? "") ||
-    re.test(c.excerpt ?? "")
+    directValues.some((value) => valueMatchesAccount(value, matcher)) ||
+    candidateTextFields(c).some((value) => textMentionsAccount(value, matcher))
   );
+}
+
+async function conversationsMentionAccount(ticketNumber: string, acct: string): Promise<boolean> {
+  const matcher = createAccountMatcher(acct);
+  if (!matcher) return true;
+  const conv = await fetchAllConversations(ticketNumber);
+  if (!conv.ok) return false;
+  return conv.conversations.some((note) =>
+    textMentionsAccount(note.body_text, matcher) ||
+    textMentionsAccount(note.body, matcher) ||
+    textMentionsAccount(note.from_email, matcher),
+  );
+}
+
+async function filterCandidatesByAccount(
+  candidates: IntelCandidate[],
+  acct: string,
+  includeConversations: boolean,
+): Promise<IntelCandidate[]> {
+  if (!acct) return candidates;
+  const keep = new Set<string>();
+  const needsConversationCheck: IntelCandidate[] = [];
+  for (const candidate of candidates) {
+    if (candidateMentionsAccount(candidate, acct)) keep.add(candidate.ticket.number);
+    else if (includeConversations) needsConversationCheck.push(candidate);
+  }
+  for (let i = 0; i < needsConversationCheck.length; i += 5) {
+    const batch = needsConversationCheck.slice(i, i + 5);
+    const checks = await Promise.all(
+      batch.map(async (candidate) => ({
+        number: candidate.ticket.number,
+        matches: await conversationsMentionAccount(candidate.ticket.number, acct),
+      })),
+    );
+    checks.forEach((check) => {
+      if (check.matches) keep.add(check.number);
+    });
+  }
+  return candidates.filter((candidate) => keep.has(candidate.ticket.number));
+}
+
+function noAccountResultsMessage(): string {
+  return "No Freshdesk tickets or conversations mention that account number in the selected date/status filters. Try widening 'Updated after' or changing filters.";
 }
 
 /* ----- account custom field auto-detection ----- */
