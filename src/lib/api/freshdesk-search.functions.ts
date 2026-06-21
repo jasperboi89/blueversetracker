@@ -130,11 +130,21 @@ function textMentionsAccount(value: unknown, matcher: AccountMatcher): boolean {
   return matcher.textRegex.test(String(value ?? ""));
 }
 
+function isAccountLikeFieldName(key: string): boolean {
+  return /account|acct/i.test(key);
+}
+
+function accountLikeCustomFieldEntries(
+  fields: Record<string, string | number | boolean | null> | undefined,
+): [string, string | number | boolean | null][] {
+  return fields ? Object.entries(fields).filter(([key]) => isAccountLikeFieldName(key)) : [];
+}
+
 function candidateTextFields(c: IntelCandidate): string[] {
   const t = c.ticket;
-  const customFields = t.customFields
-    ? Object.entries(t.customFields).map(([key, value]) => `${key} ${String(value ?? "")}`)
-    : [];
+  const customFields = accountLikeCustomFieldEntries(t.customFields).map(
+    ([key, value]) => `${key} ${String(value ?? "")}`,
+  );
   return [
     t.subject,
     t.description,
@@ -152,9 +162,7 @@ function candidateTextFields(c: IntelCandidate): string[] {
 function candidateMentionsAccount(c: IntelCandidate, acct: string): boolean {
   const matcher = createAccountMatcher(acct);
   if (!matcher) return true;
-  const directValues = [
-    ...(c.ticket.customFields ? Object.values(c.ticket.customFields) : []),
-  ];
+  const directValues = accountLikeCustomFieldEntries(c.ticket.customFields).map(([, value]) => value);
   return (
     directValues.some((value) => valueMatchesAccount(value, matcher)) ||
     candidateTextFields(c).some((value) => textMentionsAccount(value, matcher))
