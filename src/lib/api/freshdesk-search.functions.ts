@@ -355,10 +355,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     // Defensive: even when the cf account clause was applied, only keep tickets
     // that actually contain the account number in text/account fields.
     if (filters.accountNumber && candidates.length) {
-      const acct = filters.accountNumber.trim();
-      const filtered = candidates.filter((c) => candidateMentionsAccount(c, acct));
-      if (filtered.length) candidates = filtered;
-      else candidates = [];
+      candidates = await filterCandidatesByAccount(candidates, filters.accountNumber.trim(), true);
     }
 
     // Account-number query failed or returned nothing (typically because the cf
@@ -383,13 +380,12 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       if (fallbackQs) {
         const retry = await runSearch(fallbackQs);
         const acct = (filters.accountNumber ?? "").trim();
-        const strict = retry.out.filter((c) => candidateMentionsAccount(c, acct));
+        const strict = await filterCandidatesByAccount(retry.out, acct, true);
         if (strict.length) return { ok: true as const, candidates: strict };
         if (!retry.firstError) {
           return {
             ok: false as const,
-            error:
-              "No Freshdesk tickets mention that account number in the last 60 days. Try widening 'Updated after' or adding more filters.",
+            error: noAccountResultsMessage(),
             candidates: [],
           };
         }
