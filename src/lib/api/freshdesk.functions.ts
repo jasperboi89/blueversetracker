@@ -33,7 +33,27 @@ export async function fdFetch<T>(path: string): Promise<{ data?: T; status: numb
       return { status: res.status, error: "Freshdesk authentication failed. Check API key in Settings." };
     }
     if (!res.ok) {
-      return { status: res.status, error: `Freshdesk returned ${res.status}.` };
+      let detail = "";
+      try {
+        const body = await res.text();
+        // Freshdesk returns JSON like { description: "...", errors: [{ message: "..." }] }
+        try {
+          const j = JSON.parse(body) as { description?: string; message?: string; errors?: { message?: string; field?: string }[] };
+          detail =
+            j.errors?.map((e) => [e.field, e.message].filter(Boolean).join(": ")).join("; ") ||
+            j.description ||
+            j.message ||
+            body.slice(0, 200);
+        } catch {
+          detail = body.slice(0, 200);
+        }
+      } catch { /* ignore */ }
+      return {
+        status: res.status,
+        error: detail
+          ? `Freshdesk ${res.status}: ${detail}`
+          : `Freshdesk returned ${res.status}.`,
+      };
     }
     const data = (await res.json()) as T;
     return { data, status: res.status };
