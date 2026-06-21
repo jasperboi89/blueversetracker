@@ -420,7 +420,9 @@ export const freshdeskPullFullConversations = createServerFn({ method: "POST" })
     );
     if (t.error || !t.data) return { ok: false as const, error: t.error ?? "Ticket not found." };
     const conv = await fetchAllConversations(data.number);
-    if (!conv.ok) return { ok: false as const, error: conv.error ?? "Could not fetch conversations." };
+    if (!conv.ok) {
+      return { ok: false as const, error: conv.error ?? "Could not fetch conversations." };
+    }
     const notes = conv.conversations.map(normalizeConversation);
     return {
       ok: true as const,
@@ -459,7 +461,11 @@ export const freshdeskIntelligenceRank = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
-      return { ok: false as const, error: "AI summaries unavailable: LOVABLE_API_KEY not set.", ranked: [] as IntelRanked[] };
+      return {
+        ok: false as const,
+        error: "AI summaries unavailable: LOVABLE_API_KEY not set.",
+        ranked: [] as IntelRanked[],
+      };
     }
     const candidates = (data.candidates as IntelCandidate[]).slice(0, 20);
     if (!candidates.length) return { ok: true as const, ranked: [] as IntelRanked[] };
@@ -501,20 +507,36 @@ export const freshdeskIntelligenceRank = createServerFn({ method: "POST" })
         }),
       });
       if (res.status === 429) {
-        return { ok: false as const, error: "AI rate limit hit. Try again shortly.", ranked: [] as IntelRanked[] };
+        return {
+          ok: false as const,
+          error: "AI rate limit hit. Try again shortly.",
+          ranked: [] as IntelRanked[],
+        };
       }
       if (res.status === 402) {
-        return { ok: false as const, error: "AI credits exhausted. Add credits in workspace billing.", ranked: [] as IntelRanked[] };
+        return {
+          ok: false as const,
+          error: "AI credits exhausted. Add credits in workspace billing.",
+          ranked: [] as IntelRanked[],
+        };
       }
       if (!res.ok) {
-        return { ok: false as const, error: `AI call failed (${res.status}).`, ranked: [] as IntelRanked[] };
+        return {
+          ok: false as const,
+          error: `AI call failed (${res.status}).`,
+          ranked: [] as IntelRanked[],
+        };
       }
       const body = (await res.json()) as {
         choices?: { message?: { content?: string } }[];
       };
       const content = body.choices?.[0]?.message?.content ?? "{}";
       let parsed: { results?: IntelRanked[] } = {};
-      try { parsed = JSON.parse(content); } catch { parsed = {}; }
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        parsed = {};
+      }
       const ranked = (parsed.results ?? []).filter(
         (r): r is IntelRanked => typeof r?.ticketNumber === "string",
       );
