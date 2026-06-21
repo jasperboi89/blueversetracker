@@ -112,10 +112,7 @@ interface AccountMatcher {
 function createAccountMatcher(acct: string): AccountMatcher | null {
   const normalized = normalizeAccountValue(acct);
   if (!normalized) return null;
-  const separated = normalized
-    .split("")
-    .map(escapeRegExp)
-    .join("[^a-zA-Z0-9]*");
+  const separated = normalized.split("").map(escapeRegExp).join("[^a-zA-Z0-9]*");
   return {
     normalized,
     textRegex: new RegExp(`(^|[^a-zA-Z0-9])${separated}([^a-zA-Z0-9]|$)`, "i"),
@@ -162,7 +159,9 @@ function candidateTextFields(c: IntelCandidate): string[] {
 function candidateMentionsAccount(c: IntelCandidate, acct: string): boolean {
   const matcher = createAccountMatcher(acct);
   if (!matcher) return true;
-  const directValues = accountLikeCustomFieldEntries(c.ticket.customFields).map(([, value]) => value);
+  const directValues = accountLikeCustomFieldEntries(c.ticket.customFields).map(
+    ([, value]) => value,
+  );
   return (
     directValues.some((value) => valueMatchesAccount(value, matcher)) ||
     candidateTextFields(c).some((value) => textMentionsAccount(value, matcher))
@@ -176,8 +175,8 @@ async function conversationsMentionAccount(ticketNumber: string, acct: string): 
   if (!conv.ok) return false;
   return conv.conversations.some((note) =>
     textMentionsAccount(note.body_text, matcher) ||
-    textMentionsAccount(note.body, matcher) ||
-    textMentionsAccount(note.from_email, matcher),
+      textMentionsAccount(note.body, matcher) ||
+      textMentionsAccount(note.from_email, matcher),
   );
 }
 
