@@ -74,11 +74,26 @@ function FreshdeskIntelligencePage() {
 
   const merged = useMemo(() => {
     if (!candidates.length) return [];
+    const acct = filters.accountNumber?.trim();
+    const acctRe = acct
+      ? new RegExp(`(?:^|[^0-9])${acct.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?:[^0-9]|$)`)
+      : null;
+    const matchesAccount = (c: IntelCandidate) => {
+      if (!acct) return true;
+      const t = c.ticket;
+      if (t.accountNumber && t.accountNumber === acct) return true;
+      return (
+        (acctRe?.test(t.subject ?? "") ?? false) ||
+        (acctRe?.test(t.description ?? "") ?? false) ||
+        (acctRe?.test(c.excerpt ?? "") ?? false)
+      );
+    };
     const byNum = new Map(ranked.map((r) => [r.ticketNumber, r]));
     return candidates
+      .filter(matchesAccount)
       .map((c) => ({ candidate: c, ranked: byNum.get(c.ticket.number) }))
       .sort((a, b) => (b.ranked?.confidence ?? 0) - (a.ranked?.confidence ?? 0));
-  }, [candidates, ranked]);
+  }, [candidates, ranked, filters.accountNumber]);
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
