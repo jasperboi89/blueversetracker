@@ -29,11 +29,13 @@ export function useTuningSync() {
 
   useEffect(() => {
     if (!hydrated.current) return;
-    const payload = JSON.stringify(state);
+    const { visualIntensity, eventFrequency, particleDensity, sleepMode } = state;
+    const remote = { visualIntensity, eventFrequency, particleDensity, sleepMode };
+    const payload = JSON.stringify(remote);
     if (payload === lastPushed.current) return;
     lastPushed.current = payload;
     const t = setTimeout(() => {
-      set({ data: state }).catch(() => {});
+      set({ data: remote }).catch(() => {});
     }, 500);
     return () => clearTimeout(t);
   }, [set, state]);
