@@ -56,13 +56,15 @@ export interface IntelRanked {
  * For free text we fetch a recent slice via supported filters and rely on
  * AI re-rank to surface matches.
  */
-function buildFreshdeskQuery(filters: IntelFilters, fallbackUpdatedAfter?: string): string {
+function buildFreshdeskQuery(
+  filters: IntelFilters,
+  fallbackUpdatedAfter?: string,
+  accountField?: string | null,
+): string {
   const clauses: string[] = [];
   const acct = filters.accountNumber?.trim();
-  if (acct) {
-    // Most installs use cf_account_number; if the field doesn't exist, Freshdesk
-    // returns 400 with a clear message that we surface to the user.
-    clauses.push(`cf_account_number:'${acct.replace(/'/g, "")}'`);
+  if (acct && accountField) {
+    clauses.push(`${accountField}:'${acct.replace(/'/g, "")}'`);
   }
 
   if (filters.statuses?.length) {
@@ -91,6 +93,45 @@ function looksLikeEmail(s: string): boolean {
   return /\S+@\S+\.\S+/.test(s);
 }
 
+/* ----- account custom field auto-detection ----- */
+
+interface FreshdeskFieldDTO {
+  name: string;
+  label?: string;
+  type?: string;
+}
+
+let cachedAccountField: string | null | undefined; // undefined=not yet, null=none found
+
+async function detectAccountField(): Promise<string | null> {
+  if (cachedAccountField !== undefined) return cachedAccountField;
+  const res = await fdFetch<FreshdeskFieldDTO[]>(`/api/v2/ticket_fields`);
+  if (!res.data) {
+    cachedAccountField = null;
+    return null;
+  }
+  // Custom field API names already start with "cf_".
+  const customs = res.data.filter((f) => typeof f.name === "string" && f.name.startsWith("cf_"));
+  const score = (f: FreshdeskFieldDTO) => {
+    const n = (f.name + " " + (f.label ?? "")).toLowerCase();
+    if (/\b(account[_\s-]?(number|num|no|#))\b/.test(n)) return 3;
+    if (/account/.test(n)) return 2;
+    if (/\bacct/.test(n)) return 1;
+    return 0;
+  };
+  const best = customs
+    .map((f) => ({ f, s: score(f) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s)[0];
+  cachedAccountField = best?.f.name ?? null;
+  return cachedAccountField;
+}
+
+export const freshdeskDetectAccountField = createServerFn({ method: "GET" }).handler(async () => {
+  const name = await detectAccountField();
+  return { name };
+});
+
 /** Live search. Returns lightweight candidates (no full conversations). */
 export const freshdeskSearch = createServerFn({ method: "POST" })
   .inputValidator((input: { query: string; filters?: IntelFilters }) =>
@@ -105,6 +146,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     const filters = data.filters ?? {};
     const q = data.query.trim();
     const ticketNumMatch = q.match(/^#?(\d{4,8})$/);
+
+    // Detect actual account custom field name (or null if none exists).
+    const accountField = await detectAccountField();
 
     // If the query is just a ticket number, fetch that ticket directly.
     if (ticketNumMatch) {
@@ -153,30 +197,52 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     const queryString = buildFreshdeskQuery(
       filters,
       !hasAnyFilter && q ? isoDaysAgo(30) : undefined,
+      accountField,
     );
     if (!queryString) {
       return { ok: false as const, error: "Type a search query or apply a filter.", candidates: [] };
     }
 
-    const candidates: IntelCandidate[] = [];
-    let firstError: string | undefined;
-    for (let page = 1; page <= 3; page += 1) {
-      const res = await fdFetch<{ total: number; results: FreshdeskTicketDTO[] }>(
-        `/api/v2/search/tickets?query=%22${encodeURIComponent(queryString)}%22&page=${page}`,
+    const runSearch = async (qs: string) => {
+      const out: IntelCandidate[] = [];
+      let firstError: string | undefined;
+      for (let page = 1; page <= 3; page += 1) {
+        const res = await fdFetch<{ total: number; results: FreshdeskTicketDTO[] }>(
+          `/api/v2/search/tickets?query=%22${encodeURIComponent(qs)}%22&page=${page}`,
+        );
+        if (res.error) {
+          if (page === 1) firstError = res.error;
+          break;
+        }
+        const results = res.data?.results ?? [];
+        if (!results.length) break;
+        for (const r of results) {
+          const ticket = await enrichTicket(r, host, []);
+          out.push({ ticket, excerpt: (r.description_text ?? "").slice(0, 400) });
+        }
+        if (results.length < 30) break;
+      }
+      return { out, firstError };
+    };
+
+    let { out: candidates, firstError } = await runSearch(queryString);
+
+    // Account-number query failed (typically because the cf field doesn't exist
+    // or has a different name). Fall back to a recent window and let AI match
+    // the number against subject/description.
+    if (!candidates.length && filters.accountNumber && firstError) {
+      cachedAccountField = null; // invalidate cache; field guess was wrong
+      const fallbackQs = buildFreshdeskQuery(
+        { ...filters, accountNumber: undefined },
+        isoDaysAgo(60),
+        null,
       );
-      if (res.error) {
-        if (page === 1) firstError = res.error;
-        break;
+      if (fallbackQs) {
+        const retry = await runSearch(fallbackQs);
+        if (retry.out.length) return { ok: true as const, candidates: retry.out };
       }
-      const results = res.data?.results ?? [];
-      if (!results.length) break;
-      for (const r of results) {
-        const ticket = await enrichTicket(r, host, []);
-        const excerpt = (r.description_text ?? "").slice(0, 400);
-        candidates.push({ ticket, excerpt });
-      }
-      if (results.length < 30) break;
     }
+
     if (!candidates.length && firstError) {
       return { ok: false as const, error: firstError, candidates: [] };
     }
@@ -228,7 +294,7 @@ export const freshdeskIntelligenceRank = createServerFn({ method: "POST" })
     z
       .object({
         query: z.string().max(500),
-        candidates: z.array(z.any()).max(30),
+        candidates: z.array(z.any()).max(100),
       })
       .parse(input),
   )

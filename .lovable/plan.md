@@ -1,33 +1,29 @@
 ## Plan
 
-1. **Fix live search query formatting**
-   - Update the Freshdesk Intelligence search builder so name/free-text searches are sent in the format Freshdesk search accepts.
-   - Avoid invalid `OR`/parentheses patterns that can trigger `Freshdesk returned 400`.
-   - Add a safe fallback: if a rich search query fails with 400, retry with simpler Freshdesk-supported searches instead of immediately showing an error.
+Two separate bugs in Freshdesk Intelligence search.
 
-2. **Improve search reliability for names and general text**
-   - Keep direct ticket-number lookup as-is.
-   - For names/free text, search likely fields separately, merge/dedupe results, and preserve filters where Freshdesk supports them.
-   - Return clearer errors when Freshdesk rejects a query, including a practical message instead of only “returned 400.”
+### 1. "Array must contain at most 30 element(s)"
+The AI re-rank validator caps the candidates array at 30, but live search can return up to 3 pages × 30 = 90 tickets. The cap fires before the handler can slice.
 
-3. **Fix conversation status reporting**
-   - Adjust the Sync Check so “conversations pulled” distinguishes between:
-     - API failed to pull conversations
-     - API succeeded but the ticket has zero conversations
-   - Show the actual Freshdesk conversation API error when present.
+**Fix:** raise the cap to 100 (handler still slices to the top 20 for the AI prompt). No UX change.
 
-4. **Keep module read-only**
-   - No Freshdesk writes.
-   - No duplicate API setup.
-   - No database mirror or embeddings changes.
+### 2. `cf_account_number: Unexpected/invalid field in request`
+Freshdesk rejects the query because this account isn't called `cf_account_number` in your instance. Custom field names are tenant-specific (e.g. `cf_account`, `cf_acct`, `cf_account_num`).
 
-## Technical scope
+**Fix:**
+- On first use, auto-detect the account custom field by calling `/api/v2/ticket_fields` once, picking the first custom field whose name contains "account", and caching it in memory.
+- If detection fails, fall back to a free-text search path: pull a recent window of tickets via supported filters and let the AI re-rank find the account number in subject/description. No 400.
+- Show a clearer message if Freshdesk truly has no account custom field, telling the user to set the field name in Settings.
 
-Files to update:
-- `src/lib/api/freshdesk-search.functions.ts`
-- `src/lib/api/freshdesk.functions.ts`
-- `src/components/freshdesk-intel/SyncCheckPanel.tsx` if needed for clearer labels
+### 3. Small follow-ups
+- Surface the detected field name in the Sync Check panel so the user can confirm it.
+- Keep the read-only contract — no Freshdesk writes, no schema changes.
 
-Validation:
-- Check the updated query generation and error handling paths.
-- Ensure ticket-number lookup, normal search, and sync check still call the existing Freshdesk backend functions only.
+## Files to touch
+- `src/lib/api/freshdesk-search.functions.ts` — raise `candidates` cap, add `detectAccountField()`, change account-number branch to use detected field or fall back.
+- `src/components/freshdesk-intel/SyncCheckPanel.tsx` — show detected account field (optional, small).
+
+## Validation
+- Search by account number → should succeed without 400.
+- Free-text/name search with >30 results → no Zod cap error.
+- Account number when no matching custom field exists → graceful fallback, not a hard error.
