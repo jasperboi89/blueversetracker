@@ -84,6 +84,8 @@ export interface SearchDebug {
   accountFieldDetected?: string | null;
   paginationTruncated: boolean;
   notes: string[];
+  skippedFields?: { name: string; reason: string }[];
+  apiErrors?: string[];
 }
 
 export type SearchResponse =
@@ -138,13 +140,36 @@ function valueEqualsAccount(value: unknown, m: AccountMatcher): boolean {
 function textMentionsAccount(value: unknown, m: AccountMatcher): boolean {
   return m.textRegex.test(String(value ?? ""));
 }
-function isAccountLikeFieldName(key: string): boolean {
-  return /account|acct/i.test(key);
+/**
+ * Strict allowlist of custom-field names that are SAFE to treat as an
+ * account-number field. Generic "account" matches (e.g. cf_existing_account,
+ * cf_account_type) are intentionally excluded — they are usually dropdowns /
+ * categorical fields and passing a numeric account into them produces a
+ * Freshdesk 400 ("It should be one of these values: ...").
+ */
+const ACCOUNT_FIELD_ALLOW_RE =
+  /^(cf_)?(account|acct)[_\s-]?(number|num|no|#|id)$|^cf_(account|acct)$/i;
+const ACCOUNT_FIELD_EXCLUDE = new Set<string>([
+  "cf_existing_account",
+  "cf_account_type",
+  "cf_account_status",
+  "cf_account_category",
+  "cf_account_tier",
+  "cf_account_plan",
+  "cf_account_stage",
+]);
+const ACCOUNT_FIELD_EXCLUDE_RE =
+  /(type|status|category|tier|plan|stage|existing|priority|owner|manager|name)/i;
+
+function isSafeAccountFieldName(key: string): boolean {
+  if (ACCOUNT_FIELD_EXCLUDE.has(key)) return false;
+  if (ACCOUNT_FIELD_EXCLUDE_RE.test(key)) return false;
+  return ACCOUNT_FIELD_ALLOW_RE.test(key);
 }
 function accountLikeCustomFieldEntries(
   fields: Record<string, string | number | boolean | null> | undefined,
 ): [string, string | number | boolean | null][] {
-  return fields ? Object.entries(fields).filter(([k]) => isAccountLikeFieldName(k)) : [];
+  return fields ? Object.entries(fields).filter(([k]) => isSafeAccountFieldName(k)) : [];
 }
 function isAccountLikeTag(tag: string, m: AccountMatcher): boolean {
   // Tag of form "acct-1234", "account_1234", "1234", "acct1234"
@@ -209,35 +234,68 @@ interface FreshdeskFieldDTO {
   name: string;
   label?: string;
   type?: string;
+  choices?: unknown;
 }
-let cachedAccountField: string | null | undefined;
+interface AccountFieldDetection {
+  name: string | null;
+  skipped: { name: string; reason: string }[];
+}
+let cachedAccountFieldDetection: AccountFieldDetection | undefined;
 
-async function detectAccountField(): Promise<string | null> {
-  if (cachedAccountField !== undefined) return cachedAccountField;
+async function detectAccountFieldFull(): Promise<AccountFieldDetection> {
+  if (cachedAccountFieldDetection !== undefined) return cachedAccountFieldDetection;
   const res = await fdFetch<FreshdeskFieldDTO[]>(`/api/v2/ticket_fields`);
   if (!res.data) {
-    cachedAccountField = null;
-    return null;
+    cachedAccountFieldDetection = { name: null, skipped: [] };
+    return cachedAccountFieldDetection;
   }
   const customs = res.data.filter((f) => typeof f.name === "string" && f.name.startsWith("cf_"));
+  const skipped: { name: string; reason: string }[] = [];
+  const candidates: FreshdeskFieldDTO[] = [];
+  for (const f of customs) {
+    const n = f.name;
+    const looksRelated = /account|acct/i.test(n + " " + (f.label ?? ""));
+    if (!looksRelated) continue;
+    if (ACCOUNT_FIELD_EXCLUDE.has(n)) {
+      skipped.push({ name: n, reason: "explicit exclude (known categorical field)" });
+      continue;
+    }
+    if (ACCOUNT_FIELD_EXCLUDE_RE.test(n)) {
+      skipped.push({ name: n, reason: "name suggests category/type, not account number" });
+      continue;
+    }
+    const isDropdown =
+      (typeof f.type === "string" && /dropdown|checkbox|radio/i.test(f.type)) ||
+      (Array.isArray(f.choices) && f.choices.length > 0) ||
+      (f.choices && typeof f.choices === "object");
+    if (isDropdown) {
+      skipped.push({ name: n, reason: `dropdown/choice field (type=${f.type ?? "?"})` });
+      continue;
+    }
+    if (!ACCOUNT_FIELD_ALLOW_RE.test(n)) {
+      skipped.push({ name: n, reason: "name does not match strict account-number pattern" });
+      continue;
+    }
+    candidates.push(f);
+  }
   const score = (f: FreshdeskFieldDTO) => {
     const n = (f.name + " " + (f.label ?? "")).toLowerCase();
-    if (/\b(account[_\s-]?(number|num|no|#))\b/.test(n)) return 3;
-    if (/account/.test(n)) return 2;
-    if (/\bacct/.test(n)) return 1;
-    return 0;
+    if (/account[_\s-]?(number|num|no|#)/.test(n)) return 3;
+    if (/acct[_\s-]?(number|num|no|#)/.test(n)) return 2;
+    return 1;
   };
-  const best = customs
-    .map((f) => ({ f, s: score(f) }))
-    .filter((x) => x.s > 0)
-    .sort((a, b) => b.s - a.s)[0];
-  cachedAccountField = best?.f.name ?? null;
-  return cachedAccountField;
+  const best = candidates.map((f) => ({ f, s: score(f) })).sort((a, b) => b.s - a.s)[0];
+  cachedAccountFieldDetection = { name: best?.f.name ?? null, skipped };
+  return cachedAccountFieldDetection;
+}
+
+async function detectAccountField(): Promise<string | null> {
+  return (await detectAccountFieldFull()).name;
 }
 
 export const freshdeskDetectAccountField = createServerFn({ method: "GET" }).handler(async () => {
-  const name = await detectAccountField();
-  return { name };
+  const d = await detectAccountFieldFull();
+  return { name: d.name, skipped: d.skipped };
 });
 
 /* -------------------------- date range -------------------------- */
@@ -481,9 +539,11 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     const q = data.query.trim();
     const range = resolveDateRange(filters.dateRange);
     const acct = filters.accountNumber?.trim();
-    const accountField = await detectAccountField();
+    const detection = await detectAccountFieldFull();
+    const accountField = detection.name;
     const debugNotes: string[] = [];
     const exclusions: { reason: string; count: number }[] = [];
+    const apiErrors: string[] = [];
 
     const filtersForDebugObj = {
       accountNumber: acct,
@@ -619,7 +679,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         const r = await runFreshdeskSearch(qs, host, MAX_PAGES_ACCOUNT_EXACT);
         scanned += r.out.length;
         if (r.truncated) paginationTruncated = true;
-        if (r.firstError) firstError = r.firstError;
+        if (r.firstError) {
+          firstError = r.firstError;
+          apiErrors.push(`strict (${accountField}): ${r.firstError}`);
+        }
         for (const c of r.out) {
           // Treat all results of this query as exact — the API guaranteed the cf match
           if (!strongMap.has(c.ticket.number)) {
@@ -635,7 +698,12 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         );
       } else {
         debugNotes.push(
-          "No account custom field detected on this Freshdesk account. Strict filter pass skipped; falling back to mention scan only.",
+          "No safe account-number custom field detected. Strict API filter skipped — fetching a broader candidate set and matching locally against accountNumber, company, and tags.",
+        );
+      }
+      if (detection.skipped.length) {
+        debugNotes.push(
+          `Skipped custom fields: ${detection.skipped.map((s) => `${s.name} (${s.reason})`).join("; ")}`,
         );
       }
 
@@ -653,7 +721,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         const r = await runFreshdeskSearch(broadQs, host, MAX_PAGES_ACCOUNT_MENTION);
         scanned += r.out.length;
         if (r.truncated) paginationTruncated = true;
-        if (r.firstError && !firstError) firstError = r.firstError;
+        if (r.firstError) {
+          if (!firstError) firstError = r.firstError;
+          apiErrors.push(`broad: ${r.firstError}`);
+        }
         let mentionExcluded = 0;
         for (const c of r.out) {
           if (strongMap.has(c.ticket.number)) continue;
@@ -738,6 +809,8 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         notes: debugNotes.concat(
           convo.errors.length ? [`Conversation errors: ${convo.errors.join("; ")}`] : [],
         ),
+        skippedFields: detection.skipped,
+        apiErrors,
       };
 
       let notice: string | undefined;

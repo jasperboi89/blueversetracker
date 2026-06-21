@@ -78,6 +78,28 @@ function DebugView({ debug }: { debug: SearchDebug }) {
         Strong {debug.groupCounts.strong} · Possible {debug.groupCounts.possible} · Mentions{" "}
         {debug.groupCounts.relatedMentions}
       </Row>
+      {debug.skippedFields && debug.skippedFields.length > 0 && (
+        <li>
+          <div className="text-foreground">Custom fields skipped for account matching:</div>
+          <ul className="ml-3 mt-1 space-y-0.5">
+            {debug.skippedFields.map((s) => (
+              <li key={s.name}>
+                <code className="text-foreground/90">{s.name}</code> — {s.reason}
+              </li>
+            ))}
+          </ul>
+        </li>
+      )}
+      {debug.apiErrors && debug.apiErrors.length > 0 && (
+        <li>
+          <div className="text-rose-300">Freshdesk API errors:</div>
+          <ul className="ml-3 mt-1 space-y-0.5 text-rose-200">
+            {debug.apiErrors.map((e, i) => (
+              <li key={i}>• {e}</li>
+            ))}
+          </ul>
+        </li>
+      )}
       {debug.inclusionReasons.length > 0 && (
         <li>
           <div className="text-foreground">Why each result was included:</div>
