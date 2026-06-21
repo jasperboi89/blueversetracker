@@ -29,9 +29,11 @@ function confidenceLabel(c?: number) {
 export function ResultCard({
   candidate,
   ranked,
+  inclusionReason,
 }: {
   candidate: IntelCandidate;
   ranked?: IntelRanked;
+  inclusionReason?: string;
 }) {
   const t = candidate.ticket;
   const [opening, setOpening] = useState(false);
@@ -97,11 +99,19 @@ export function ResultCard({
               "{ranked.snippet}"
             </blockquote>
           )}
+          {inclusionReason && <Row label="Included">{inclusionReason}</Row>}
         </div>
       ) : (
-        candidate.excerpt && (
-          <p className="line-clamp-3 text-xs text-muted-foreground">{candidate.excerpt}</p>
-        )
+        <div className="space-y-1">
+          {candidate.excerpt && (
+            <p className="line-clamp-3 text-xs text-muted-foreground">{candidate.excerpt}</p>
+          )}
+          {inclusionReason && (
+            <div className="text-[11px] text-muted-foreground">
+              <span className="text-foreground">Included:</span> {inclusionReason}
+            </div>
+          )}
+        </div>
       )}
 
       <footer className="flex flex-wrap gap-2">
