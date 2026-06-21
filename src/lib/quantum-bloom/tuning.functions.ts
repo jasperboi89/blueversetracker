@@ -12,7 +12,8 @@ const setSchema = z
     particleDensity: z.enum(DENS).optional(),
     sleepMode: z.boolean().optional(),
   })
-  .strict();
+  // Local-only keys (e.g. nightShiftSync, celebrations) are silently dropped.
+  .passthrough();
 
 export const getTuning = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
