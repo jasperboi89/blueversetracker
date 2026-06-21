@@ -20,7 +20,10 @@ export const Route = createFileRoute("/_authenticated/freshdesk-intelligence")({
   head: () => ({
     meta: [
       { title: "Freshdesk Intelligence — Account Intel Hub" },
-      { name: "description", content: "Natural-language search across Freshdesk tickets with AI summaries." },
+      {
+        name: "description",
+        content: "Natural-language search across Freshdesk tickets with AI summaries.",
+      },
     ],
   }),
   component: FreshdeskIntelligencePage,
@@ -40,10 +43,7 @@ function normalizeAccountValue(value: unknown): string {
 function createAccountRegex(acct: string): RegExp | null {
   const normalized = normalizeAccountValue(acct);
   if (!normalized) return null;
-  const separated = normalized
-    .split("")
-    .map(escapeRegExp)
-    .join("[^a-zA-Z0-9]*");
+  const separated = normalized.split("").map(escapeRegExp).join("[^a-zA-Z0-9]*");
   return new RegExp(`(^|[^a-zA-Z0-9])${separated}([^a-zA-Z0-9]|$)`, "i");
 }
 
@@ -139,7 +139,8 @@ function FreshdeskIntelligencePage() {
           <div
             className="grid h-10 w-10 place-items-center rounded-xl"
             style={{
-              background: "linear-gradient(135deg, oklch(0.78 0.18 220 / 0.4), oklch(0.7 0.22 295 / 0.4))",
+              background:
+                "linear-gradient(135deg, oklch(0.78 0.18 220 / 0.4), oklch(0.7 0.22 295 / 0.4))",
               boxShadow: "var(--shadow-glow-cyan)",
             }}
           >
