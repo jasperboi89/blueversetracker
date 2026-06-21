@@ -222,6 +222,10 @@ function FreshdeskSectionImpl() {
         save or rotate your key, ask Lovable to <em>"add Freshdesk credentials"</em> — you'll
         enter the values in a secure prompt.
       </p>
+      <p className="mt-2 text-[11px] leading-relaxed text-amber-200/80">
+        Note: Ticket data may include sensitive information. Only process it through
+        company-approved AI tools.
+      </p>
 
       <ConfirmModal
         open={clearOpen}
