@@ -56,13 +56,15 @@ export interface IntelRanked {
  * For free text we fetch a recent slice via supported filters and rely on
  * AI re-rank to surface matches.
  */
-function buildFreshdeskQuery(filters: IntelFilters, fallbackUpdatedAfter?: string): string {
+function buildFreshdeskQuery(
+  filters: IntelFilters,
+  fallbackUpdatedAfter?: string,
+  accountField?: string | null,
+): string {
   const clauses: string[] = [];
   const acct = filters.accountNumber?.trim();
-  if (acct) {
-    // Most installs use cf_account_number; if the field doesn't exist, Freshdesk
-    // returns 400 with a clear message that we surface to the user.
-    clauses.push(`cf_account_number:'${acct.replace(/'/g, "")}'`);
+  if (acct && accountField) {
+    clauses.push(`${accountField}:'${acct.replace(/'/g, "")}'`);
   }
 
   if (filters.statuses?.length) {
