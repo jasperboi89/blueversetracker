@@ -1,6 +1,13 @@
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import type { IntelFilters } from "@/lib/api/freshdesk-search.functions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { DateRange, IntelFilters } from "@/lib/api/freshdesk-search.functions";
 
 const STATUSES: { value: number; label: string }[] = [
   { value: 2, label: "Open" },
@@ -15,6 +22,14 @@ const PRIORITIES: { value: number; label: string }[] = [
   { value: 4, label: "Urgent" },
 ];
 
+type DatePresetKey = "all" | "7" | "30" | "90" | "custom";
+
+function dateRangeToKey(dr: DateRange | undefined): DatePresetKey {
+  if (!dr || dr.kind === "all") return "all";
+  if (dr.kind === "preset") return String(dr.days) as DatePresetKey;
+  return "custom";
+}
+
 function toggle<T>(arr: T[] | undefined, v: T): T[] {
   const set = new Set(arr ?? []);
   if (set.has(v)) set.delete(v); else set.add(v);
@@ -28,6 +43,16 @@ export function FilterRow({
   value: IntelFilters;
   onChange: (next: IntelFilters) => void;
 }) {
+  const dateKey = dateRangeToKey(value.dateRange);
+  const customFrom = value.dateRange?.kind === "custom" ? value.dateRange.from ?? "" : "";
+  const customTo = value.dateRange?.kind === "custom" ? value.dateRange.to ?? "" : "";
+
+  const setDate = (key: DatePresetKey) => {
+    if (key === "all") onChange({ ...value, dateRange: { kind: "all" } });
+    else if (key === "custom") onChange({ ...value, dateRange: { kind: "custom" } });
+    else onChange({ ...value, dateRange: { kind: "preset", days: Number(key) as 7 | 30 | 90 } });
+  };
+
   return (
     <div className="flex flex-wrap items-end gap-3 text-xs">
       <Field label="Account #">
@@ -38,6 +63,50 @@ export function FilterRow({
           placeholder="1234"
         />
       </Field>
+      <Field label="Date range">
+        <Select value={dateKey} onValueChange={(v) => setDate(v as DatePresetKey)}>
+          <SelectTrigger className="h-8 w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="7">Last 7 days</SelectItem>
+            <SelectItem value="30">Last 30 days</SelectItem>
+            <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="custom">Custom…</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      {dateKey === "custom" && (
+        <>
+          <Field label="From">
+            <Input
+              className="h-8 w-36"
+              type="date"
+              value={customFrom}
+              onChange={(e) =>
+                onChange({
+                  ...value,
+                  dateRange: { kind: "custom", from: e.target.value || undefined, to: customTo || undefined },
+                })
+              }
+            />
+          </Field>
+          <Field label="To">
+            <Input
+              className="h-8 w-36"
+              type="date"
+              value={customTo}
+              onChange={(e) =>
+                onChange({
+                  ...value,
+                  dateRange: { kind: "custom", from: customFrom || undefined, to: e.target.value || undefined },
+                })
+              }
+            />
+          </Field>
+        </>
+      )}
       <Field label="Status">
         <div className="flex flex-wrap gap-1">
           {STATUSES.map((s) => (
@@ -84,14 +153,6 @@ export function FilterRow({
             const n = Number(e.target.value);
             onChange({ ...value, agentId: Number.isFinite(n) && n > 0 ? n : undefined });
           }}
-        />
-      </Field>
-      <Field label="Updated after">
-        <Input
-          className="h-8 w-36"
-          type="date"
-          value={value.updatedAfter ?? ""}
-          onChange={(e) => onChange({ ...value, updatedAfter: e.target.value || undefined })}
         />
       </Field>
       <Field label="Include closed">
