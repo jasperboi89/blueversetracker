@@ -371,7 +371,8 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     // free text). Fall back to a recent window and let AI match the number
     // against subject/description.
     const accountClauseApplied = !!(filters.accountNumber && accountField);
-    const shouldFallback = filters.accountNumber && !candidates.length && (firstError || accountClauseApplied);
+    const shouldFallback =
+      filters.accountNumber && !candidates.length && (firstError || accountClauseApplied);
     if (shouldFallback) {
       // Only invalidate the cached field when Freshdesk explicitly rejected it.
       if (firstError && /field|cf_/i.test(firstError)) {
