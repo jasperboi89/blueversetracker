@@ -284,7 +284,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       );
       if (fallbackQs) {
         const retry = await runSearch(fallbackQs);
-        const acct = filters.accountNumber.trim();
+        const acct = (filters.accountNumber ?? "").trim();
         const strict = retry.out.filter((c) => candidateMentionsAccount(c, acct));
         if (strict.length) return { ok: true as const, candidates: strict };
         if (!retry.firstError) {
