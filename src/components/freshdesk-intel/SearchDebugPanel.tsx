@@ -58,7 +58,7 @@ function DebugView({ debug }: { debug: SearchDebug }) {
       </Row>
       <Row label="Account field detected">{debug.accountFieldDetected ?? "none"}</Row>
       <Row label="Filters applied">
-        <code className="text-foreground/90">{JSON.stringify(debug.filters)}</code>
+        <code className="text-foreground/90">{debug.filters}</code>
       </Row>
       <Row label="Tickets scanned">{debug.scanned}</Row>
       <Row label="Excluded before AI">
