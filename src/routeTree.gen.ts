@@ -17,6 +17,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedFreshdeskTicketsRouteImport } from './routes/_authenticated/freshdesk-tickets'
+import { Route as AuthenticatedFreshdeskIntelligenceRouteImport } from './routes/_authenticated/freshdesk-intelligence'
 import { Route as AuthenticatedContactDispatchRouteImport } from './routes/_authenticated/contact-dispatch'
 import { Route as AuthenticatedConstellationsRouteImport } from './routes/_authenticated/constellations'
 import { Route as AuthenticatedCompletedWorkRouteImport } from './routes/_authenticated/completed-work'
@@ -67,6 +68,12 @@ const AuthenticatedFreshdeskTicketsRoute =
   AuthenticatedFreshdeskTicketsRouteImport.update({
     id: '/freshdesk-tickets',
     path: '/freshdesk-tickets',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFreshdeskIntelligenceRoute =
+  AuthenticatedFreshdeskIntelligenceRouteImport.update({
+    id: '/freshdesk-intelligence',
+    path: '/freshdesk-intelligence',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedContactDispatchRoute =
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
+  '/freshdesk-intelligence': typeof AuthenticatedFreshdeskIntelligenceRoute
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -163,6 +171,7 @@ export interface FileRoutesByTo {
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
+  '/freshdesk-intelligence': typeof AuthenticatedFreshdeskIntelligenceRoute
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -185,6 +194,7 @@ export interface FileRoutesById {
   '/_authenticated/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/_authenticated/constellations': typeof AuthenticatedConstellationsRoute
   '/_authenticated/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
+  '/_authenticated/freshdesk-intelligence': typeof AuthenticatedFreshdeskIntelligenceRoute
   '/_authenticated/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/completed-work'
     | '/constellations'
     | '/contact-dispatch'
+    | '/freshdesk-intelligence'
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/completed-work'
     | '/constellations'
     | '/contact-dispatch'
+    | '/freshdesk-intelligence'
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
@@ -247,6 +259,7 @@ export interface FileRouteTypes {
     | '/_authenticated/completed-work'
     | '/_authenticated/constellations'
     | '/_authenticated/contact-dispatch'
+    | '/_authenticated/freshdesk-intelligence'
     | '/_authenticated/freshdesk-tickets'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
@@ -322,6 +335,13 @@ declare module '@tanstack/react-router' {
       path: '/freshdesk-tickets'
       fullPath: '/freshdesk-tickets'
       preLoaderRoute: typeof AuthenticatedFreshdeskTicketsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/freshdesk-intelligence': {
+      id: '/_authenticated/freshdesk-intelligence'
+      path: '/freshdesk-intelligence'
+      fullPath: '/freshdesk-intelligence'
+      preLoaderRoute: typeof AuthenticatedFreshdeskIntelligenceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/contact-dispatch': {
@@ -475,6 +495,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCompletedWorkRoute: typeof AuthenticatedCompletedWorkRoute
   AuthenticatedConstellationsRoute: typeof AuthenticatedConstellationsRoute
   AuthenticatedContactDispatchRoute: typeof AuthenticatedContactDispatchRouteWithChildren
+  AuthenticatedFreshdeskIntelligenceRoute: typeof AuthenticatedFreshdeskIntelligenceRoute
   AuthenticatedFreshdeskTicketsRoute: typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -489,6 +510,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConstellationsRoute: AuthenticatedConstellationsRoute,
   AuthenticatedContactDispatchRoute:
     AuthenticatedContactDispatchRouteWithChildren,
+  AuthenticatedFreshdeskIntelligenceRoute:
+    AuthenticatedFreshdeskIntelligenceRoute,
   AuthenticatedFreshdeskTicketsRoute:
     AuthenticatedFreshdeskTicketsRouteWithChildren,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
@@ -508,13 +531,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

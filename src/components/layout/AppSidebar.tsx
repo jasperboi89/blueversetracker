@@ -28,6 +28,7 @@ import { useIsAdmin } from "@/lib/auth/role-context";
 const baseItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: Ticket },
+  { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles },
   { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing },
   { title: "Additional Work", url: "/additional-work", icon: ClipboardList },
   { title: "Accounts", url: "/accounts", icon: Building2 },

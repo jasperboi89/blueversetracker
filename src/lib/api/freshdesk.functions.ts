@@ -20,7 +20,7 @@ function readCreds() {
   return { host, authHeader, apiKey };
 }
 
-async function fdFetch<T>(path: string): Promise<{ data?: T; status: number; error?: string }> {
+export async function fdFetch<T>(path: string): Promise<{ data?: T; status: number; error?: string }> {
   const creds = readCreds();
   if ("error" in creds && creds.error) return { status: 0, error: creds.error };
   const { host, authHeader } = creds as { host: string; authHeader: string };
@@ -40,6 +40,10 @@ async function fdFetch<T>(path: string): Promise<{ data?: T; status: number; err
   } catch {
     return { status: 0, error: "Could not reach Freshdesk. Check your network and domain." };
   }
+}
+
+export function readFreshdeskCreds() {
+  return readCreds();
 }
 
 const STATUS_MAP: Record<number, NormalizedTicket["status"]> = {
@@ -85,6 +89,84 @@ function detectAccount(t: FreshdeskTicketDTO): { number?: string; name?: string 
   return { number: acctNum, name: acctName };
 }
 
+function sanitizeCustomFields(cf: Record<string, unknown> | undefined): Record<string, string | number | boolean | null> | undefined {
+  if (!cf) return undefined;
+  const out: Record<string, string | number | boolean | null> = {};
+  for (const [k, v] of Object.entries(cf)) {
+    if (v == null) { out[k] = null; continue; }
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") out[k] = v;
+    else out[k] = String(v);
+  }
+  return out;
+}
+
+function buildSearchableText(t: NormalizedTicket, notes: NormalizedNote[]): string {
+  const parts: string[] = [
+    `#${t.number}`,
+    t.subject,
+    t.description,
+    t.accountNumber ? `Account ${t.accountNumber}` : "",
+    t.accountName ?? "",
+    t.companyName ?? "",
+    t.requesterName ?? "",
+    `status:${t.status}`,
+    t.priority ? `priority:${t.priority}` : "",
+    t.type ? `type:${t.type}` : "",
+    t.groupName ? `group:${t.groupName}` : "",
+    t.agentName ? `agent:${t.agentName}` : "",
+    (t.tags ?? []).join(" "),
+    t.customFields
+      ? Object.entries(t.customFields).map(([k, v]) => `${k}:${v}`).join(" ")
+      : "",
+    notes.map((n) => n.body).join("\n"),
+  ];
+  return parts.filter(Boolean).join("\n");
+}
+
+/** Paginate /tickets/{id}/conversations until empty. Page size = 30 (Freshdesk default). */
+export async function fetchAllConversations(ticketNumber: string): Promise<{
+  ok: boolean;
+  conversations: FreshdeskConversationDTO[];
+  error?: string;
+  pages: number;
+}> {
+  const all: FreshdeskConversationDTO[] = [];
+  let page = 1;
+  while (page <= 20) {
+    const res = await fdFetch<FreshdeskConversationDTO[]>(
+      `/api/v2/tickets/${encodeURIComponent(ticketNumber)}/conversations?page=${page}&per_page=30`,
+    );
+    if (res.error || !res.data) {
+      if (page === 1) return { ok: false, conversations: [], error: res.error, pages: 0 };
+      break;
+    }
+    all.push(...res.data);
+    if (res.data.length < 30) break;
+    page += 1;
+  }
+  return { ok: true, conversations: all, pages: page };
+}
+
+const groupCache = new Map<number, string | undefined>();
+const agentCache = new Map<number, string | undefined>();
+
+async function resolveGroupName(id?: number | null): Promise<string | undefined> {
+  if (!id) return undefined;
+  if (groupCache.has(id)) return groupCache.get(id);
+  const res = await fdFetch<{ name?: string }>(`/api/v2/groups/${id}`);
+  const name = res.data?.name;
+  groupCache.set(id, name);
+  return name;
+}
+async function resolveAgentName(id?: number | null): Promise<string | undefined> {
+  if (!id) return undefined;
+  if (agentCache.has(id)) return agentCache.get(id);
+  const res = await fdFetch<{ contact?: { name?: string } }>(`/api/v2/agents/${id}`);
+  const name = res.data?.contact?.name;
+  agentCache.set(id, name);
+  return name;
+}
+
 function normalizeTicket(t: FreshdeskTicketDTO, host: string): NormalizedTicket {
   const acct = detectAccount(t);
   return {
@@ -102,7 +184,21 @@ function normalizeTicket(t: FreshdeskTicketDTO, host: string): NormalizedTicket 
     updatedAt: new Date(t.updated_at).getTime(),
     accountNumber: acct.number,
     accountName: acct.name,
+    tags: t.tags ?? [],
+    customFields: sanitizeCustomFields(t.custom_fields),
   };
+}
+
+async function enrichTicket(t: FreshdeskTicketDTO, host: string, notes: NormalizedNote[]): Promise<NormalizedTicket> {
+  const base = normalizeTicket(t, host);
+  const [groupName, agentName] = await Promise.all([
+    resolveGroupName(t.group_id),
+    resolveAgentName(t.responder_id),
+  ]);
+  base.groupName = groupName;
+  base.agentName = agentName;
+  base.searchableText = buildSearchableText(base, notes);
+  return base;
 }
 
 function normalizeConversation(c: FreshdeskConversationDTO): NormalizedNote {
@@ -163,14 +259,14 @@ export const freshdeskPullTicket = createServerFn({ method: "POST" })
     );
     if (t.status === 404) return { ok: false as const, notFound: true as const, error: t.error ?? "Ticket not found." };
     if (t.error || !t.data) return { ok: false as const, error: t.error ?? "Unknown error." };
-    const convos = await fdFetch<FreshdeskConversationDTO[]>(
-      `/api/v2/tickets/${encodeURIComponent(data.number)}/conversations`,
-    );
-    const conversations = convos.data ?? [];
+    const conv = await fetchAllConversations(data.number);
+    const conversations = conv.conversations;
+    const notes = conversations.map(normalizeConversation);
+    const ticket = await enrichTicket(t.data, host, notes);
     return {
       ok: true as const,
-      ticket: normalizeTicket(t.data, host),
-      notes: conversations.map(normalizeConversation),
+      ticket,
+      notes,
       attachments: collectAttachments(t.data, conversations),
     };
   });
@@ -186,13 +282,17 @@ export const freshdeskSyncTicket = createServerFn({ method: "POST" })
       `/api/v2/tickets/${encodeURIComponent(data.number)}?include=requester,company,stats`,
     );
     if (t.error || !t.data) return { ok: false as const, error: t.error ?? "Sync failed." };
-    const convos = await fdFetch<FreshdeskConversationDTO[]>(
-      `/api/v2/tickets/${encodeURIComponent(data.number)}/conversations`,
-    );
+    const conv = await fetchAllConversations(data.number);
+    const conversations = conv.conversations;
+    const notes = conversations.map(normalizeConversation);
+    const ticket = await enrichTicket(t.data, host, notes);
     return {
       ok: true as const,
-      ticket: normalizeTicket(t.data, host),
-      notes: (convos.data ?? []).map(normalizeConversation),
-      attachments: collectAttachments(t.data, convos.data ?? []),
+      ticket,
+      notes,
+      attachments: collectAttachments(t.data, conversations),
     };
   });
+
+// Exports for sibling search module:
+export { normalizeTicket, normalizeConversation, collectAttachments, enrichTicket, buildSearchableText };
