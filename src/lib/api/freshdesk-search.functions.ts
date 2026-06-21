@@ -393,6 +393,10 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       }
     }
 
+    if (filters.accountNumber && !candidates.length && !firstError) {
+      return { ok: false as const, error: noAccountResultsMessage(), candidates: [] };
+    }
+
     if (!candidates.length && firstError) {
       return { ok: false as const, error: firstError, candidates: [] };
     }
