@@ -481,6 +481,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       dateRange: range.label,
       includeClosed: filters.includeClosed,
     };
+    const filtersForDebug = JSON.stringify(filtersForDebugObj);
 
     /* ---- Ticket-number shortcut ---- */
     const ticketNumMatch = !acct && q.match(/^#?(\d{4,8})$/);
