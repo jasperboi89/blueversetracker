@@ -26,6 +26,53 @@ export const Route = createFileRoute("/_authenticated/freshdesk-intelligence")({
   component: FreshdeskIntelligencePage,
 });
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeAccountValue(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^a-z0-9]/gi, "")
+    .toUpperCase();
+}
+
+function createAccountRegex(acct: string): RegExp | null {
+  const normalized = normalizeAccountValue(acct);
+  if (!normalized) return null;
+  const separated = normalized
+    .split("")
+    .map(escapeRegExp)
+    .join("[^a-zA-Z0-9]*");
+  return new RegExp(`(^|[^a-zA-Z0-9])${separated}([^a-zA-Z0-9]|$)`, "i");
+}
+
+function candidateMatchesAccount(c: IntelCandidate, acct: string): boolean {
+  const normalized = normalizeAccountValue(acct);
+  const acctRe = createAccountRegex(acct);
+  if (!normalized || !acctRe) return true;
+  const t = c.ticket;
+  const directValues = [
+    t.accountNumber,
+    ...(t.customFields ? Object.values(t.customFields) : []),
+  ];
+  if (directValues.some((value) => normalizeAccountValue(value) === normalized)) return true;
+  const textValues = [
+    t.subject,
+    t.description,
+    c.excerpt,
+    t.searchableText,
+    t.accountName,
+    t.companyName,
+    t.requesterName,
+    t.groupName,
+    t.agentName,
+    ...(t.tags ?? []),
+    ...(t.customFields ? Object.entries(t.customFields).map(([key, value]) => `${key} ${String(value ?? "")}`) : []),
+  ];
+  return textValues.some((value) => acctRe.test(String(value ?? "")));
+}
+
 function FreshdeskIntelligencePage() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<IntelFilters>({});
