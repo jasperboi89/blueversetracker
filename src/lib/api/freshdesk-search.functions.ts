@@ -139,7 +139,6 @@ function candidateTextFields(c: IntelCandidate): string[] {
     t.subject,
     t.description,
     c.excerpt,
-    t.searchableText,
     t.accountName,
     t.companyName,
     t.requesterName,
@@ -154,7 +153,6 @@ function candidateMentionsAccount(c: IntelCandidate, acct: string): boolean {
   const matcher = createAccountMatcher(acct);
   if (!matcher) return true;
   const directValues = [
-    c.ticket.accountNumber,
     ...(c.ticket.customFields ? Object.values(c.ticket.customFields) : []),
   ];
   return (
