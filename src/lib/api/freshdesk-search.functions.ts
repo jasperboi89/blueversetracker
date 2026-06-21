@@ -47,29 +47,27 @@ export interface IntelRanked {
 
 /* -------------------------- search -------------------------- */
 
-function buildFreshdeskQuery(query: string, filters: IntelFilters): string {
+/**
+ * Freshdesk Filter API supports ONLY a fixed set of fields:
+ * agent_id, group_id, priority, status, tag, type, due_by, fr_due_by,
+ * created_at, updated_at, and custom fields (cf_*).
+ * Free-text fields (subject/description/requester name) are NOT filterable
+ * and using them returns HTTP 400 ("Invalid field in query").
+ * For free text we fetch a recent slice via supported filters and rely on
+ * AI re-rank to surface matches.
+ */
+function buildFreshdeskQuery(filters: IntelFilters, fallbackUpdatedAfter?: string): string {
   const clauses: string[] = [];
-  const q = query.trim();
-
-  // ticket number / account number / phone — exact-ish matches
-  const ticketNum = q.match(/\b#?(\d{4,8})\b/);
   const acct = filters.accountNumber?.trim();
   if (acct) {
-    clauses.push(
-      `(description:'${acct}' OR subject:'${acct}' OR cf_account_number:'${acct}')`,
-    );
-  }
-
-  // free text
-  if (q) {
-    const safe = q.replace(/'/g, " ").slice(0, 120);
-    clauses.push(`(subject:'${safe}' OR description:'${safe}')`);
+    // Most installs use cf_account_number; if the field doesn't exist, Freshdesk
+    // returns 400 with a clear message that we surface to the user.
+    clauses.push(`cf_account_number:'${acct.replace(/'/g, "")}'`);
   }
 
   if (filters.statuses?.length) {
     clauses.push(`(${filters.statuses.map((s) => `status:${s}`).join(" OR ")})`);
   } else if (!filters.includeClosed) {
-    // exclude 4 (resolved) and 5 (closed) by default
     clauses.push(`(status:2 OR status:3 OR status:6 OR status:7)`);
   }
   if (filters.priorities?.length) {
@@ -77,13 +75,20 @@ function buildFreshdeskQuery(query: string, filters: IntelFilters): string {
   }
   if (filters.groupId) clauses.push(`group_id:${filters.groupId}`);
   if (filters.agentId) clauses.push(`agent_id:${filters.agentId}`);
-  if (filters.updatedAfter) clauses.push(`updated_at:>'${filters.updatedAfter}'`);
 
-  if (!clauses.length && ticketNum) {
-    clauses.push(`description:'${ticketNum[1]}'`);
-  }
+  const updatedAfter = filters.updatedAfter || fallbackUpdatedAfter;
+  if (updatedAfter) clauses.push(`updated_at:>'${updatedAfter}'`);
 
   return clauses.join(" AND ");
+}
+
+function isoDaysAgo(days: number): string {
+  const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function looksLikeEmail(s: string): boolean {
+  return /\S+@\S+\.\S+/.test(s);
 }
 
 /** Live search. Returns lightweight candidates (no full conversations). */
@@ -98,7 +103,8 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     }
     const { host } = creds as { host: string };
     const filters = data.filters ?? {};
-    const ticketNumMatch = data.query.trim().match(/^#?(\d{4,8})$/);
+    const q = data.query.trim();
+    const ticketNumMatch = q.match(/^#?(\d{4,8})$/);
 
     // If the query is just a ticket number, fetch that ticket directly.
     if (ticketNumMatch) {
@@ -112,20 +118,54 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       }
     }
 
-    const queryString = buildFreshdeskQuery(data.query, filters);
+    // If the query is an email, search by requester via /contacts then /tickets.
+    if (q && looksLikeEmail(q)) {
+      const contacts = await fdFetch<{ id: number }[]>(
+        `/api/v2/contacts?email=${encodeURIComponent(q)}`,
+      );
+      const contactId = contacts.data?.[0]?.id;
+      if (contactId) {
+        const tix = await fdFetch<FreshdeskTicketDTO[]>(
+          `/api/v2/tickets?requester_id=${contactId}&include=requester,company&per_page=50`,
+        );
+        if (tix.data?.length) {
+          const out: IntelCandidate[] = [];
+          for (const r of tix.data) {
+            const ticket = await enrichTicket(r, host, []);
+            out.push({ ticket, excerpt: (r.description_text ?? "").slice(0, 400) });
+          }
+          return { ok: true as const, candidates: out };
+        }
+      }
+    }
+
+    // Build a filter query using ONLY Freshdesk-supported filter fields.
+    // If the user typed free text with no filters, scope to the last 30 days
+    // so AI re-rank has a manageable candidate pool.
+    const hasAnyFilter =
+      !!filters.accountNumber ||
+      !!filters.statuses?.length ||
+      !!filters.priorities?.length ||
+      !!filters.groupId ||
+      !!filters.agentId ||
+      !!filters.updatedAfter;
+
+    const queryString = buildFreshdeskQuery(
+      filters,
+      !hasAnyFilter && q ? isoDaysAgo(30) : undefined,
+    );
     if (!queryString) {
       return { ok: false as const, error: "Type a search query or apply a filter.", candidates: [] };
     }
 
     const candidates: IntelCandidate[] = [];
+    let firstError: string | undefined;
     for (let page = 1; page <= 3; page += 1) {
       const res = await fdFetch<{ total: number; results: FreshdeskTicketDTO[] }>(
         `/api/v2/search/tickets?query=%22${encodeURIComponent(queryString)}%22&page=${page}`,
       );
       if (res.error) {
-        if (page === 1) {
-          return { ok: false as const, error: res.error, candidates: [] };
-        }
+        if (page === 1) firstError = res.error;
         break;
       }
       const results = res.data?.results ?? [];
@@ -136,6 +176,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         candidates.push({ ticket, excerpt });
       }
       if (results.length < 30) break;
+    }
+    if (!candidates.length && firstError) {
+      return { ok: false as const, error: firstError, candidates: [] };
     }
     return { ok: true as const, candidates };
   });
