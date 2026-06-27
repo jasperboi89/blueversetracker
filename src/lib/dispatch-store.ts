@@ -558,7 +558,7 @@ export function buildDispatchSummary(
   lines.push(`Contact Dispatch Summary — ${statusLabel}`);
   lines.push(`Account ${s.accountNumber} — ${s.accountName}`);
   if (s.ticketNumber) lines.push(`Linked Freshdesk Ticket: #${s.ticketNumber}`);
-  if (s.completedAt) lines.push(`Testing Completed: ${new Date(s.completedAt).toISOString()} · LTP`);
+  if (s.completedAt) lines.push(`Testing Completed: ${new Date(s.completedAt).toISOString()}`);
   if (s.statusReason) lines.push(`Reason: ${s.statusReason}`);
   lines.push("");
 
@@ -582,6 +582,7 @@ export function buildDispatchSummary(
         lines.push(`      Retest [${rt.result === "passed" ? "Passed" : "Still Failed"}] — ${rt.notes || ""}`);
       });
     }
+    r.snipIds.forEach((sid) => lines.push(`      [[SNIP:${sid}]]`));
   });
   lines.push("");
 
@@ -597,18 +598,14 @@ export function buildDispatchSummary(
         lines.push(`  Retest [${rt.result === "passed" ? "Passed" : "Still Failed"}] — ${rt.notes || ""}`);
       });
     }
+    c.snipIds.forEach((sid) => lines.push(`  [[SNIP:${sid}]]`));
   };
   sec("Phone Number Field Check", s.phone);
   sec("Repeat Caller Button Check", s.repeat);
   sec("Save / Message Summary", s.saveSummary);
 
-  if (s.snips.length) {
-    lines.push("");
-    lines.push("Snips:");
-    s.snips.forEach((sn) => lines.push(`  • [${sn.category}] ${sn.name}${sn.label ? ` — ${sn.label}` : ""}`));
-  }
-  lines.push("");
-  lines.push("— LTP");
+  // Trailing signature intentionally omitted.
+  while (lines.length && lines[lines.length - 1] === "") lines.pop();
   return lines.join("\n");
 }
 
