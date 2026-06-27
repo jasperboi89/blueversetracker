@@ -840,7 +840,7 @@ export function buildGeneratedNote(
   const beforeSnips = t.hubSnips.filter((x) => x.category === "Before Change");
   if (beforeSnips.length) {
     lines.push("Before Change:");
-    beforeSnips.forEach((s) => lines.push(`  • ${s.name}${s.label ? ` — ${s.label}` : ""}`));
+    beforeSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
     lines.push("");
   }
   lines.push("Changes Made:");
@@ -849,7 +849,7 @@ export function buildGeneratedNote(
   const afterSnips = t.hubSnips.filter((x) => x.category === "After Change");
   if (afterSnips.length) {
     lines.push("After Change:");
-    afterSnips.forEach((s) => lines.push(`  • ${s.name}${s.label ? ` — ${s.label}` : ""}`));
+    afterSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
     lines.push("");
   }
   lines.push("Result / Testing:");
@@ -870,10 +870,9 @@ export function buildGeneratedNote(
   if (testSnips.length) {
     lines.push("");
     lines.push("Testing Snips:");
-    testSnips.forEach((s) => lines.push(`  • ${s.name}${s.label ? ` — ${s.label}` : ""}`));
+    testSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
   }
-  lines.push("");
-  lines.push("— LTP");
+  while (lines.length && lines[lines.length - 1] === "") lines.pop();
   return lines.join("\n");
 }
 attachCloudSync<State>({

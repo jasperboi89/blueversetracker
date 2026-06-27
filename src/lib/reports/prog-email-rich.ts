@@ -269,16 +269,21 @@ export function buildEmailHtml(opts: {
     sections.push(renderWindow(ctx, w, attentionIds, hiddenSectionKeys));
   });
 
-  // Top: plain-text version of the full email so Waiting / Attention sections come through
-  // verbatim (those don't have snips). Snip-bearing sections are repeated visually below
-  // with images embedded. This mirrors the user's note text + ensures snips travel.
-  const top =
+  // Render the structured per-item sections (with inline snips). The Waiting and
+  // Attention sections, which currently lack rich rendering and have no snips,
+  // are appended at the end as a plain-text block so they still travel through.
+  const tailRegex = /\n(Items Still In Progress \/ Waiting|Items Needing Attention)\n[\s\S]*$/;
+  const tailMatch = plainBody.match(tailRegex);
+  const tail = tailMatch ? tailMatch[0] : "";
+
+  const html =
     `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#222;">` +
-    `<pre style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;margin:0 0 18px;font-size:12px;background:#f7f7f9;padding:12px;border-radius:6px;">${esc(plainBody)}</pre>` +
-    `<hr style="border:none;border-top:1px solid #ddd;margin:18px 0;" />` +
-    `<div style="font-weight:600;margin-bottom:8px;">Snips by item</div>` +
     sections.join("") +
+    (tail
+      ? `<hr style="border:none;border-top:1px solid #ddd;margin:18px 0;" />` +
+        `<pre style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;margin:0;font-size:12px;background:#f7f7f9;padding:12px;border-radius:6px;">${esc(tail.trimStart())}</pre>`
+      : "") +
     `</div>`;
 
-  return { html: top, imageCount: ctx.images, fileCount: ctx.files, truncated: ctx.truncated };
+  return { html, imageCount: ctx.images, fileCount: ctx.files, truncated: ctx.truncated };
 }

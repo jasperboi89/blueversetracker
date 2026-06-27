@@ -1,6 +1,8 @@
 /**
  * Rich clipboard helpers for embedding snips into summary copies.
- * All snips are appended in an Attachments block at the end of the body.
+ * Snips are embedded INLINE wherever the body text contains a
+ * `[[SNIP:<id>]]` marker line. Any snips not referenced by a marker
+ * fall back to an "Other Snips" block at the end (only when non-empty).
  * - Images embed inline via data: URLs.
  * - Non-image files render as 📎 name with a download anchor.
  */
@@ -43,71 +45,124 @@ export function snipCounts(snips: SnipLike[]): { images: number; files: number }
   return { images, files };
 }
 
-export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: string; truncated: boolean } {
-  const bodyHtml = `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; margin:0;">${escapeHtml(
-    text,
-  )}</pre>`;
+const SNIP_MARKER = /^(\s*)\[\[SNIP:([A-Za-z0-9_-]+)\]\]\s*$/;
 
-  if (snips.length === 0) {
-    return {
-      html: `<div>${bodyHtml}</div>`,
-      truncated: false,
-    };
+interface RenderState {
+  budget: number;
+  truncated: boolean;
+}
+
+function snipMeta(s: SnipLike, escape: (v: string) => string): string {
+  return `${s.category ? `[${escape(s.category)}] ` : ""}${escape(s.name)}${
+    s.label ? ` — ${escape(s.label)}` : ""
+  }`;
+}
+
+function renderSnipHtml(s: SnipLike, state: RenderState, indentPx = 0): string {
+  const meta = snipMeta(s, escapeHtml);
+  const pad = indentPx ? ` margin-left:${indentPx}px;` : "";
+  if (s.isImage && s.dataUrl) {
+    const size = approxBytes(s.dataUrl);
+    if (size <= state.budget) {
+      state.budget -= size;
+      return (
+        `<div style="margin:8px 0;${pad}"><div style="font-size:11px;color:#666;margin-bottom:3px;">${meta}</div>` +
+        `<img src="${s.dataUrl}" alt="${escapeHtml(s.name)}" style="max-width:600px;height:auto;border:1px solid #ddd;border-radius:6px;" /></div>`
+      );
+    }
+    state.truncated = true;
+    return `<div style="margin:6px 0;${pad}">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a> <span style="color:#999;">(too large to embed)</span></div>`;
+  }
+  if (s.dataUrl) {
+    return `<div style="margin:6px 0;${pad}">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a></div>`;
+  }
+  return `<div style="margin:6px 0;${pad}">📎 ${meta}</div>`;
+}
+
+export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: string; truncated: boolean } {
+  const byId = new Map(snips.map((s) => [s.id, s]));
+  const consumed = new Set<string>();
+  const state: RenderState = { budget: MAX_EMBED_BYTES, truncated: false };
+
+  // Walk the text line-by-line, accumulating runs of plain text into <pre>
+  // blocks and replacing [[SNIP:id]] markers with inline image/file HTML.
+  const out: string[] = [];
+  let buf: string[] = [];
+  const flush = () => {
+    if (!buf.length) return;
+    const joined = buf.join("\n");
+    out.push(
+      `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; margin:0;">${escapeHtml(joined)}</pre>`,
+    );
+    buf = [];
+  };
+
+  text.split("\n").forEach((line) => {
+    const m = line.match(SNIP_MARKER);
+    if (m) {
+      const id = m[2];
+      const snip = byId.get(id);
+      if (snip) {
+        flush();
+        const indent = Math.min(m[1].length * 6, 60);
+        out.push(renderSnipHtml(snip, state, indent));
+        consumed.add(id);
+        return;
+      }
+      // Unknown id: drop the marker silently (don't leak `[[SNIP:..]]` into pasted output).
+      return;
+    }
+    buf.push(line);
+  });
+  flush();
+
+  const leftover = snips.filter((s) => !consumed.has(s.id));
+  if (leftover.length) {
+    out.push(
+      `<hr style="margin:16px 0;border:none;border-top:1px solid #ddd;" />` +
+        `<div style="font-weight:600;margin-bottom:8px;">Other Snips</div>` +
+        leftover.map((s) => renderSnipHtml(s, state)).join(""),
+    );
   }
 
-  let budget = MAX_EMBED_BYTES;
-  let truncated = false;
-  const itemsHtml: string[] = [];
+  return { html: `<div>${out.join("")}</div>`, truncated: state.truncated };
+}
 
-  snips.forEach((s) => {
-    const meta = `${s.category ? `[${escapeHtml(s.category)}] ` : ""}${escapeHtml(s.name)}${
-      s.label ? ` — ${escapeHtml(s.label)}` : ""
-    }`;
-    if (s.isImage && s.dataUrl) {
-      const size = approxBytes(s.dataUrl);
-      if (size <= budget) {
-        budget -= size;
-        itemsHtml.push(
-          `<div style="margin:12px 0;"><div style="font-size:12px; color:#666; margin-bottom:4px;">${meta}</div>` +
-            `<img src="${s.dataUrl}" alt="${escapeHtml(s.name)}" style="max-width:600px; height:auto; border:1px solid #ddd; border-radius:6px;" /></div>`,
-        );
-      } else {
-        truncated = true;
-        itemsHtml.push(
-          `<div style="margin:8px 0;">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a> <span style="color:#999;">(too large to embed)</span></div>`,
-        );
-      }
-    } else if (s.dataUrl) {
-      itemsHtml.push(
-        `<div style="margin:8px 0;">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a></div>`,
-      );
-    } else {
-      itemsHtml.push(`<div style="margin:8px 0;">📎 ${meta}</div>`);
-    }
-  });
-
-  const attach = `<hr style="margin:16px 0; border:none; border-top:1px solid #ddd;" />` +
-    `<div style="font-weight:600; margin-bottom:8px;">Attachments</div>${itemsHtml.join("")}`;
-
-  return { html: `<div>${bodyHtml}${attach}</div>`, truncated };
+function renderSnipMarkdown(s: SnipLike): string[] {
+  const meta = `${s.category ? `[${s.category}] ` : ""}${s.name}${s.label ? ` — ${s.label}` : ""}`;
+  if (s.isImage && s.dataUrl) return [`![${s.name}](${s.dataUrl})`, `*${meta}*`];
+  if (s.dataUrl) return [`📎 [${meta}](${s.dataUrl})`];
+  return [`📎 ${meta}`];
 }
 
 export function buildSummaryMarkdown(text: string, snips: SnipLike[]): string {
-  if (snips.length === 0) return text;
-  const lines: string[] = [text.trimEnd(), "", "---", "", "**Attachments**", ""];
-  snips.forEach((s) => {
-    const meta = `${s.category ? `[${s.category}] ` : ""}${s.name}${s.label ? ` — ${s.label}` : ""}`;
-    if (s.isImage && s.dataUrl) {
-      lines.push(`![${s.name}](${s.dataUrl})`);
-      lines.push(`*${meta}*`);
-    } else if (s.dataUrl) {
-      lines.push(`📎 [${meta}](${s.dataUrl})`);
-    } else {
-      lines.push(`📎 ${meta}`);
+  const byId = new Map(snips.map((s) => [s.id, s]));
+  const consumed = new Set<string>();
+  const out: string[] = [];
+
+  text.split("\n").forEach((line) => {
+    const m = line.match(SNIP_MARKER);
+    if (m) {
+      const id = m[2];
+      const snip = byId.get(id);
+      if (snip) {
+        renderSnipMarkdown(snip).forEach((l) => out.push(`${m[1]}${l}`));
+        consumed.add(id);
+      }
+      return;
     }
-    lines.push("");
+    out.push(line);
   });
-  return lines.join("\n");
+
+  const leftover = snips.filter((s) => !consumed.has(s.id));
+  if (leftover.length) {
+    out.push("", "---", "", "**Other Snips**", "");
+    leftover.forEach((s) => {
+      renderSnipMarkdown(s).forEach((l) => out.push(l));
+      out.push("");
+    });
+  }
+  return out.join("\n");
 }
 
 export async function copyRich(html: string, text: string): Promise<boolean> {
