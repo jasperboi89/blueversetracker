@@ -1,97 +1,70 @@
-## Plan
 
-### Goal
-Make Freshdesk Intelligence behave like a strict, read-only, AI-assisted Freshdesk search: correct candidate retrieval first, then AI ranking, with clear admin diagnostics and grouped results.
+## Goal
 
-### What I’ll change
+1. When generating notes / emails, render each snip **inline within the section it belongs to** (Reason, Phone/Repeat/Save section, Before / After / Testing, etc.) instead of dumping everything into a single "Attachments" block at the bottom.
+2. Remove the `— LTP` / `· LTP` signature from the **text of generated notes and emails**. Keep internal `initials: "LTP"` audit metadata and the small "· LTP" timestamp chips shown in UI history/archive lists (those aren't notes that get pasted into Freshdesk).
 
-1. **Date range and All Time control**
-   - Replace the single “Updated after” filter with a date-range filter offering:
-     - All Time
-     - Last 7 / 30 / 90 days
-     - Custom start/end dates
-   - Default is **All Time**. No hidden recent-window cap is applied unless the user picks a range.
-   - All search modes (account, general, email, ticket #) respect the chosen range.
+## Changes
 
-2. **Single server-side search pipeline with grouped output**
-   - One backend call returns:
-     - `strong`, `possible`, `relatedMentions` groups
-     - `debug` block (see Search Debug)
-   - The UI no longer merges raw candidates back in when AI returns fewer results.
-   - If nothing qualifies, return “No strong matches found” — never fall back to dumping unrelated tickets.
+### A. Dispatch summary (Contact Dispatch → "Generate Summary Note" + "Copy with Snips")
 
-3. **Account search must be exact first**
-   - Trigger account mode when the Account # filter is set (or the query is a clean account number).
-   - **Strong Match (exact only):**
-     - normalized `accountNumber`
-     - account-like custom fields (`cf_account*`, `cf_acct*`, etc.)
-     - account / company metadata returned by Freshdesk (company name, company_id linkage)
-     - account / company tags
-   - **Related Mentions:**
-     - account number appearing only in subject, description, notes, replies, or conversation body
-   - Account searches scan **all available Freshdesk tickets for that account** unless a date range is selected. No recent-window cap.
-   - If no exact account match exists, show “No exact account match found” and surface Related Mentions in a collapsed section.
+File: `src/lib/dispatch-store.ts` — `buildDispatchSummary`
+- Stop emitting the trailing `"— LTP"` line.
+- Remove `· LTP` from the `Testing Completed:` line.
+- Drop the bottom `Snips:` roll-up list (snips will render inline per section in the rich copy).
+- Add lightweight inline markers in the plain-text body so each section/reason references its own snips by name (e.g. `[Snip: phone-field-before.png]`) — keeps plain-text paste useful.
 
-4. **General search retrieval**
-   - Pull candidates from the live Freshdesk API using supported filters.
-   - If no date range is selected, do **not** cap to a recent window (unless the result set would be too large to safely process; if a cap is needed, surface it explicitly in Search Debug).
-   - Pull full conversations for the candidate pool using paginated `/tickets/{id}/conversations` so AI sees notes, replies, and conversation body text.
-   - Build searchable text from subject, description, tags, custom fields, account/company, requester, notes, replies, and conversation body.
+File: `src/lib/summary/rich-copy.ts` — `buildSummaryHtml` / `buildSummaryMarkdown`
+- Replace the single bottom "Attachments" block with **per-section embedding**.
+- New signature: `buildSummaryHtml(text, snipsBySection)` where `snipsBySection` is `{ reasons: Record<reasonId, Snip[]>, phone: Snip[], repeat: Snip[], saveSummary: Snip[], unassigned: Snip[] }`.
+- The HTML builder walks the session structure and re-renders the summary as styled blocks (Reason cards, then Phone / Repeat / Save sections), inserting `<img>` / 📎 link directly under the heading of the section the snip is attached to.
+- Any snip that isn't attached to a reason or section falls into a small "Other Snips" block at the bottom (only shown if non-empty).
+- Same embed budget rules (8 MB total, large files fall back to download links, `truncated` flag preserved).
 
-5. **AI ranking with structured output**
-   - Send enriched candidate blocks to AI. Strict rules: only return tickets with actual evidence; snippets must be verbatim from supplied text.
-   - Structured fields per result:
-     - ticket number, account number/name, subject, status, priority
-     - match reason, evidence snippet, short summary, suggested action
-     - confidence (0.0–1.0)
-     - group: `strong` / `possible` / `related-mention`
-   - Validate AI output against actual candidate ticket numbers and drop any result without a snippet.
+File: `src/components/dispatch/SummaryNotesSection.tsx`
+- Pass the structured `snipsBySection` to `copyRichSummary` / `copyMarkdownSummary` instead of the flat `session.snips` array.
 
-6. **Result grouping in the UI**
-   - Strong Matches, Possible Matches, Related Mentions as separate sections.
-   - Related Mentions is collapsed by default.
-   - Weak matches never appear in Strong Matches.
+### B. Freshdesk ticket "Generated Note" (Hub work session)
 
-7. **Admin-only Search Debug**
-   - Visible only to admins (uses existing role context).
-   - For each search, display:
-     - search mode used (account exact, keyword, AI semantic, hybrid, ticket #, email)
-     - data source searched (live Freshdesk API; note if any local cache was consulted)
-     - Freshdesk query / filter string actually sent
-     - date range used (or “All Time”)
-     - number of tickets scanned
-     - number of tickets excluded before AI (with reason buckets)
-     - number of tickets sent to AI
-     - number of conversations pulled (and pages)
-     - filters applied
-     - result counts per group
-     - reason each displayed result was included (e.g. “exact account custom field match”, “AI confidence 0.82 with snippet”)
-     - detected account field name, when applicable
+File: `src/lib/tickets-store.ts` — `buildGeneratedNote`
+- Remove the trailing `"— LTP"` line.
+- Keep the existing per-section snip listing under **Before Change / After Change / Testing Snips** (already inline by category). Add a parallel `buildGeneratedNoteHtml` that embeds the actual `<img>` for each snip under the matching section heading, reusing the embed budget helper.
+- Wire the ticket work page's "Copy with Snips" button to the new HTML builder so images travel inside Before / After / Testing rather than appended.
 
-8. **All Tickets / All Time diagnostic test**
-   - Add an admin diagnostic in Search Debug: enter an account number and run a coverage check.
-   - Report shows:
-     - whether the search scanned all available tickets for that account or a limited subset
-     - total tickets found for that account across All Time
-     - oldest and newest ticket dates returned
-     - whether pagination was exhausted or truncated
-     - any API errors or rate limits encountered
-   - Result makes it obvious if account coverage is complete or partial.
+### C. Programming Status Email (rich HTML)
 
-9. **Content coverage check**
-   - Update the existing sync/search check to confirm which content is available per ticket: subject, description, custom fields, tags, account/company, notes, replies, conversation body text.
-   - No Freshdesk writes anywhere.
+File: `src/lib/reports/prog-email-rich.ts`
+- Snips already render per item via `renderSnips`. Two cleanups:
+  - Remove the top duplicated plain-text `<pre>` block + "Snips by item" divider so the email is one cohesive document instead of "text on top, snips repeated below."
+  - Render the Waiting and Attention sections in HTML too (currently skipped with a comment) so the rich version is the full email and snips stay inline next to each ticket / dispatch / additional-work item.
 
-### Database
-Do not make database schema changes unless required. If required, I will explain the exact change first and wait for approval before applying it.
+File: `src/lib/reports/prog-email-format.ts` (plain-text `buildEmail`)
+- Remove any trailing `— LTP` lines from the generated text.
 
-### Read-only guarantee
-This work only reads Freshdesk tickets and conversations. It will not modify tickets, statuses, notes, merges, or closures.
+### D. Strip `— LTP` / `· LTP` from generated note text only
 
-### Files expected to change
-- `src/lib/api/freshdesk-search.functions.ts`
-- `src/routes/_authenticated/freshdesk-intelligence.tsx`
-- `src/components/freshdesk-intel/FilterRow.tsx` (date-range filter)
-- `src/components/freshdesk-intel/ResultCard.tsx` (group rendering)
-- `src/components/freshdesk-intel/SyncCheckPanel.tsx` (rename/extend into Search Debug + coverage check)
-- possibly `src/lib/api/freshdesk.types.ts` for richer DTO/debug types
+Edits limited to **builders that produce text the user copies/pastes**:
+- `src/lib/dispatch-store.ts` `buildDispatchSummary` (lines 561, 611)
+- `src/lib/tickets-store.ts` `buildGeneratedNote` (line 876)
+- `src/lib/reports/prog-email-format.ts` (if a trailing signature exists)
+- Any equivalent in `additional-work-store.ts` completion-note builder
+
+**Not changed** (these are UI metadata, not note bodies):
+- `initials: "LTP"` stored on snips, hub notes, history entries
+- "Activated … · LTP", "Marked posted manually … · LTP" labels in archive/history components
+- `USER_INITIALS` constant in `src/lib/shift.ts`
+- "record initials as LTP" instructional copy in the Mark-Ready / Mark-Posted modals
+
+### Out of scope
+
+- No DB schema changes.
+- No Freshdesk write behavior changes (still copy-to-clipboard only).
+- No change to how snips are uploaded, categorized, or attached.
+
+## Acceptance
+
+- Clicking **Copy with Snips (Rich)** on a Contact Dispatch summary pastes an HTML block where each reason and each section (Phone / Repeat / Save) shows its own attached images directly below that section's heading. No "Attachments" block at the bottom unless there are unattached snips.
+- Clicking **Copy with Snips** on a Freshdesk ticket generated note pastes Before / After / Testing sections with the actual images embedded under each heading.
+- The Programming Status Email rich copy is a single document with snips inline beside each ticket / dispatch / work item — no duplicate plain block above it.
+- None of the generated note/email bodies contain `— LTP` or `· LTP` anymore.
+- UI history rows still display "· LTP" timestamp chips as they do today.
