@@ -151,6 +151,33 @@ export const accountsStore = {
     return a;
   },
 
+  /**
+   * Get-or-create an account from Freshdesk-parsed data (company field →
+   * number + name). Upgrades a placeholder name ("Unlinked Account") when a
+   * real client name arrives. Returns null when the number isn't a valid
+   * 3–8 digit account number.
+   */
+  ensureFromFreshdesk(
+    rawNumber: string,
+    name?: string,
+  ): { account: Account; created: boolean } | null {
+    ensureLoaded();
+    const num = rawNumber.trim();
+    if (!/^\d{3,8}$/.test(num)) return null;
+    const trimmedName = name?.trim();
+    const existing = state.accounts.find((a) => a.number === num);
+    if (existing) {
+      const isPlaceholder = !existing.name || existing.name === "Unlinked Account";
+      if (isPlaceholder && trimmedName) {
+        this.update(num, { name: trimmedName });
+        return { account: this.get(num)!, created: false };
+      }
+      return { account: existing, created: false };
+    }
+    const account = this.create({ number: num, name: trimmedName || "Unlinked Account" });
+    return { account, created: true };
+  },
+
   update(num: string, patch: Partial<Pick<Account, "name" | "status">>) {
     ensureLoaded();
     state = {

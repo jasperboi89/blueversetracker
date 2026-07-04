@@ -14,7 +14,9 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GalaxyBackground } from "@/components/layout/GalaxyBackground";
 import { Toaster } from "@/components/ui/sonner";
 import { useApplyDisplayPrefs } from "@/lib/settings/display-prefs-store";
+import { usePointerGlow } from "@/hooks/use-pointer-glow";
 import { supabase } from "@/integrations/supabase/client";
+import { purgeLocalAppData } from "@/lib/purge-local-data";
 import { useApplyTheme, useTheme } from "@/lib/settings/theme-store";
 import { QuantumBloomDriver } from "@/components/quantum-bloom/QuantumBloomDriver";
 import { NebulaCanvas } from "@/components/quantum-bloom/NebulaCanvas";
@@ -134,11 +136,13 @@ function RootComponent() {
   const router = useRouter();
   useApplyDisplayPrefs();
   useApplyTheme();
+  usePointerGlow();
   const theme = useTheme();
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (event === "SIGNED_OUT") purgeLocalAppData();
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });

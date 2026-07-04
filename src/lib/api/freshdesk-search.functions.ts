@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireActiveAuthorizedUser } from "@/integrations/supabase/require-authorized";
+import { logTicketAccess, emailFromClaims } from "./ticket-access-log";
 import {
   fdFetch,
   readFreshdeskCreds,
@@ -293,7 +295,9 @@ async function detectAccountField(): Promise<string | null> {
   return (await detectAccountFieldFull()).name;
 }
 
-export const freshdeskDetectAccountField = createServerFn({ method: "GET" }).handler(async () => {
+export const freshdeskDetectAccountField = createServerFn({ method: "GET" })
+  .middleware([requireActiveAuthorizedUser])
+  .handler(async () => {
   const d = await detectAccountFieldFull();
   return { name: d.name, skipped: d.skipped };
 });
@@ -526,14 +530,23 @@ const MAX_CANDIDATES_FOR_CONVERSATIONS = 15;
 const MAX_CANDIDATES_FOR_AI = 20;
 
 export const freshdeskSearch = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: { query: string; filters?: IntelFilters }) =>
     z.object({ query: z.string().max(500), filters: FiltersSchema.optional() }).parse(input),
   )
-  .handler(async ({ data }): Promise<SearchResponse> => {
+  .handler(async ({ data, context }): Promise<SearchResponse> => {
     const creds = readFreshdeskCreds();
     if ("error" in creds && creds.error) {
       return { ok: false, error: creds.error };
     }
+    await logTicketAccess({
+      userId: context.userId,
+      email: emailFromClaims(context.claims),
+      action: "search",
+      query: [data.query, data.filters?.accountNumber ? `acct:${data.filters.accountNumber}` : ""]
+        .filter(Boolean)
+        .join(" "),
+    });
     const { host } = creds as { host: string };
     const filters = data.filters ?? {};
     const q = data.query.trim();
@@ -995,12 +1008,19 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
 /* -------------------------- conversation backfill (lazy) -------------------------- */
 
 export const freshdeskPullFullConversations = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: { number: string }) =>
     z.object({ number: z.string().min(1).max(20) }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const creds = readFreshdeskCreds();
     if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
+    await logTicketAccess({
+      userId: context.userId,
+      email: emailFromClaims(context.claims),
+      action: "conversations",
+      ticketNumber: data.number,
+    });
     const t = await fdFetch<FreshdeskTicketDTO>(
       `/api/v2/tickets/${encodeURIComponent(data.number)}?include=requester,company,stats`,
     );
@@ -1020,12 +1040,19 @@ export const freshdeskPullFullConversations = createServerFn({ method: "POST" })
 /* -------------------------- sync check (per-ticket coverage) -------------------------- */
 
 export const freshdeskSyncCheck = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: { number: string }) =>
     z.object({ number: z.string().min(1).max(20) }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const creds = readFreshdeskCreds();
     if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
+    await logTicketAccess({
+      userId: context.userId,
+      email: emailFromClaims(context.claims),
+      action: "sync",
+      ticketNumber: data.number,
+    });
     const t = await fdFetch<FreshdeskTicketDTO>(
       `/api/v2/tickets/${encodeURIComponent(data.number)}?include=requester,company,stats`,
     );
@@ -1098,15 +1125,23 @@ export interface AccountCoverageReport {
 }
 
 export const freshdeskAccountCoverage = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: { accountNumber: string }) =>
     z.object({ accountNumber: z.string().min(1).max(50) }).parse(input),
   )
   .handler(
     async ({
       data,
+      context,
     }): Promise<{ ok: true; report: AccountCoverageReport } | { ok: false; error: string }> => {
       const creds = readFreshdeskCreds();
       if ("error" in creds && creds.error) return { ok: false, error: creds.error };
+      await logTicketAccess({
+        userId: context.userId,
+        email: emailFromClaims(context.claims),
+        action: "coverage",
+        query: `acct:${data.accountNumber.trim()}`,
+      });
       const { host } = creds as { host: string };
       const acct = data.accountNumber.trim();
       const accountField = await detectAccountField();

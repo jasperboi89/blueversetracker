@@ -4,6 +4,29 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------- Self-hosted variable fonts (no third-party font requests) ---------- */
+@font-face {
+  font-family: "Inter Var";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./assets/fonts/inter-var.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk Var";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./assets/fonts/space-grotesk-var.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono Var";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("./assets/fonts/jetbrains-mono-var.woff2") format("woff2");
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -51,6 +74,10 @@
   --color-gold-glow: var(--gold-glow);
   --color-green-glow: var(--green-glow);
   --color-pink-glow: var(--pink-glow);
+
+  --font-sans: "Inter Var", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk Var", "Inter Var", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Var", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 :root {
@@ -106,7 +133,17 @@
 }
 
 @utility glass-panel {
-  background: linear-gradient(140deg, oklch(0.22 0.07 270 / 0.55), oklch(0.16 0.05 268 / 0.4));
+  /* Layer 1: cursor-tracked specular highlight (viewport-fixed, so it follows
+     the pointer across every panel — --pointer-x/y are set by usePointerGlow).
+     Layer 2: the glass tint itself. */
+  background:
+    radial-gradient(
+        520px circle at var(--pointer-x, -999px) var(--pointer-y, -999px),
+        oklch(0.95 0.05 220 / 0.055),
+        transparent 65%
+      )
+      fixed,
+    linear-gradient(140deg, oklch(0.22 0.07 270 / 0.55), oklch(0.16 0.05 268 / 0.4));
   border: 1px solid oklch(0.7 0.12 235 / 0.18);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
@@ -203,11 +240,14 @@ html[data-theme="quantum-bloom"] body {
 
 /* Promote every existing glass surface to crystal styling under Quantum Bloom. */
 html[data-theme="quantum-bloom"] .glass-panel {
-  background: linear-gradient(
-    140deg,
-    oklch(0.24 0.08 270 / 0.45),
-    oklch(0.16 0.06 268 / 0.32)
-  );
+  background:
+    radial-gradient(
+        520px circle at var(--pointer-x, -999px) var(--pointer-y, -999px),
+        color-mix(in oklab, var(--qb-phase-accent) 8%, transparent),
+        transparent 65%
+      )
+      fixed,
+    linear-gradient(140deg, oklch(0.24 0.08 270 / 0.45), oklch(0.16 0.06 268 / 0.32));
   border-color: color-mix(in oklab, var(--qb-phase-accent) 32%, transparent);
   backdrop-filter: blur(22px) saturate(160%);
   box-shadow:
@@ -260,7 +300,20 @@ html[data-theme="quantum-bloom"] .glass-panel {
     background-attachment: fixed;
     color: var(--color-foreground);
     min-height: 100vh;
-    font-feature-settings: "ss01", "cv01";
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+
+  /* Ticket numbers, account numbers, timestamps line up in tables. */
+  table {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -272,6 +325,41 @@ html[data-motion="reduced"] *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
+}
+
+/* OS-level preference — same kill switch, applied even before JS mirrors it
+   onto data-motion (the app treats "OS says reduce" as reduced regardless of
+   the in-app setting). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Route view transitions ---------- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Instant cuts for reduced motion — both the in-app setting and the OS one. */
+html[data-motion="reduced"]::view-transition-old(*),
+html[data-motion="reduced"]::view-transition-new(*),
+html[data-motion="reduced"]::view-transition-group(*) {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
 }
 
 /* === Quantum Bloom Phase 2 — Celebrations & Discoveries === */

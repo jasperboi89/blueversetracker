@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -8,6 +8,7 @@ import {
   INACTIVITY_WARN_MS,
 } from "@/lib/auth/inactivity-config";
 import { logAuthEventAuthed } from "@/lib/auth/audit.functions";
+import { purgeLocalAppData } from "@/lib/purge-local-data";
 import { InactivityWarningModal } from "./InactivityWarningModal";
 
 export function InactivityWatcher() {
@@ -15,7 +16,7 @@ export function InactivityWatcher() {
   const lastActivityRef = useRef<number>(Date.now());
   const warnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navigate = useNavigate();
+  const loggingOutRef = useRef(false);
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -26,18 +27,37 @@ export function InactivityWatcher() {
     logoutTimerRef.current = null;
   }
 
+  async function performLogout(type: "session_timeout" | "logout") {
+    if (loggingOutRef.current) return;
+    loggingOutRef.current = true;
+    clearTimers();
+    try {
+      await logAuthEventAuthed({ data: { type } });
+    } catch {
+      /* ignore */
+    }
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    purgeLocalAppData();
+    // Full reload (not SPA navigation) so in-memory store state is dropped too.
+    window.location.replace("/auth");
+  }
+
+  // Timers are anchored to the last-activity wall clock, not "N ms from now",
+  // so a machine that slept through the deadline logs out as soon as timers
+  // (or the visibility handler below) run again.
   function scheduleTimers() {
     clearTimers();
-    warnTimerRef.current = setTimeout(() => setWarnOpen(true), INACTIVITY_WARN_MS);
-    logoutTimerRef.current = setTimeout(async () => {
-      try {
-        await logAuthEventAuthed({ data: { type: "session_timeout" } });
-      } catch { /* ignore */ }
-      await queryClient.cancelQueries();
-      queryClient.clear();
-      await supabase.auth.signOut();
-      navigate({ to: "/auth", replace: true });
-    }, INACTIVITY_LOGOUT_MS);
+    const elapsed = Date.now() - lastActivityRef.current;
+    warnTimerRef.current = setTimeout(
+      () => setWarnOpen(true),
+      Math.max(0, INACTIVITY_WARN_MS - elapsed),
+    );
+    logoutTimerRef.current = setTimeout(
+      () => void performLogout("session_timeout"),
+      Math.max(0, INACTIVITY_LOGOUT_MS - elapsed),
+    );
   }
 
   function bumpActivity() {
@@ -52,31 +72,42 @@ export function InactivityWatcher() {
     for (const ev of INACTIVITY_ACTIVITY_EVENTS) {
       window.addEventListener(ev, handler, { passive: true });
     }
+    // Re-check the deadline when the tab becomes visible again — setTimeout is
+    // throttled/paused in background tabs and across laptop sleep.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const elapsed = Date.now() - lastActivityRef.current;
+      if (elapsed >= INACTIVITY_LOGOUT_MS) {
+        void performLogout("session_timeout");
+      } else {
+        if (elapsed >= INACTIVITY_WARN_MS) setWarnOpen(true);
+        scheduleTimers();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       for (const ev of INACTIVITY_ACTIVITY_EVENTS) {
         window.removeEventListener(ev, handler);
       }
+      document.removeEventListener("visibilitychange", onVisible);
       clearTimers();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { bumpActivity(); /* route change */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    bumpActivity(); /* route change */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   function stay() {
     setWarnOpen(false);
+    lastActivityRef.current = Date.now();
     scheduleTimers();
   }
 
-  async function signOutNow() {
+  function signOutNow() {
     setWarnOpen(false);
-    clearTimers();
-    try { await logAuthEventAuthed({ data: { type: "logout" } }); } catch {}
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    void performLogout("logout");
   }
 
   return (

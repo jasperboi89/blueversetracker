@@ -10,6 +10,9 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Soft cross-fade between routes via the View Transitions API.
+    // Reduced-motion users get instant cuts (guarded in styles.css).
+    defaultViewTransition: true,
   });
 
   return router;

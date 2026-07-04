@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { getActivePhase, isShiftActive } from "./phases";
 import { GalaxyBackground } from "@/components/layout/GalaxyBackground";
 import { intensityToFactor, useQbTuning } from "@/lib/settings/qb-tuning-store";
+import { useEffectiveMotion } from "@/lib/settings/display-prefs-store";
 import { useSanctuary } from "@/lib/quantum-bloom/sanctuary-store";
 
 const vertexShader = /* glsl */ `
@@ -170,6 +171,7 @@ export function NebulaCanvas() {
   const [supported, setSupported] = useState<boolean | null>(null);
   const tuning = useQbTuning();
   const sanctuary = useSanctuary();
+  const motion = useEffectiveMotion();
   const intensity = intensityToFactor(tuning.visualIntensity);
   useEffect(() => {
     setMounted(true);
@@ -177,7 +179,9 @@ export function NebulaCanvas() {
   }, []);
 
   if (!mounted || supported === null) return null;
-  if (!supported) return <GalaxyBackground />;
+  // Reduced motion: skip the WebGL render loop entirely — the static CSS
+  // galaxy reads the same without continuous animation.
+  if (!supported || motion === "reduced") return <GalaxyBackground />;
 
   return (
     <div

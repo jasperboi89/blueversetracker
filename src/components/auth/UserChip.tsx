@@ -1,9 +1,9 @@
-import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useHubIdentity } from "@/lib/auth/role-context";
 import { logAuthEventAuthed } from "@/lib/auth/audit.functions";
+import { purgeLocalAppData } from "@/lib/purge-local-data";
 
 const ROLE_LABEL = {
   admin: "Admin",
@@ -20,7 +20,6 @@ function initialsFromEmail(email: string) {
 
 export function UserChip({ collapsed }: { collapsed: boolean }) {
   const identity = useHubIdentity();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   async function handleLogout() {
@@ -28,7 +27,9 @@ export function UserChip({ collapsed }: { collapsed: boolean }) {
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+    purgeLocalAppData();
+    // Full reload (not SPA navigation) so in-memory store state is dropped too.
+    window.location.replace("/auth");
   }
 
   const initials = initialsFromEmail(identity.email);

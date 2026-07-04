@@ -498,8 +498,13 @@ export const ticketsStore = {
         // Account number — only overwrite if not manually set
         if (payload.accountNumber !== undefined && tk.accountSource !== "manual") {
           if (payload.accountNumber) {
+            const ensured = accountsStore.ensureFromFreshdesk(
+              payload.accountNumber,
+              payload.accountName,
+            );
             next.accountNumber = payload.accountNumber;
-            next.accountName = payload.accountName ?? tk.accountName ?? "Unlinked Account";
+            next.accountName =
+              ensured?.account.name ?? payload.accountName ?? tk.accountName ?? "Unlinked Account";
             next.accountSource = "freshdesk";
           }
         }
@@ -681,7 +686,12 @@ export const ticketsStore = {
       if (!num) {
         return { ok: true, found: false };
       }
-      const name = res.ticket.accountName ?? res.ticket.companyName ?? "Unlinked Account";
+      const ensured = accountsStore.ensureFromFreshdesk(
+        num,
+        res.ticket.accountName ?? res.ticket.companyName,
+      );
+      const name =
+        ensured?.account.name ?? res.ticket.accountName ?? res.ticket.companyName ?? "Unlinked Account";
       state = {
         ...state,
         tickets: state.tickets.map((tk) =>
@@ -753,12 +763,17 @@ export const ticketsStore = {
     ensureLoaded();
     const existing = state.tickets.find((t) => t.number === input.number);
     if (existing) return existing;
+    // Auto-file the ticket under its account: get-or-create from the parsed
+    // Freshdesk company field so pulled tickets land in the Accounts table.
+    const ensured = input.accountNumber
+      ? accountsStore.ensureFromFreshdesk(input.accountNumber, input.accountName)
+      : null;
     const t: Ticket = {
       id: newId("t"),
       number: input.number,
       accountNumber: input.accountNumber ?? "",
       accountName: input.accountNumber
-        ? (input.accountName ?? input.companyName ?? "Unlinked Account")
+        ? (ensured?.account.name ?? input.accountName ?? input.companyName ?? "Unlinked Account")
         : (input.companyName ?? ""),
       accountSource: input.accountNumber ? "freshdesk" : undefined,
       status: input.status ?? "working",
@@ -778,6 +793,15 @@ export const ticketsStore = {
       }),
       freshdeskNotes: input.notes.map((n) => ({ ...n, source: "freshdesk" as const })),
       hubHistory: [
+        ...(ensured?.created
+          ? [{
+              id: newId("hh"),
+              initials: "LTP" as const,
+              createdAt: Date.now(),
+              body: `Account ${ensured.account.number} (${ensured.account.name}) auto-created from Freshdesk company field.`,
+              kind: "system" as const,
+            }]
+          : []),
         { id: newId("hh"), initials: "LTP", createdAt: Date.now(), body: "Pulled ticket from Freshdesk.", kind: "system" },
       ],
       freshdeskAttachments: input.attachments.map((a) => ({ ...a, source: "freshdesk" as const })),

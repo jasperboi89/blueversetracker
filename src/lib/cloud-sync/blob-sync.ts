@@ -38,6 +38,8 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
   let storeUnsub: (() => void) | null = null;
   let lastPushedJson: string | null = null;
 
+  const RETRY_MS = 10_000;
+
   const push = async () => {
     if (!activeUserId) return;
     let snap: TState;
@@ -45,14 +47,20 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
     let json: string;
     try { json = JSON.stringify(snap); } catch { return; }
     if (json === lastPushedJson) return;
-    lastPushedJson = json;
     try {
-      await supabase
+      const { error } = await supabase
         .from(TABLE)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .upsert({ user_id: activeUserId, store_key: opts.storeKey, data: snap as any }, { onConflict: "user_id,store_key" });
+      if (error) throw error;
+      // Mark as pushed only after the write succeeds; on failure the next
+      // change (or the retry below) will re-attempt instead of silently
+      // dropping this snapshot.
+      lastPushedJson = json;
     } catch (err) {
-      console.error(`[cloud-sync:${opts.storeKey}] push failed`, err);
+      console.error(`[cloud-sync:${opts.storeKey}] push failed, retrying`, err);
+      if (pushTimer) clearTimeout(pushTimer);
+      pushTimer = setTimeout(push, RETRY_MS);
     }
   };
 

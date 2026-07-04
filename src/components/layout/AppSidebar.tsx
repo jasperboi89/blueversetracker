@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Building2,
   FileBarChart,
+  ScrollText,
   Settings,
   Sparkles,
   CheckCircle2,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { UserChip } from "@/components/auth/UserChip";
 import { useIsAdmin } from "@/lib/auth/role-context";
+import { isOverdue, useTickets } from "@/lib/tickets-store";
 
 const baseItems = [
   { title: "Home", url: "/", icon: Home },
@@ -37,6 +39,7 @@ const baseItems = [
 ] as const;
 
 const adminItems = [
+  { title: "Audit Log", url: "/audit-log", icon: ScrollText },
   { title: "Settings", url: "/settings", icon: Settings },
 ] as const;
 
@@ -46,6 +49,8 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const isAdmin = useIsAdmin();
   const items = isAdmin ? [...baseItems, ...adminItems] : baseItems;
+  const { tickets } = useTickets();
+  const overdueCount = tickets.filter((t) => t.status !== "completed" && isOverdue(t)).length;
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -53,13 +58,30 @@ export function AppSidebar() {
         <div className="flex items-center gap-3">
           <div
             className="relative grid h-10 w-10 place-items-center rounded-xl"
+            title={overdueCount > 0 ? `${overdueCount} overdue ticket${overdueCount === 1 ? "" : "s"}` : undefined}
             style={{
               background:
                 "linear-gradient(135deg, oklch(0.78 0.18 220 / 0.4), oklch(0.7 0.22 295 / 0.4))",
-              boxShadow: "var(--shadow-glow-cyan), inset 0 1px 0 oklch(1 0 0 / 0.2)",
+              boxShadow:
+                overdueCount > 0
+                  ? "var(--shadow-glow-gold), inset 0 1px 0 oklch(1 0 0 / 0.2)"
+                  : "var(--shadow-glow-cyan), inset 0 1px 0 oklch(1 0 0 / 0.2)",
+              animation: overdueCount > 0 ? "pulse-gold 2.6s ease-in-out infinite" : undefined,
             }}
           >
             <Sparkles className="h-5 w-5 text-white" />
+            {overdueCount > 0 && (
+              <span
+                className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full px-1 font-mono text-[9px] font-bold"
+                style={{
+                  background: "var(--gold-glow)",
+                  color: "oklch(0.2 0.05 85)",
+                  boxShadow: "0 0 10px var(--gold-glow)",
+                }}
+              >
+                {overdueCount}
+              </span>
+            )}
           </div>
           {!collapsed && (
             <div className="leading-tight">
@@ -130,6 +152,9 @@ export function AppSidebar() {
             HIPAA-Safeguarded
             <br />
             Internal Use
+            <span className="mt-1 block font-mono text-muted-foreground/60">
+              ⌘K / Ctrl+K — Quick Command
+            </span>
           </div>
         )}
       </SidebarFooter>

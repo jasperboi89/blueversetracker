@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPersistedStore, useStoreValue } from "./_persist";
 
 export type ShiftProgressDisplay = "ring" | "bar" | "both";
@@ -30,12 +30,31 @@ export function useDisplayPrefs(): DisplayPrefs {
   return useStoreValue(displayPrefsStore, DEFAULT_DISPLAY_PREFS);
 }
 
+/**
+ * OS accessibility setting wins toward reduced: if the operating system asks
+ * for reduced motion, the app honors it regardless of the in-app preference.
+ */
+export function useEffectiveMotion(): MotionPref {
+  const prefs = useDisplayPrefs();
+  const [osReduced, setOsReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setOsReduced(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setOsReduced(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return osReduced || prefs.motion === "reduced" ? "reduced" : "full";
+}
+
 /** Apply motion + sidebar root attrs so CSS can react. Mount once at app root. */
 export function useApplyDisplayPrefs() {
   const prefs = useDisplayPrefs();
+  const motion = useEffectiveMotion();
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.dataset.motion = prefs.motion;
+    document.documentElement.dataset.motion = motion;
     document.documentElement.dataset.sidebar = prefs.sidebar;
-  }, [prefs.motion, prefs.sidebar]);
+  }, [motion, prefs.sidebar]);
 }

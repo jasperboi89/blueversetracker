@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireActiveAuthorizedUser } from "@/integrations/supabase/require-authorized";
+import { logTicketAccess, emailFromClaims } from "./ticket-access-log";
 import type {
   FreshdeskTicketDTO,
   FreshdeskConversationDTO,
@@ -89,12 +91,17 @@ function detectAccount(t: FreshdeskTicketDTO): { number?: string; name?: string 
     if (typeof c === "string" && c.trim()) { acctNum = c.trim(); break; }
     if (typeof c === "number") { acctNum = String(c); break; }
   }
+  // The Freshdesk company field carries both values ("12345 - Acme Clinic"),
+  // so it is the authoritative source: number → accountNumber, remainder →
+  // accountName. Only fall back to scanning subject/description when the
+  // company field yields nothing.
+  const company = parseCompanyAccount(t.company?.name);
+  if (!acctNum && company.number) acctNum = company.number;
   if (!acctNum) {
     const haystacks: string[] = [
       t.subject ?? "",
       t.description_text ?? "",
       (t.tags ?? []).join(" "),
-      t.company?.name ?? "",
       t.requester?.name ?? "",
       t.requester?.email ?? "",
     ];
@@ -105,8 +112,25 @@ function detectAccount(t: FreshdeskTicketDTO): { number?: string; name?: string 
       if (m) { acctNum = m[1]; break; }
     }
   }
-  const acctName = t.company?.name;
+  const acctName = company.name ?? t.company?.name;
   return { number: acctNum, name: acctName };
+}
+
+/**
+ * Split a company-field value that packs account number + client name into
+ * one string. Handles "12345 - Acme Clinic", "#12345 Acme Clinic",
+ * "Acme Clinic - 12345", "Acme Clinic (12345)", and plain "12345".
+ */
+export function parseCompanyAccount(company?: string | null): { number?: string; name?: string } {
+  const c = company?.trim();
+  if (!c) return {};
+  // Number-first: "12345 - Acme Clinic", "#12345: Acme Clinic", "12345 Acme"
+  let m = c.match(/^#?(\d{3,8})\s*[-–—:·|.]?\s*(.*)$/);
+  if (m) return { number: m[1], name: m[2].trim() || undefined };
+  // Number-last: "Acme Clinic - 12345", "Acme Clinic (12345)", "Acme #12345"
+  m = c.match(/^(.*?)\s*[-–—:·|(#]\s*#?(\d{3,8})\)?\s*$/);
+  if (m) return { number: m[2], name: m[1].trim() || undefined };
+  return { name: c };
 }
 
 function sanitizeCustomFields(cf: Record<string, unknown> | undefined): Record<string, string | number | boolean | null> | undefined {
@@ -258,7 +282,9 @@ function collectAttachments(t: FreshdeskTicketDTO, convos: FreshdeskConversation
 }
 
 /** Test the connection by calling /agents/me */
-export const freshdeskTestConnection = createServerFn({ method: "POST" }).handler(async () => {
+export const freshdeskTestConnection = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .handler(async () => {
   const creds = readCreds();
   if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
   const res = await fdFetch<{ contact?: { name?: string }; name?: string }>("/api/v2/agents/me");
@@ -269,10 +295,17 @@ export const freshdeskTestConnection = createServerFn({ method: "POST" }).handle
 
 /** Pull a ticket by number. */
 export const freshdeskPullTicket = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: { number: string }) => z.object({ number: z.string().min(1).max(20) }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const creds = readCreds();
     if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
+    await logTicketAccess({
+      userId: context.userId,
+      email: emailFromClaims(context.claims),
+      action: "pull",
+      ticketNumber: data.number,
+    });
     const { host } = creds as { host: string };
     const t = await fdFetch<FreshdeskTicketDTO>(
       `/api/v2/tickets/${encodeURIComponent(data.number)}?include=requester,company,stats`,
@@ -293,10 +326,17 @@ export const freshdeskPullTicket = createServerFn({ method: "POST" })
 
 /** Sync — same shape as pull. UI computes diffs against Hub state. */
 export const freshdeskSyncTicket = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: { number: string }) => z.object({ number: z.string().min(1).max(20) }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const creds = readCreds();
     if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
+    await logTicketAccess({
+      userId: context.userId,
+      email: emailFromClaims(context.claims),
+      action: "sync",
+      ticketNumber: data.number,
+    });
     const { host } = creds as { host: string };
     const t = await fdFetch<FreshdeskTicketDTO>(
       `/api/v2/tickets/${encodeURIComponent(data.number)}?include=requester,company,stats`,
