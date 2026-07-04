@@ -5,6 +5,9 @@ import { LoginCard } from "@/components/auth/LoginCard";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign In — Account Intel Hub" },
@@ -14,8 +17,14 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+function isSafeRelativePath(p: string | undefined): p is string {
+  return !!p && p.startsWith("/") && !p.startsWith("//");
+}
+
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const safeNext = isSafeRelativePath(next) ? next : undefined;
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -24,7 +33,11 @@ function AuthPage() {
       const { data } = await supabase.auth.getSession();
       if (cancelled) return;
       if (data.session) {
-        navigate({ to: "/", replace: true });
+        if (safeNext) {
+          window.location.replace(safeNext);
+        } else {
+          navigate({ to: "/", replace: true });
+        }
         return;
       }
       setChecking(false);
@@ -32,13 +45,13 @@ function AuthPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, safeNext]);
 
   if (checking) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <LoginCard />
+      <LoginCard next={safeNext} />
     </div>
   );
 }

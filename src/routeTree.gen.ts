@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -23,9 +24,13 @@ import { Route as AuthenticatedConstellationsRouteImport } from './routes/_authe
 import { Route as AuthenticatedCompletedWorkRouteImport } from './routes/_authenticated/completed-work'
 import { Route as AuthenticatedAdditionalWorkRouteImport } from './routes/_authenticated/additional-work'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedAdditionalWorkIndexRouteImport } from './routes/_authenticated/additional-work.index'
 import { Route as AuthenticatedContactDispatchArchiveRouteImport } from './routes/_authenticated/contact-dispatch.archive'
 import { Route as AuthenticatedAccountsAccountNumberRouteImport } from './routes/_authenticated/accounts.$accountNumber'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedFreshdeskTicketsTicketIdWorkRouteImport } from './routes/_authenticated/freshdesk-tickets.$ticketId.work'
 import { Route as AuthenticatedContactDispatchSessionIdWorkRouteImport } from './routes/_authenticated/contact-dispatch.$sessionId.work'
 import { Route as AuthenticatedAdditionalWorkWorkIdWorkRouteImport } from './routes/_authenticated/additional-work.$workId.work'
@@ -33,6 +38,11 @@ import { Route as AuthenticatedAdditionalWorkWorkIdWorkRouteImport } from './rou
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -105,6 +115,18 @@ const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdditionalWorkIndexRoute =
   AuthenticatedAdditionalWorkIndexRouteImport.update({
     id: '/',
@@ -123,6 +145,17 @@ const AuthenticatedAccountsAccountNumberRoute =
     path: '/$accountNumber',
     getParentRoute: () => AuthenticatedAccountsRoute,
   } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedFreshdeskTicketsTicketIdWorkRoute =
   AuthenticatedFreshdeskTicketsTicketIdWorkRouteImport.update({
     id: '/$ticketId/work',
@@ -146,7 +179,10 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/access-denied': typeof AccessDeniedRoute
   '/auth': typeof AuthRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
@@ -156,6 +192,8 @@ export interface FileRoutesByFullPath {
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
   '/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
   '/additional-work/': typeof AuthenticatedAdditionalWorkIndexRoute
@@ -166,7 +204,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/access-denied': typeof AccessDeniedRoute
   '/auth': typeof AuthRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
@@ -176,6 +217,8 @@ export interface FileRoutesByTo {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
   '/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
   '/additional-work': typeof AuthenticatedAdditionalWorkIndexRoute
@@ -188,7 +231,10 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/access-denied': typeof AccessDeniedRoute
   '/auth': typeof AuthRoute
+  '/mcp': typeof McpRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/_authenticated/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
   '/_authenticated/completed-work': typeof AuthenticatedCompletedWorkRoute
@@ -199,6 +245,8 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
   '/_authenticated/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
   '/_authenticated/additional-work/': typeof AuthenticatedAdditionalWorkIndexRoute
@@ -212,7 +260,10 @@ export interface FileRouteTypes {
     | '/'
     | '/access-denied'
     | '/auth'
+    | '/mcp'
     | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/accounts'
     | '/additional-work'
     | '/completed-work'
@@ -222,6 +273,8 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/accounts/$accountNumber'
     | '/contact-dispatch/archive'
     | '/additional-work/'
@@ -232,7 +285,10 @@ export interface FileRouteTypes {
   to:
     | '/access-denied'
     | '/auth'
+    | '/mcp'
     | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/accounts'
     | '/completed-work'
     | '/constellations'
@@ -242,6 +298,8 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/accounts/$accountNumber'
     | '/contact-dispatch/archive'
     | '/additional-work'
@@ -253,7 +311,10 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/access-denied'
     | '/auth'
+    | '/mcp'
     | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/accounts'
     | '/_authenticated/additional-work'
     | '/_authenticated/completed-work'
@@ -264,6 +325,8 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/accounts/$accountNumber'
     | '/_authenticated/contact-dispatch/archive'
     | '/_authenticated/additional-work/'
@@ -276,7 +339,12 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AccessDeniedRoute: typeof AccessDeniedRoute
   AuthRoute: typeof AuthRoute
+  McpRoute: typeof McpRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -286,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -379,6 +454,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/additional-work/': {
       id: '/_authenticated/additional-work/'
       path: '/'
@@ -399,6 +488,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/accounts/$accountNumber'
       preLoaderRoute: typeof AuthenticatedAccountsAccountNumberRouteImport
       parentRoute: typeof AuthenticatedAccountsRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/freshdesk-tickets/$ticketId/work': {
       id: '/_authenticated/freshdesk-tickets/$ticketId/work'
@@ -526,8 +629,24 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AccessDeniedRoute: AccessDeniedRoute,
   AuthRoute: AuthRoute,
+  McpRoute: McpRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
