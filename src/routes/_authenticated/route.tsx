@@ -12,15 +12,25 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  return (
+    <AuthorizationGuard>
+      <AuthorizedShell />
+    </AuthorizationGuard>
+  );
+}
+
+// Only mounts once AuthorizationGuard confirms a valid session, so the
+// sync hooks never fire a server fn without a bearer token.
+function AuthorizedShell() {
   useThemeSync();
   useTuningSync();
   return (
-    <AuthorizationGuard>
+    <>
       <AppShell>
         <Outlet />
       </AppShell>
       <InactivityWatcher />
       <CommandPalette />
-    </AuthorizationGuard>
+    </>
   );
 }
