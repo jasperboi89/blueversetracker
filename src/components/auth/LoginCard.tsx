@@ -12,12 +12,20 @@ import { requestPasswordReset } from "@/lib/auth/password-reset.functions";
 
 type Mode = "signin" | "forgot";
 
-export function LoginCard() {
+export function LoginCard({ next }: { next?: string } = {}) {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  function goAfterAuth() {
+    if (next && next.startsWith("/") && !next.startsWith("//")) {
+      window.location.replace(next);
+    } else {
+      navigate({ to: "/", replace: true });
+    }
+  }
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +48,7 @@ export function LoginCard() {
         navigate({ to: "/access-denied", replace: true });
         return;
       }
-      navigate({ to: "/", replace: true });
+      goAfterAuth();
     } catch (err) {
       console.error(err);
       toast.error("Sign-in failed. Please try again.");
