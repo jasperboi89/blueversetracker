@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdditionalWorkIndexRouteImport } from './routes/_
 import { Route as AuthenticatedContactDispatchArchiveRouteImport } from './routes/_authenticated/contact-dispatch.archive'
 import { Route as AuthenticatedAccountsAccountNumberRouteImport } from './routes/_authenticated/accounts.$accountNumber'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedFreshdeskTicketsTicketIdWorkRouteImport } from './routes/_authenticated/freshdesk-tickets.$ticketId.work'
 import { Route as AuthenticatedContactDispatchSessionIdWorkRouteImport } from './routes/_authenticated/contact-dispatch.$sessionId.work'
 import { Route as AuthenticatedAdditionalWorkWorkIdWorkRouteImport } from './routes/_authenticated/additional-work.$workId.work'
@@ -150,6 +151,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedFreshdeskTicketsTicketIdWorkRoute =
   AuthenticatedFreshdeskTicketsTicketIdWorkRouteImport.update({
     id: '/$ticketId/work',
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
   '/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
   '/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/accounts/$accountNumber': typeof AuthenticatedAccountsAccountNumberRoute
   '/_authenticated/contact-dispatch/archive': typeof AuthenticatedContactDispatchArchiveRoute
@@ -264,6 +273,7 @@ export interface FileRouteTypes {
     | '/freshdesk-tickets'
     | '/reports'
     | '/settings'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/accounts/$accountNumber'
     | '/contact-dispatch/archive'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/accounts/$accountNumber'
     | '/contact-dispatch/archive'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/'
+    | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/accounts/$accountNumber'
     | '/_authenticated/contact-dispatch/archive'
@@ -331,6 +343,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
 
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/freshdesk-tickets/$ticketId/work': {
       id: '/_authenticated/freshdesk-tickets/$ticketId/work'
       path: '/$ticketId/work'
@@ -614,6 +634,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
 export const routeTree = rootRouteImport
