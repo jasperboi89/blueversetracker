@@ -13,6 +13,7 @@ import { AddSnipModal } from "./AddSnipModal";
 import { RetestModal, } from "./RetestModal";
 import { RetestList } from "./ReasonFlowSection";
 import { cn } from "@/lib/utils";
+import { alphaMix } from "@/lib/visual-style";
 
 export function ChecksSection({
   session, sectionKey, checks, allowNA = false,
@@ -133,7 +134,7 @@ function TriBtn({ children, active, onClick, kind }: { children: React.ReactNode
       onClick={onClick}
       className={cn("grid h-6 w-6 place-items-center rounded-md border text-foreground/80 transition")}
       style={active
-        ? { borderColor: color, color, background: `${color.replace(")", " / 0.16)")}`, boxShadow: `0 0 8px ${color}` }
+        ? { borderColor: color, color, background: alphaMix(color, 16), boxShadow: `0 0 8px ${color}` }
         : { borderColor: "oklch(1 0 0 / 0.08)" }}
     >
       {children}

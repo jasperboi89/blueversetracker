@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { alphaMix } from "@/lib/visual-style";
 import {
   nightPlanStore,
   priorityRank,
@@ -444,7 +445,7 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
                       )}
                       style={
                         active
-                          ? { background: `${m.color.replace(")", " / 0.18)")}`, boxShadow: `0 0 12px ${m.color}` }
+                          ? { background: alphaMix(m.color, 18), boxShadow: `0 0 12px ${m.color}` }
                           : undefined
                       }
                     >
@@ -730,7 +731,7 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
                       "rounded-md border px-2 py-1 text-xs",
                       priority === p ? "border-transparent text-foreground" : "border-border/40 text-muted-foreground",
                     )}
-                    style={priority === p ? { background: `${priorityMeta[p].color.replace(")", " / 0.18)")}` } : undefined}
+                    style={priority === p ? { background: alphaMix(priorityMeta[p].color, 18) } : undefined}
                   >
                     {priorityMeta[p].label}
                   </button>

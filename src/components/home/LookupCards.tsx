@@ -24,7 +24,7 @@ function AccountLookup() {
   const results = q.trim() ? accountsStore.search(q, { includeArchived }) : [];
 
   return (
-    <div className="glass-panel shimmer p-5" style={{ animation: "float-y 6s ease-in-out infinite" }}>
+    <div className="glass-panel shimmer p-5">
       <div className="flex items-center gap-3">
         <div
           className="grid h-10 w-10 place-items-center rounded-xl"
@@ -93,7 +93,7 @@ function TicketLookup() {
   const noMatch = q.trim().length > 0 && results.length === 0;
 
   return (
-    <div className="glass-panel shimmer p-5" style={{ animation: "float-y 7s ease-in-out infinite" }}>
+    <div className="glass-panel shimmer p-5">
       <div className="flex items-center gap-3">
         <div
           className="grid h-10 w-10 place-items-center rounded-xl"

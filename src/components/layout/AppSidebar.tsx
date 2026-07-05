@@ -26,21 +26,22 @@ import {
 import { UserChip } from "@/components/auth/UserChip";
 import { useIsAdmin } from "@/lib/auth/role-context";
 import { isOverdue, useTickets } from "@/lib/tickets-store";
+import { alphaMix } from "@/lib/visual-style";
 
 const baseItems = [
-  { title: "Home", url: "/", icon: Home },
-  { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: Ticket },
-  { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles },
-  { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing },
-  { title: "Additional Work", url: "/additional-work", icon: ClipboardList },
-  { title: "Accounts", url: "/accounts", icon: Building2 },
-  { title: "Completed Work", url: "/completed-work", icon: CheckCircle2 },
-  { title: "Reports", url: "/reports", icon: FileBarChart },
+  { title: "Home", url: "/", icon: Home, accent: "var(--cyan-glow)" },
+  { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: Ticket, accent: "var(--cyan-glow)" },
+  { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles, accent: "var(--violet-glow)" },
+  { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing, accent: "var(--violet-glow)" },
+  { title: "Additional Work", url: "/additional-work", icon: ClipboardList, accent: "var(--gold-glow)" },
+  { title: "Accounts", url: "/accounts", icon: Building2, accent: "var(--electric)" },
+  { title: "Completed Work", url: "/completed-work", icon: CheckCircle2, accent: "var(--green-glow)" },
+  { title: "Reports", url: "/reports", icon: FileBarChart, accent: "oklch(0.9 0.06 230)" },
 ] as const;
 
 const adminItems = [
-  { title: "Audit Log", url: "/audit-log", icon: ScrollText },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Audit Log", url: "/audit-log", icon: ScrollText, accent: "oklch(0.65 0.12 295)" },
+  { title: "Settings", url: "/settings", icon: Settings, accent: "oklch(0.75 0.09 210)" },
 ] as const;
 
 export function AppSidebar() {
@@ -53,7 +54,13 @@ export function AppSidebar() {
   const overdueCount = tickets.filter((t) => t.status !== "completed" && isOverdue(t)).length;
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0">
+    <Sidebar
+      collapsible="icon"
+      className="border-r-0"
+      style={{
+        boxShadow: "inset -18px 0 40px -32px color-mix(in oklab, var(--cyan-glow) 30%, transparent)",
+      }}
+    >
       <SidebarHeader className="px-3 pt-5 pb-3">
         <div className="flex items-center gap-3">
           <div
@@ -112,15 +119,13 @@ export function AppSidebar() {
                       className={
                         active
                           ? "shimmer relative rounded-xl text-foreground"
-                          : "shimmer rounded-xl text-muted-foreground hover:text-foreground"
+                          : "rounded-xl text-muted-foreground/80 transition-colors hover:text-foreground"
                       }
                       style={
                         active
                           ? {
-                              background:
-                                "linear-gradient(110deg, oklch(0.4 0.16 240 / 0.55), oklch(0.4 0.18 290 / 0.4))",
-                              boxShadow:
-                                "0 0 18px oklch(0.78 0.18 220 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.08)",
+                              background: `linear-gradient(110deg, ${alphaMix(item.accent, 22)}, oklch(0.4 0.18 290 / 0.35))`,
+                              boxShadow: `0 0 18px ${alphaMix(item.accent, 30)}, inset 0 0 0 1px ${alphaMix(item.accent, 28)}, inset 0 1px 0 oklch(1 0 0 / 0.08)`,
                             }
                           : undefined
                       }
@@ -130,8 +135,8 @@ export function AppSidebar() {
                           className="h-4 w-4"
                           style={
                             active
-                              ? { color: "var(--cyan-glow)", filter: "drop-shadow(0 0 6px var(--cyan-glow))" }
-                              : undefined
+                              ? { color: item.accent, filter: `drop-shadow(0 0 6px ${item.accent})` }
+                              : { color: alphaMix(item.accent, 60) }
                           }
                         />
                         <span>{item.title}</span>

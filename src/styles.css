@@ -180,6 +180,84 @@
   }
 }
 
+/* ---------- 2036 holographic utilities ---------- */
+
+@utility holo-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+@utility holo-rail {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0.65rem;
+    top: 0.85rem;
+    bottom: 0.85rem;
+    width: 2px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--cyan-glow), var(--violet-glow));
+    box-shadow: 0 0 14px color-mix(in oklab, var(--cyan-glow) 55%, transparent);
+    opacity: 0.75;
+    pointer-events: none;
+  }
+}
+
+@utility holo-scan {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, transparent, oklch(1 0 0 / 0.035), transparent),
+      repeating-linear-gradient(
+        180deg,
+        transparent 0,
+        transparent 8px,
+        oklch(0.85 0.16 210 / 0.025) 9px
+      );
+    pointer-events: none;
+    opacity: 0.45;
+    mix-blend-mode: screen;
+  }
+}
+
+@utility quiet-float {
+  animation: float-y 8s ease-in-out infinite;
+}
+
+@utility active-breathe {
+  animation: active-breathe 3.8s ease-in-out infinite;
+}
+
+@keyframes active-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.07),
+      0 12px 40px -24px oklch(0 0 0 / 0.75),
+      0 0 18px -12px color-mix(in oklab, var(--cyan-glow) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.1),
+      0 14px 48px -24px oklch(0 0 0 / 0.75),
+      0 0 34px -12px color-mix(in oklab, var(--cyan-glow) 60%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiet-float,
+  .active-breathe,
+  .shimmer::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* ---------- Quantum Bloom theme ---------- */
 
 /* Holographic crystal glass — richer variant of glass-panel used when Quantum Bloom is active. */
