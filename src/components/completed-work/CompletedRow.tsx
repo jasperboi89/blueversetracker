@@ -8,6 +8,7 @@ import { formatCentralShort } from "@/lib/shift";
 import { ticketsStore } from "@/lib/tickets-store";
 import { dispatchStore } from "@/lib/dispatch-store";
 import { additionalWorkStore } from "@/lib/additional-work-store";
+import { alphaMix } from "@/lib/visual-style";
 import type { CompletedRecord } from "./types";
 
 const META = {
@@ -49,7 +50,7 @@ export function CompletedRow({ item }: { item: CompletedRecord }) {
       <div
         className="grid h-9 w-9 shrink-0 place-items-center rounded-lg"
         style={{
-          background: `linear-gradient(135deg, ${m.color.replace(")", " / 0.3)")}, oklch(0.7 0.22 295 / 0.2))`,
+          background: `linear-gradient(135deg, ${alphaMix(m.color, 30)}, oklch(0.7 0.22 295 / 0.2))`,
           boxShadow: `0 0 12px ${m.color}`,
         }}
       >

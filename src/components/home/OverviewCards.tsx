@@ -5,6 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
+import { alphaMix } from "@/lib/visual-style";
 
 type CardKey = "due" | "open" | "review";
 interface OverviewItem { id: string; type: string; title: string; reference: string }
@@ -91,7 +92,6 @@ export function OverviewCards() {
                 "glass-panel shimmer group relative p-5 text-left transition",
                 c.key === "due" ? "md:col-span-2" : "md:col-span-1",
               )}
-              style={{ animation: "float-y 8s ease-in-out infinite" }}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -108,7 +108,7 @@ export function OverviewCards() {
                 <div
                   className="grid h-10 w-10 place-items-center rounded-xl transition group-hover:scale-105"
                   style={{
-                    background: `linear-gradient(135deg, ${c.color.replace(")", " / 0.35)")} , oklch(0.7 0.22 295 / 0.25))`,
+                    background: `linear-gradient(135deg, ${alphaMix(c.color, 35)}, oklch(0.7 0.22 295 / 0.25))`,
                     boxShadow: `0 0 18px ${c.color}`,
                   }}
                 >

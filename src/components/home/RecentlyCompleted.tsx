@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useTickets } from "@/lib/tickets-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
+import { alphaMix } from "@/lib/visual-style";
 
 const kindMeta: Record<CompletedKind, { label: string; icon: typeof Ticket; color: string }> = {
   freshdesk: { label: "Freshdesk", icon: Ticket, color: "var(--cyan-glow)" },
@@ -120,7 +121,7 @@ function Row({ item }: { item: CompletedItem }) {
       <div
         className="grid h-9 w-9 place-items-center rounded-lg"
         style={{
-          background: `linear-gradient(135deg, ${m.color.replace(")", " / 0.3)")} , oklch(0.7 0.22 295 / 0.2))`,
+          background: `linear-gradient(135deg, ${alphaMix(m.color, 30)}, oklch(0.7 0.22 295 / 0.2))`,
           boxShadow: `0 0 12px ${m.color}`,
         }}
       >

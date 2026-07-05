@@ -74,7 +74,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
 
   return (
     <div
-      className="glass-pane relative w-full max-w-md rounded-2xl px-6 py-7 sm:px-8 sm:py-8"
+      className="glass-panel relative w-full max-w-md rounded-2xl px-6 py-7 sm:px-8 sm:py-8"
       style={{
         boxShadow:
           "0 0 60px oklch(0.55 0.2 240 / 0.18), inset 0 1px 0 oklch(1 0 0 / 0.08)",

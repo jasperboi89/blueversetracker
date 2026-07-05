@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { GreetingPanel } from "@/components/home/GreetingPanel";
 import { ShiftCard } from "@/components/home/ShiftCard";
 import { AlertCenter } from "@/components/home/AlertCenter";
+import { NextBestActionStrip } from "@/components/home/NextBestActionStrip";
 import { NightPlan } from "@/components/home/NightPlan";
 import { LookupCards } from "@/components/home/LookupCards";
 import { OverviewCards } from "@/components/home/OverviewCards";
@@ -31,6 +32,7 @@ function Home() {
         <GreetingPanel />
         <ShiftCard />
       </div>
+      <NextBestActionStrip />
       <AlertCenter />
       <NightPlan />
       <LookupCards />

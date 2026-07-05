@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   DISPATCH_STATUS_LABEL, useDispatch, type DispatchSession,
 } from "@/lib/dispatch-store";
+import { alphaMix } from "@/lib/visual-style";
 
 type Key = "active" | "waiting-cs" | "waiting-prog" | "not-ready" | "ready";
 
@@ -52,7 +53,7 @@ export function MiniDashboard() {
                 <div
                   className="grid h-9 w-9 place-items-center rounded-xl transition group-hover:scale-105"
                   style={{
-                    background: `linear-gradient(135deg, ${c.color.replace(")", " / 0.35)")}, oklch(0.7 0.22 295 / 0.2))`,
+                    background: `linear-gradient(135deg, ${alphaMix(c.color, 35)}, oklch(0.7 0.22 295 / 0.2))`,
                     boxShadow: `0 0 14px ${c.color}`,
                   }}
                 >

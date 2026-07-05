@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useRecurringRows } from "@/lib/reports/recurring-issues";
 import { useNightPlanHistory, nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useNavigate } from "@tanstack/react-router";
+import { alphaMix } from "@/lib/visual-style";
 
 const order: AlertPriority[] = ["critical", "warning", "info"];
 const styles: Record<AlertPriority, { color: string; bg: string; icon: typeof AlertTriangle }> = {
@@ -206,7 +207,7 @@ function AlertRow({ alert, mounted, onDismiss, onOpen }: { alert: MockAlert; mou
   return (
     <div
       className="flex items-start gap-3 rounded-lg border p-3"
-      style={{ background: s.bg, borderColor: `${s.color.replace(")", " / 0.3)")}` }}
+      style={{ background: s.bg, borderColor: alphaMix(s.color, 30) }}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: s.color }} />
       <div className="min-w-0 flex-1">

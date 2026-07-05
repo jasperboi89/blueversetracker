@@ -61,7 +61,7 @@ export function UserChip({ collapsed }: { collapsed: boolean }) {
 
   return (
     <div
-      className="glass-pane flex items-center gap-2 rounded-xl border-border/40 px-2 py-2"
+      className="glass-panel flex items-center gap-2 rounded-xl border-border/40 px-2 py-2"
     >
       <div
         className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[11px] font-semibold text-white"

@@ -24,7 +24,7 @@ export function InactivityWarningModal({
   const ss = (seconds % 60).toString().padStart(2, "0");
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onStay(); }}>
-      <DialogContent className="glass-pane border-border/40">
+      <DialogContent className="glass-panel border-border/40">
         <DialogHeader>
           <DialogTitle>Session Timeout Warning</DialogTitle>
           <DialogDescription>
