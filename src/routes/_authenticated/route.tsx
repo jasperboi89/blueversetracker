@@ -4,6 +4,7 @@ import { AuthorizationGuard } from "@/components/auth/AuthorizationGuard";
 import { InactivityWatcher } from "@/components/auth/InactivityWatcher";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { ActiveWorkDock } from "@/components/workspace/ActiveWorkDock";
+import { GlobalSnipPaste } from "@/components/workspace/GlobalSnipPaste";
 import { useThemeSync } from "@/hooks/use-theme-sync";
 import { useTuningSync } from "@/hooks/use-tuning-sync";
 
@@ -33,6 +34,7 @@ function AuthorizedShell() {
       <InactivityWatcher />
       <CommandPalette />
       <ActiveWorkDock />
+      <GlobalSnipPaste />
     </>
   );
 }

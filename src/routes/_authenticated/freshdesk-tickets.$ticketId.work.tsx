@@ -54,6 +54,7 @@ import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { FloatingPane } from "@/components/workspace/FloatingPane";
 import type { PaneDefault } from "@/lib/workspace/pane-layout-store";
 import { setActiveWork } from "@/lib/workspace/active-work-store";
+import { AccountMemoryPane } from "@/components/workspace/AccountMemoryPane";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,8 @@ export const Route = createFileRoute("/_authenticated/freshdesk-tickets/$ticketI
 // Default floating-desk tiling (percent of canvas): Freshdesk reference on the
 // left, your work in the middle, notes/snips/generate on the right.
 const PANE_DEFS: Record<string, PaneDefault> = {
-  reference: { xPct: 0, yPct: 0, wPct: 33, hPct: 100 },
+  reference: { xPct: 0, yPct: 0, wPct: 33, hPct: 60 },
+  account: { xPct: 0, yPct: 61, wPct: 33, hPct: 39 },
   issue: { xPct: 34, yPct: 0, wPct: 32, hPct: 32 },
   changes: { xPct: 34, yPct: 34, wPct: 32, hPct: 32 },
   result: { xPct: 34, yPct: 68, wPct: 32, hPct: 32 },
@@ -649,6 +651,12 @@ function WorkspacePage() {
       title: "Freshdesk Reference",
       chip: `#${ticket.number}`,
       body: referenceBody,
+    },
+    {
+      id: "account",
+      title: "Account Memory",
+      chip: ticket.accountNumber || "—",
+      body: <AccountMemoryPane accountNumber={ticket.accountNumber} currentTicketId={ticketId} />,
     },
     { id: "issue", title: "Ticket Issue", chip: issueChip, body: issueBody },
     { id: "changes", title: "Changes Made", chip: changesChip, body: changesBody },
