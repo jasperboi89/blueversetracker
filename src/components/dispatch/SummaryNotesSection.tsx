@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Copy, Download, ExternalLink, Send, Wand2, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
 import {
   buildDispatchSummary, dispatchStore, DISPATCH_STATUS_LABEL,

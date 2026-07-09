@@ -1,6 +1,6 @@
 import { dispatchStore, type DispatchSession, type DispatchStatus } from "@/lib/dispatch-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 
 export function OverallResultSection({ session }: { session: DispatchSession }) {
