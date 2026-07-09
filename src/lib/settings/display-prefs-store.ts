@@ -11,6 +11,8 @@ export interface DisplayPrefs {
   freshdeskShowPriority: boolean;
   sidebar: SidebarDefault;
   motion: MotionPref;
+  /** When true, proactive insight toasts stay silent (Copilot dot still pulses). */
+  quietInsights: boolean;
 }
 
 export const DEFAULT_DISPLAY_PREFS: DisplayPrefs = {
@@ -19,6 +21,7 @@ export const DEFAULT_DISPLAY_PREFS: DisplayPrefs = {
   freshdeskShowPriority: true,
   sidebar: "expanded",
   motion: "full",
+  quietInsights: false,
 };
 
 export const displayPrefsStore = createPersistedStore<DisplayPrefs>(

@@ -694,6 +694,12 @@ function DisplaySection() {
         checked={p.motion === "reduced"}
         onChange={(v) => displayPrefsStore.update((c) => ({ ...c, motion: v ? "reduced" : "full" }))}
       />
+      <ToggleRow
+        label="Quiet Insights"
+        description="Silences proactive AI toasts. The Copilot dot still pulses so you can check on your own."
+        checked={p.quietInsights}
+        onChange={(v) => displayPrefsStore.update((c) => ({ ...c, quietInsights: v }))}
+      />
     </SectionCard>
   );
 }
