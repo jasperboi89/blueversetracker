@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, GripVertical, Lock, LockOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -32,6 +32,7 @@ interface FloatingPaneProps {
 export function FloatingPane({ id, title, chip, def, children }: FloatingPaneProps) {
   const layout = usePaneLayout();
   const { width: cw, height: ch } = useCanvasSize();
+  const [dragging, setDragging] = useState(false);
   const dragState = useRef<{
     mode: "move" | "resize";
     startX: number;
@@ -54,7 +55,7 @@ export function FloatingPane({ id, title, chip, def, children }: FloatingPanePro
       if (locked) return;
       e.preventDefault();
       e.stopPropagation();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      e.currentTarget.setPointerCapture(e.pointerId);
       bringToFront(id);
       dragState.current = {
         mode,
@@ -63,6 +64,7 @@ export function FloatingPane({ id, title, chip, def, children }: FloatingPanePro
         rect,
         raf: 0,
       };
+      setDragging(true);
     },
     [locked, id, rect],
   );
@@ -90,8 +92,11 @@ export function FloatingPane({ id, title, chip, def, children }: FloatingPanePro
     const st = dragState.current;
     if (st?.raf) cancelAnimationFrame(st.raf);
     dragState.current = null;
+    setDragging(false);
     try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
     } catch {
       /* ignore */
     }
@@ -99,7 +104,10 @@ export function FloatingPane({ id, title, chip, def, children }: FloatingPanePro
 
   return (
     <section
-      className="glass-panel absolute flex flex-col overflow-hidden"
+      className={cn(
+        "glass-panel absolute flex flex-col overflow-hidden",
+        dragging && "glass-panel-lifted",
+      )}
       style={{
         left: rect.x,
         top: rect.y,
@@ -114,6 +122,7 @@ export function FloatingPane({ id, title, chip, def, children }: FloatingPanePro
           "flex items-center justify-between gap-2 px-3 py-2 select-none",
           locked ? "cursor-default" : "cursor-grab active:cursor-grabbing",
         )}
+        style={{ touchAction: "none" }}
         onPointerDown={onPointerDown("move")}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -160,9 +169,10 @@ export function FloatingPane({ id, title, chip, def, children }: FloatingPanePro
 
       {!rect.collapsed && !locked && (
         <div
-          className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize"
+          className="absolute bottom-0 right-0 z-10 h-5 w-5 cursor-se-resize"
           style={{
             background: "linear-gradient(135deg, transparent 50%, oklch(0.78 0.18 220 / 0.5) 50%)",
+            touchAction: "none",
           }}
           onPointerDown={onPointerDown("resize")}
           onPointerMove={onPointerMove}
