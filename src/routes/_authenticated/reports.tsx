@@ -716,9 +716,9 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
         </div>
 
         <div>
-          <RichTextEditor minHeight={572} value={body} onChange={(e) => {
-            setBody(e.target.value);
-            if (draft) progEmailStore.saveVersion(draft.id, "User Edited", e.target.value);
+          <RichTextEditor minHeight={572} value={body} onChange={(v) => {
+            setBody(v);
+            if (draft) progEmailStore.saveVersion(draft.id, "User Edited", v);
           }} className="font-mono text-xs" />
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" onClick={copyRichEmail}
