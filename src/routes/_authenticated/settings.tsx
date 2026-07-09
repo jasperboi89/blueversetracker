@@ -328,10 +328,10 @@ function AISection() {
       </div>
 
       <Field label="Custom Prompt Instructions" className="mt-3">
-        <Textarea
-          rows={3}
+        <RichTextEditor
+          minHeight={72}
           value={s.customInstructions}
-          onChange={(e) => aiSettingsStore.update((c) => ({ ...c, customInstructions: e.target.value }))}
+          onChange={(v) => aiSettingsStore.update((c) => ({ ...c, customInstructions: v }))}
           placeholder="e.g. Always say 'after-hours' (not 'overnight'). Never invent ticket numbers."
         />
       </Field>
@@ -418,10 +418,10 @@ function TemplatesSection() {
           </Select>
         </Field>
         <Field label="Expected Flow" className="sm:col-span-2">
-          <Textarea rows={2} value={draft.expectedFlow} onChange={(e) => setDraft({ ...draft, expectedFlow: e.target.value })} />
+          <RichTextEditor minHeight={72} value={draft.expectedFlow} onChange={(v) => setDraft({ ...draft, expectedFlow: v })} />
         </Field>
         <Field label="Notes" className="sm:col-span-2">
-          <Textarea rows={2} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
+          <RichTextEditor minHeight={72} value={draft.notes} onChange={(v) => setDraft({ ...draft, notes: v })} />
         </Field>
         <div className="sm:col-span-2">
           <Button onClick={() => {

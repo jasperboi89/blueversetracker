@@ -86,7 +86,7 @@ export function ChecksSection({
       {(sec.status === "failed" || sec.status === "still-failed" || sec.retests.length > 0) && (
         <div>
           <label className="text-xs uppercase tracking-wider text-muted-foreground">Changes Made</label>
-          <Textarea rows={2} value={sec.changesMade} onChange={(e) => update({ changesMade: e.target.value })} className="mt-1" />
+          <RichTextEditor minHeight={72} value={sec.changesMade} onChange={(v) => update({ changesMade: v })} className="mt-1" />
         </div>
       )}
 
@@ -94,7 +94,7 @@ export function ChecksSection({
 
       <div>
         <label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</label>
-        <Textarea rows={2} value={sec.notes} onChange={(e) => update({ notes: e.target.value })} className="mt-1" />
+        <RichTextEditor minHeight={72} value={sec.notes} onChange={(v) => update({ notes: v })} className="mt-1" />
       </div>
 
       <div className="space-y-2">

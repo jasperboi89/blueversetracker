@@ -90,11 +90,11 @@ export function SummaryNotesSection({ session, onMarkPostedRequest }: { session:
 
       <div>
         <label className="text-xs uppercase tracking-wider text-muted-foreground">Summary Note (editable)</label>
-        <Textarea
-          rows={14}
+        <RichTextEditor
+          minHeight={308}
           className="mt-1 font-mono text-xs"
           value={session.summaryNotes}
-          onChange={(e) => dispatchStore.saveSummaryEdit(session.id, e.target.value)}
+          onChange={(v) => dispatchStore.saveSummaryEdit(session.id, v)}
           placeholder="Generate a draft or write a manual summary."
         />
       </div>

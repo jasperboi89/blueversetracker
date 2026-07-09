@@ -44,7 +44,7 @@ export function RetestModal({
           </div>
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Retest Notes</label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1" />
+            <RichTextEditor value={notes} onChange={setNotes} minHeight={72} className="mt-1" />
           </div>
         </div>
         <DialogFooter>

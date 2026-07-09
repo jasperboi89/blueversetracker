@@ -95,10 +95,10 @@ export function CreateAdditionalWorkModal({
             </div>
           )}
           <Field label="What Needs Done *">
-            <Textarea rows={3} value={need} onChange={(e) => setNeed(e.target.value)} placeholder="Describe the task or follow-up" />
+            <RichTextEditor minHeight={72} value={need} onChange={setNeed} placeholder="Describe the task or follow-up" />
           </Field>
           <Field label="Notes (optional)">
-            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional context" />
+            <RichTextEditor minHeight={72} value={notes} onChange={setNotes} placeholder="Optional context" />
           </Field>
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="Issue Classification (optional)">
@@ -114,7 +114,7 @@ export function CreateAdditionalWorkModal({
             </Field>
           </div>
           <Field label="Programming Status Notes (optional)">
-            <Textarea rows={2} value={progNotes} onChange={(e) => setProgNotes(e.target.value)} placeholder="For Programming Status Email later" />
+            <RichTextEditor minHeight={72} value={progNotes} onChange={setProgNotes} placeholder="For Programming Status Email later" />
           </Field>
         </div>
         <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row">

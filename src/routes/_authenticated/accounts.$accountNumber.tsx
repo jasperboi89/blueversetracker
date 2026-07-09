@@ -392,7 +392,7 @@ function AddTemplateModal({ open, onOpenChange, accountNumber }: { open: boolean
               <SelectItem value="blank">Blank / Not Set</SelectItem>
             </SelectContent>
           </Select>
-          <Textarea rows={3} value={flow} onChange={(e) => setFlow(e.target.value)} placeholder="Expected flow" />
+          <RichTextEditor minHeight={72} value={flow} onChange={setFlow} placeholder="Expected flow" />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -470,7 +470,7 @@ function AddNoteModal({ open, onOpenChange, accountNumber, tickets }: { open: bo
               </SelectContent>
             </Select>
           )}
-          <Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="Note text" />
+          <RichTextEditor minHeight={88} value={text} onChange={setText} placeholder="Note text" />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

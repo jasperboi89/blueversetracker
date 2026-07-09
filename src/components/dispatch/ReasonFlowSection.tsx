@@ -214,11 +214,11 @@ function ReasonCardView({
         <div className="grid gap-2 sm:grid-cols-2">
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Expected Flow</label>
-            <Textarea rows={2} value={reason.expectedFlow} onChange={(e) => update({ expectedFlow: e.target.value })} className="mt-1" />
+            <RichTextEditor minHeight={72} value={reason.expectedFlow} onChange={(v) => update({ expectedFlow: v })} className="mt-1" />
           </div>
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Actual Flow</label>
-            <Textarea rows={2} value={reason.actualFlow} onChange={(e) => update({ actualFlow: e.target.value })} className="mt-1" />
+            <RichTextEditor minHeight={72} value={reason.actualFlow} onChange={(v) => update({ actualFlow: v })} className="mt-1" />
           </div>
         </div>
 
@@ -243,7 +243,7 @@ function ReasonCardView({
         {(reason.result === "failed" || reason.retests.length > 0) && (
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Changes Made</label>
-            <Textarea rows={2} value={reason.changesMade} onChange={(e) => update({ changesMade: e.target.value })} className="mt-1" />
+            <RichTextEditor minHeight={72} value={reason.changesMade} onChange={(v) => update({ changesMade: v })} className="mt-1" />
           </div>
         )}
 
@@ -263,7 +263,7 @@ function ReasonCardView({
 
         <div>
           <label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</label>
-          <Textarea rows={2} value={reason.notes} onChange={(e) => update({ notes: e.target.value })} className="mt-1" />
+          <RichTextEditor minHeight={72} value={reason.notes} onChange={(v) => update({ notes: v })} className="mt-1" />
         </div>
 
         <div className="space-y-2">

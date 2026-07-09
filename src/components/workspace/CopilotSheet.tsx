@@ -204,11 +204,11 @@ export function CopilotSheet() {
             </div>
 
             <div className="flex gap-2">
-              <Textarea
+              <RichTextEditor
                 ref={inputRef}
-                rows={2}
+                minHeight={72}
                 value={question}
-                onChange={(e) => setQuestion(e.target.value)}
+                onChange={setQuestion}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void ask(question);
                 }}

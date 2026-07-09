@@ -716,7 +716,7 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
         </div>
 
         <div>
-          <Textarea rows={26} value={body} onChange={(e) => {
+          <RichTextEditor minHeight={572} value={body} onChange={(e) => {
             setBody(e.target.value);
             if (draft) progEmailStore.saveVersion(draft.id, "User Edited", e.target.value);
           }} className="font-mono text-xs" />

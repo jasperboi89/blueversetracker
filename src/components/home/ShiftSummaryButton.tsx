@@ -186,10 +186,10 @@ export function ShiftSummaryButton() {
                 </div>
                 {aiDraft && (
                   <div className="mt-2 space-y-1">
-                    <Textarea
+                    <RichTextEditor
                       value={aiDraft}
-                      onChange={(e) => setAiDraft(e.target.value)}
-                      rows={8}
+                      onChange={setAiDraft}
+                      minHeight={176}
                       className="text-xs"
                     />
                     <Button

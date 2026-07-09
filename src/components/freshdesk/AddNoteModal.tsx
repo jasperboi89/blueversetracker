@@ -20,7 +20,7 @@ export function AddNoteModal({ ticketId, open, onOpenChange }: { ticketId: strin
         <DialogHeader>
           <DialogTitle>Add Hub Note</DialogTitle>
         </DialogHeader>
-        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Note saved to Hub only — does not post to Freshdesk." autoFocus />
+        <RichTextEditor value={body} onChange={setBody} minHeight={110} placeholder="Note saved to Hub only — does not post to Freshdesk." autoFocus />
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={save} disabled={!body.trim()}

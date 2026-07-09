@@ -413,16 +413,16 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
             </div>
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</label>
-              <Textarea
+              <RichTextEditor
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={setNotes}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                     e.preventDefault();
                     handleAdd();
                   }
                 }}
-                rows={3}
+                minHeight={72}
                 placeholder="Optional context"
                 className="mt-1"
               />
@@ -721,7 +721,7 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
           ) : (
             <div className="space-y-3">
               <Input value={task} onChange={(e) => setTask(e.target.value)} />
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+              <RichTextEditor value={notes} onChange={setNotes} minHeight={72} />
               <div className="flex gap-2">
                 {(Object.keys(priorityMeta) as Priority[]).map((p) => (
                   <button
