@@ -23,6 +23,7 @@ import { Route as AuthenticatedContactDispatchRouteImport } from './routes/_auth
 import { Route as AuthenticatedConstellationsRouteImport } from './routes/_authenticated/constellations'
 import { Route as AuthenticatedCompletedWorkRouteImport } from './routes/_authenticated/completed-work'
 import { Route as AuthenticatedAuditLogRouteImport } from './routes/_authenticated/audit-log'
+import { Route as AuthenticatedAssignedToMeRouteImport } from './routes/_authenticated/assigned-to-me'
 import { Route as AuthenticatedAdditionalWorkRouteImport } from './routes/_authenticated/additional-work'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -110,6 +111,12 @@ const AuthenticatedAuditLogRoute = AuthenticatedAuditLogRouteImport.update({
   path: '/audit-log',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAssignedToMeRoute =
+  AuthenticatedAssignedToMeRouteImport.update({
+    id: '/assigned-to-me',
+    path: '/assigned-to-me',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdditionalWorkRoute =
   AuthenticatedAdditionalWorkRouteImport.update({
     id: '/additional-work',
@@ -191,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
+  '/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
@@ -216,6 +224,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
+  '/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
@@ -245,6 +254,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/accounts': typeof AuthenticatedAccountsRouteWithChildren
   '/_authenticated/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
+  '/_authenticated/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/_authenticated/audit-log': typeof AuthenticatedAuditLogRoute
   '/_authenticated/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/_authenticated/constellations': typeof AuthenticatedConstellationsRoute
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/accounts'
     | '/additional-work'
+    | '/assigned-to-me'
     | '/audit-log'
     | '/completed-work'
     | '/constellations'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/accounts'
+    | '/assigned-to-me'
     | '/audit-log'
     | '/completed-work'
     | '/constellations'
@@ -328,6 +340,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/accounts'
     | '/_authenticated/additional-work'
+    | '/_authenticated/assigned-to-me'
     | '/_authenticated/audit-log'
     | '/_authenticated/completed-work'
     | '/_authenticated/constellations'
@@ -457,6 +470,13 @@ declare module '@tanstack/react-router' {
       path: '/audit-log'
       fullPath: '/audit-log'
       preLoaderRoute: typeof AuthenticatedAuditLogRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/assigned-to-me': {
+      id: '/_authenticated/assigned-to-me'
+      path: '/assigned-to-me'
+      fullPath: '/assigned-to-me'
+      preLoaderRoute: typeof AuthenticatedAssignedToMeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/additional-work': {
@@ -614,6 +634,7 @@ const AuthenticatedFreshdeskTicketsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRouteWithChildren
   AuthenticatedAdditionalWorkRoute: typeof AuthenticatedAdditionalWorkRouteWithChildren
+  AuthenticatedAssignedToMeRoute: typeof AuthenticatedAssignedToMeRoute
   AuthenticatedAuditLogRoute: typeof AuthenticatedAuditLogRoute
   AuthenticatedCompletedWorkRoute: typeof AuthenticatedCompletedWorkRoute
   AuthenticatedConstellationsRoute: typeof AuthenticatedConstellationsRoute
@@ -629,6 +650,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountsRoute: AuthenticatedAccountsRouteWithChildren,
   AuthenticatedAdditionalWorkRoute:
     AuthenticatedAdditionalWorkRouteWithChildren,
+  AuthenticatedAssignedToMeRoute: AuthenticatedAssignedToMeRoute,
   AuthenticatedAuditLogRoute: AuthenticatedAuditLogRoute,
   AuthenticatedCompletedWorkRoute: AuthenticatedCompletedWorkRoute,
   AuthenticatedConstellationsRoute: AuthenticatedConstellationsRoute,
