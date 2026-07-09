@@ -101,6 +101,62 @@ export function extractRequestAndBackground(html: string): string {
   return parts.join("\n\n\n");
 }
 
+/**
+ * Fixed operator-facing template rendered from the AI parse. Every field
+ * is always shown; missing values render as "Not provided." — never blank.
+ */
+export interface ParsedTicketIssueShape {
+  issue?: string;
+  background?: string;
+  requestedAction?: string;
+  specificField?: string;
+  category?: string;
+  messageTakingOrDispatching?: string;
+  f9Issue?: string;
+  attached?: {
+    msgId?: string;
+    callTimestamp?: string;
+    messageSummary?: string;
+    for?: string;
+    caller?: string;
+    phone?: string;
+    patient?: string;
+    message?: string;
+  };
+}
+export function formatTicketIssue(p: ParsedTicketIssueShape): string {
+  const v = (s?: string) => {
+    const t = (s ?? "").trim();
+    return t.length ? t : "Not provided.";
+  };
+  const a = p.attached ?? {};
+  return [
+    "Issue:",
+    v(p.issue),
+    "",
+    "Background:",
+    v(p.background),
+    "",
+    "Requested Action:",
+    v(p.requestedAction),
+    "",
+    `Specific Field: ${v(p.specificField)}`,
+    `Category: ${v(p.category)}`,
+    `Message Taking or Dispatching: ${v(p.messageTakingOrDispatching)}`,
+    `F9 Issue: ${v(p.f9Issue)}`,
+    "",
+    "Attached Message / Example:",
+    `MsgID: ${v(a.msgId)}`,
+    `Call Timestamp: ${v(a.callTimestamp)}`,
+    `Message Summary: ${v(a.messageSummary)}`,
+    `For: ${v(a.for)}`,
+    `Caller: ${v(a.caller)}`,
+    `Phone: ${v(a.phone)}`,
+    `Patient: ${v(a.patient)}`,
+    `Message: ${v(a.message)}`,
+  ].join("\n");
+}
+
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
 export type SnipCategory =
