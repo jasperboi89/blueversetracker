@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichText } from "@/components/ui/rich-text";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -247,7 +248,7 @@ function NotesSection({ workId }: { workId: string }) {
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{n.text}</p>
+                  <RichText className="text-sm text-foreground" html={n.text} />
                   <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>{n.initials} · {formatCentralShort(new Date(n.createdAt))}{n.editedAt ? " · edited" : ""}</span>
                     <div className="flex gap-1">
