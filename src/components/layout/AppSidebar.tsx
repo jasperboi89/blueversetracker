@@ -10,6 +10,7 @@ import {
   Settings,
   Sparkles,
   CheckCircle2,
+  Inbox,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,10 +28,12 @@ import { UserChip } from "@/components/auth/UserChip";
 import { useIsAdmin } from "@/lib/auth/role-context";
 import { isOverdue, useTickets } from "@/lib/tickets-store";
 import { alphaMix } from "@/lib/visual-style";
+import { useAssignedUnreadCount } from "@/lib/assigned-inbox-store";
 
 const baseItems = [
   { title: "Home", url: "/", icon: Home, accent: "var(--cyan-glow)" },
   { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: Ticket, accent: "var(--cyan-glow)" },
+  { title: "Assigned to Me", url: "/assigned-to-me", icon: Inbox, accent: "var(--cyan-glow)" },
   { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles, accent: "var(--violet-glow)" },
   { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing, accent: "var(--violet-glow)" },
   { title: "Additional Work", url: "/additional-work", icon: ClipboardList, accent: "var(--gold-glow)" },
@@ -52,6 +55,7 @@ export function AppSidebar() {
   const items = isAdmin ? [...baseItems, ...adminItems] : baseItems;
   const { tickets } = useTickets();
   const overdueCount = tickets.filter((t) => t.status !== "completed" && isOverdue(t)).length;
+  const assignedUnread = useAssignedUnreadCount();
 
   return (
     <Sidebar
@@ -110,6 +114,7 @@ export function AppSidebar() {
               {items.map((item) => {
                 const active =
                   item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
+                const badge = item.url === "/assigned-to-me" ? assignedUnread : 0;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -140,6 +145,18 @@ export function AppSidebar() {
                           }
                         />
                         <span>{item.title}</span>
+                        {badge > 0 && (
+                          <span
+                            className="ml-auto grid h-4 min-w-4 place-items-center rounded-full px-1 font-mono text-[9px] font-bold"
+                            style={{
+                              background: "var(--cyan-glow)",
+                              color: "oklch(0.2 0.05 230)",
+                              boxShadow: "0 0 8px var(--cyan-glow)",
+                            }}
+                          >
+                            {badge}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
