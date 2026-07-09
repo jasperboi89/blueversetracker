@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichText } from "@/components/ui/rich-text";
 import {
   Select,
   SelectContent,
