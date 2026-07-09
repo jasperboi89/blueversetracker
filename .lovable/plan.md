@@ -1,54 +1,54 @@
 ## Goal
 
-When a ticket is pulled from Freshdesk, auto-fill the **Ticket Issue** field with only the **Request** and **Background Info** sections from the ticket description — not the full noisy HTML body. If neither section is found, leave the field empty.
+Improve the readability of the auto-filled **Ticket Issue** field after a Freshdesk pull by giving the parsed **Request** and **Background Info** sections cleaner, more evenly spaced formatting.
 
 ## Where
 
-Single change point: `src/lib/tickets-store.ts`, in the block that seeds `issueText` after a pull (currently around line 884-889, using `input.description ?? input.notes[0]?.body`).
+Single change: `extractRequestAndBackground()` in `src/lib/tickets-store.ts` (the helper added in the previous turn). No UI or store-shape changes.
 
-## Parser
+## Formatting rules
 
-Add a small helper `extractRequestAndBackground(html: string): string` in `src/lib/tickets-store.ts` (or a new `src/lib/api/freshdesk-issue-parse.ts` if cleaner):
+Update the helper's text normalization and final output:
 
-1. Strip HTML to text while preserving line breaks: replace `<br>`, `</p>`, `</div>`, `</li>` with `\n`; drop other tags; decode entities (`&nbsp;`, `&amp;`, `&lt;`, `&gt;`, `&#39;`, `&quot;`).
-2. Scan the plain text for headers matching (case-insensitive, tolerating trailing `:` and whitespace):
-   - `Request`
-   - `Background Info` / `Background Information` / `Background`
-3. For each matched header, capture the text from the end of the header line up to the next known header (from a broader stop-list: `Request`, `Background`, `Steps to Reproduce`, `Expected`, `Actual`, `Impact`, `Priority`, `Environment`, `Attachments`, `Notes`, `Additional Info`, `Contact`, `Account`) or end of text.
-4. Trim each captured block; collapse 3+ blank lines to 2.
-5. Return formatted output:
+1. **Inside each captured section**
+   - Trim leading/trailing whitespace.
+   - Collapse runs of spaces/tabs to a single space per line.
+   - Collapse 2+ blank lines to exactly one blank line (paragraph break).
+   - Preserve list-like lines: if a line starts with `-`, `*`, `•`, or `N.`/`N)`, keep it on its own line.
+
+2. **Section headers**
+   - Render as uppercase labels with an underline of dashes for visual weight, e.g.
+     ```
+     REQUEST
+     ───────
+     <body>
+     ```
+   - Use a Unicode rule (`─` repeated to header length) so it renders as a clean line in the textarea.
+
+3. **Between sections**
+   - Exactly two blank lines between `Request` and `Background Info` blocks.
+
+4. **Final output shape** (when both present):
    ```
-   Request:
-   <request text>
+   REQUEST
+   ───────
+   <request body, paragraphs separated by one blank line>
 
-   Background Info:
-   <background text>
+
+   BACKGROUND INFO
+   ───────────────
+   <background body>
    ```
-   Include only the sections that were found and non-empty. Return `""` if neither is found.
-
-## Seeding logic change
-
-Replace the current seed:
-
-```ts
-const seedIssue = (input.description ?? input.notes[0]?.body ?? "").trim();
-```
-
-with:
-
-```ts
-const seedIssue = extractRequestAndBackground(input.description ?? "");
-```
-
-Drop the fallback to `notes[0]?.body` and to the full description — per user, leave empty when parsing finds nothing.
+   Only include sections that were found and non-empty. Return `""` if neither is found (unchanged behavior).
 
 ## Non-goals
 
-- No UI changes.
-- No changes to server functions or Freshdesk fetch.
-- No changes to existing pulled tickets (only affects new pulls). Re-pull/refresh still overwrites nothing (existing behavior around `syncFromFreshdesk` untouched).
+- No changes to the parser's header detection or stop-list.
+- No changes to seeding logic or fallback behavior.
+- No UI/CSS changes to the Ticket Issue textarea.
+- Existing tickets are not re-formatted — only new pulls.
 
 ## Verification
 
 - Typecheck.
-- Manually pull a ticket in preview and confirm Ticket Issue shows only the two parsed sections.
+- Pull a ticket in preview and confirm the Ticket Issue box shows the two sections with clear headers, single blank lines between paragraphs, and two blank lines between sections.
