@@ -252,3 +252,95 @@ export const aiClassifyTicket = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Could not parse AI response." };
     }
   });
+
+/**
+ * Parse a Freshdesk ticket description into the fixed "Ticket Issue" template.
+ * Never invents values — missing fields come back as empty strings and the
+ * client formatter renders them as "Not provided."
+ */
+const ParseIssueInput = z.object({
+  number: z.string().max(20),
+  subject: z.string().max(400).optional(),
+  description: z.string().max(12000),
+});
+export type ParsedTicketIssue = {
+  issue?: string;
+  background?: string;
+  requestedAction?: string;
+  specificField?: string;
+  category?: string;
+  messageTakingOrDispatching?: string;
+  f9Issue?: string;
+  attached?: {
+    msgId?: string;
+    callTimestamp?: string;
+    messageSummary?: string;
+    for?: string;
+    caller?: string;
+    phone?: string;
+    patient?: string;
+    message?: string;
+  };
+};
+export const aiParseTicketIssue = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) => ParseIssueInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "ticket-issue-parse", data.number);
+    const system = [
+      "You parse a Freshdesk ticket for a night-shift support/programming operator.",
+      "Return STRICT JSON matching this schema (no prose, no code fences):",
+      `{
+  "issue": string,
+  "background": string,
+  "requestedAction": string,
+  "specificField": string,
+  "category": string,
+  "messageTakingOrDispatching": string,
+  "f9Issue": string,
+  "attached": {
+    "msgId": string,
+    "callTimestamp": string,
+    "messageSummary": string,
+    "for": string,
+    "caller": string,
+    "phone": string,
+    "patient": string,
+    "message": string
+  }
+}`,
+      "Rules:",
+      "- Use ONLY facts present in the ticket text. Do NOT invent values.",
+      '- If a value is missing or unclear, return an empty string "" for that field.',
+      "- Strip HTML tags/entities before reasoning.",
+      "- Preserve account numbers, company names, people names, phone numbers,",
+      "  addresses, timestamps, categories, field names, and message IDs verbatim.",
+      "- Separate the main ticket issue from any attached phone-message block.",
+      "- 'issue' explains the actual problem/request in plain English (1-3 sentences).",
+      "- 'background' explains context or why the change is needed (1-3 sentences).",
+      "- 'requestedAction' states clearly what should be adjusted/configured/fixed.",
+      "- 'attached.message' is the cleaned-up (not paraphrased) message body.",
+      "- Every string field MUST be present in the JSON (use \"\" when unknown).",
+    ].join("\n");
+    const res = await aiComplete({
+      json: true,
+      system,
+      prompt: [
+        data.subject ? `Subject: ${data.subject}` : "",
+        `Ticket #${data.number}`,
+        "",
+        "DESCRIPTION:",
+        data.description,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+    if (!res.ok) return { ok: false as const, error: res.error };
+    try {
+      const parsed = JSON.parse(res.text ?? "{}") as ParsedTicketIssue;
+      return { ok: true as const, parsed };
+    } catch {
+      return { ok: false as const, error: "Could not parse AI response." };
+    }
+  });
