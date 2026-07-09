@@ -1,6 +1,6 @@
 import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 
-export type TicketAccessAction = "pull" | "sync" | "search" | "conversations" | "coverage";
+export type TicketAccessAction = "pull" | "sync" | "search" | "conversations" | "coverage" | "ai";
 
 /**
  * HIPAA access-audit trail: record every ticket/PHI access that flows through

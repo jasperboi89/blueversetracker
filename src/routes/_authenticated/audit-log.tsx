@@ -44,6 +44,7 @@ const ACTION_LABEL: Record<string, string> = {
   search: "Searched",
   conversations: "Fetched conversations",
   coverage: "Coverage scan",
+  ai: "AI request",
 };
 
 const EVENT_LABEL: Record<string, string> = {

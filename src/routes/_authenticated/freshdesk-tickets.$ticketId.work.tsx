@@ -55,6 +55,7 @@ import { FloatingPane } from "@/components/workspace/FloatingPane";
 import type { PaneDefault } from "@/lib/workspace/pane-layout-store";
 import { setActiveWork } from "@/lib/workspace/active-work-store";
 import { AccountMemoryPane } from "@/components/workspace/AccountMemoryPane";
+import { TicketAIPane } from "@/components/workspace/TicketAIPane";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -68,8 +69,9 @@ export const Route = createFileRoute("/_authenticated/freshdesk-tickets/$ticketI
 // Default floating-desk tiling (percent of canvas): Freshdesk reference on the
 // left, your work in the middle, notes/snips/generate on the right.
 const PANE_DEFS: Record<string, PaneDefault> = {
-  reference: { xPct: 0, yPct: 0, wPct: 33, hPct: 60 },
-  account: { xPct: 0, yPct: 61, wPct: 33, hPct: 39 },
+  reference: { xPct: 0, yPct: 0, wPct: 33, hPct: 44 },
+  account: { xPct: 0, yPct: 45, wPct: 33, hPct: 30 },
+  ai: { xPct: 0, yPct: 76, wPct: 33, hPct: 24 },
   issue: { xPct: 34, yPct: 0, wPct: 32, hPct: 32 },
   changes: { xPct: 34, yPct: 34, wPct: 32, hPct: 32 },
   result: { xPct: 34, yPct: 68, wPct: 32, hPct: 32 },
@@ -657,6 +659,19 @@ function WorkspacePage() {
       title: "Account Memory",
       chip: ticket.accountNumber || "—",
       body: <AccountMemoryPane accountNumber={ticket.accountNumber} currentTicketId={ticketId} />,
+    },
+    {
+      id: "ai",
+      title: "AI Assist",
+      chip: "beta",
+      body: (
+        <TicketAIPane
+          ticket={ticket}
+          session={session}
+          ticketId={ticketId}
+          onDraft={(text) => update({ generatedNote: text, noteVersion: session.noteVersion + 1 })}
+        />
+      ),
     },
     { id: "issue", title: "Ticket Issue", chip: issueChip, body: issueBody },
     { id: "changes", title: "Changes Made", chip: changesChip, body: changesBody },

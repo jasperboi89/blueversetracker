@@ -10,6 +10,8 @@ export type AILength = "short" | "standard" | "detailed";
 export type AIDetailLevel = "low" | "medium" | "high";
 
 export interface AISettings {
+  /** Admin kill-switch: when false, every AI surface is hidden/disabled. */
+  enabled: boolean;
   tone: AITone;
   length: AILength;
   technicalLevel: AIDetailLevel;
@@ -18,6 +20,7 @@ export interface AISettings {
 }
 
 export const DEFAULT_AI_SETTINGS: AISettings = {
+  enabled: true,
   tone: "professional-casual",
   length: "standard",
   technicalLevel: "medium",
@@ -32,6 +35,21 @@ export const aiSettingsStore = createPersistedStore<AISettings>(
 
 export function useAISettings(): AISettings {
   return useStoreValue(aiSettingsStore, DEFAULT_AI_SETTINGS);
+}
+
+/** Compact style hint appended to AI system prompts from the user's preferences. */
+export function aiStyleHint(s: AISettings): string {
+  const parts = [
+    `Tone: ${s.tone.replace(/-/g, " ")}.`,
+    `Length: ${s.length}.`,
+    `Technical level: ${s.technicalLevel}.`,
+  ];
+  if (s.customInstructions.trim()) parts.push(`Extra instructions: ${s.customInstructions.trim()}`);
+  return parts.join(" ");
+}
+
+export function setAIEnabled(enabled: boolean) {
+  aiSettingsStore.update((c) => ({ ...c, enabled }));
 }
 
 export const TONE_LABEL: Record<AITone, string> = {
