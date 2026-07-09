@@ -1,6 +1,6 @@
 import { dispatchStore, type DispatchSession, type DispatchStatus } from "@/lib/dispatch-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 
 export function OverallResultSection({ session }: { session: DispatchSession }) {
@@ -38,11 +38,11 @@ export function OverallResultSection({ session }: { session: DispatchSession }) 
       {needsReason && (
         <div>
           <label className="text-xs uppercase tracking-wider text-muted-foreground">{reasonLabel}</label>
-          <Textarea
-            rows={3}
+          <RichTextEditor
+            minHeight={72}
             className="mt-1"
             value={session.statusReason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={setReason}
             placeholder="Required for this status."
           />
         </div>

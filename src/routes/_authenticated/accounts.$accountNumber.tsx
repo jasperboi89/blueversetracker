@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -392,7 +392,7 @@ function AddTemplateModal({ open, onOpenChange, accountNumber }: { open: boolean
               <SelectItem value="blank">Blank / Not Set</SelectItem>
             </SelectContent>
           </Select>
-          <Textarea rows={3} value={flow} onChange={(e) => setFlow(e.target.value)} placeholder="Expected flow" />
+          <RichTextEditor minHeight={72} value={flow} onChange={setFlow} placeholder="Expected flow" />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -470,7 +470,7 @@ function AddNoteModal({ open, onOpenChange, accountNumber, tickets }: { open: bo
               </SelectContent>
             </Select>
           )}
-          <Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="Note text" />
+          <RichTextEditor minHeight={88} value={text} onChange={setText} placeholder="Note text" />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

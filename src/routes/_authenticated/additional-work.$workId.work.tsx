@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichText } from "@/components/ui/rich-text";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -192,7 +193,7 @@ function WorkDetailsSection({ workId }: { workId: string }) {
           </Field>
         </div>
         <Field label="What Needs Done">
-          <Textarea rows={3} value={need} onChange={(e) => setNeed(e.target.value)} onBlur={save} />
+          <RichTextEditor minHeight={72} value={need} onChange={setNeed} onBlur={save} />
         </Field>
         <Field label="Issue Classification (optional)">
           <Select value={classification} onValueChange={(v) => { setClassification(v as any); setTimeout(save, 0); }}>
@@ -228,7 +229,7 @@ function NotesSection({ workId }: { workId: string }) {
     <Collapsible title="Notes">
       <div className="space-y-3">
         <div className="flex gap-2">
-          <Textarea rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add a note…" />
+          <RichTextEditor minHeight={72} value={draft} onChange={setDraft} placeholder="Add a note…" />
           <Button onClick={add} disabled={!draft.trim()}><Plus className="h-4 w-4" /></Button>
         </div>
         {w.notesList.length === 0 && (
@@ -239,7 +240,7 @@ function NotesSection({ workId }: { workId: string }) {
             <li key={n.id} className="rounded-md border border-border/30 bg-white/[0.02] p-3">
               {editingId === n.id ? (
                 <div className="space-y-2">
-                  <Textarea rows={2} value={editText} onChange={(e) => setEditText(e.target.value)} />
+                  <RichTextEditor minHeight={72} value={editText} onChange={setEditText} />
                   <div className="flex justify-end gap-2">
                     <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
                     <Button size="sm" onClick={() => { additionalWorkStore.editNote(workId, n.id, editText); setEditingId(null); toast.success("Note updated."); }}>Save</Button>
@@ -247,7 +248,7 @@ function NotesSection({ workId }: { workId: string }) {
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{n.text}</p>
+                  <RichText className="text-sm text-foreground" html={n.text} />
                   <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>{n.initials} · {formatCentralShort(new Date(n.createdAt))}{n.editedAt ? " · edited" : ""}</span>
                     <div className="flex gap-1">
@@ -338,10 +339,10 @@ function ProgrammingStatusSection({ workId }: { workId: string }) {
   const [val, setVal] = useState(w.programmingStatusNotes);
   return (
     <Collapsible title="Programming Status Notes" defaultOpen={false}>
-      <Textarea
-        rows={4}
+      <RichTextEditor
+        minHeight={88}
         value={val}
-        onChange={(e) => setVal(e.target.value)}
+        onChange={setVal}
         onBlur={() => additionalWorkStore.update(workId, { programmingStatusNotes: val })}
         placeholder="Optional — used later in the Programming Status Email"
       />
@@ -358,10 +359,10 @@ function CompletionSummarySection({ workId }: { workId: string }) {
     <Collapsible title="Completion Summary" defaultOpen={false}>
       <div className="space-y-3">
         <Field label="What was completed">
-          <Textarea rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} onBlur={() => additionalWorkStore.update(workId, { completionSummary: summary })} />
+          <RichTextEditor minHeight={72} value={summary} onChange={setSummary} onBlur={() => additionalWorkStore.update(workId, { completionSummary: summary })} />
         </Field>
         <Field label="Final Notes (optional)">
-          <Textarea rows={2} value={final} onChange={(e) => setFinal(e.target.value)} onBlur={() => additionalWorkStore.update(workId, { completionFinalNotes: final })} />
+          <RichTextEditor minHeight={72} value={final} onChange={setFinal} onBlur={() => additionalWorkStore.update(workId, { completionFinalNotes: final })} />
         </Field>
         {w.status === "completed" && (
           <div className="text-[11px] text-muted-foreground">

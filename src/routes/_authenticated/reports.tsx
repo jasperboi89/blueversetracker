@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -716,9 +716,9 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
         </div>
 
         <div>
-          <Textarea rows={26} value={body} onChange={(e) => {
-            setBody(e.target.value);
-            if (draft) progEmailStore.saveVersion(draft.id, "User Edited", e.target.value);
+          <RichTextEditor minHeight={572} value={body} onChange={(v) => {
+            setBody(v);
+            if (draft) progEmailStore.saveVersion(draft.id, "User Edited", v);
           }} className="font-mono text-xs" />
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" onClick={copyRichEmail}

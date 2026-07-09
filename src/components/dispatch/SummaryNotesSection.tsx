@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Copy, Download, ExternalLink, Send, Wand2, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Switch } from "@/components/ui/switch";
 import {
   buildDispatchSummary, dispatchStore, DISPATCH_STATUS_LABEL,
@@ -90,11 +90,11 @@ export function SummaryNotesSection({ session, onMarkPostedRequest }: { session:
 
       <div>
         <label className="text-xs uppercase tracking-wider text-muted-foreground">Summary Note (editable)</label>
-        <Textarea
-          rows={14}
+        <RichTextEditor
+          minHeight={308}
           className="mt-1 font-mono text-xs"
           value={session.summaryNotes}
-          onChange={(e) => dispatchStore.saveSummaryEdit(session.id, e.target.value)}
+          onChange={(v) => dispatchStore.saveSummaryEdit(session.id, v)}
           placeholder="Generate a draft or write a manual summary."
         />
       </div>

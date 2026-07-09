@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichText } from "@/components/ui/rich-text";
 import {
   Select,
   SelectContent,
@@ -237,7 +238,7 @@ function WorkspacePage() {
                 <span className="truncate">{n.author}</span>
                 <span>{formatCentralShort(new Date(n.createdAt))}</span>
               </div>
-              <div className="whitespace-pre-wrap text-foreground/90">{n.body}</div>
+              <RichText className="text-foreground/90" html={n.body} />
             </div>
           ))}
         </div>
@@ -292,10 +293,10 @@ function WorkspacePage() {
 
   const issueBody = (
     <div className="space-y-2">
-      <Textarea
-        rows={5}
+      <RichTextEditor
+        minHeight={110}
         value={session.issueText}
-        onChange={(e) => update({ issueText: e.target.value })}
+        onChange={(v) => update({ issueText: v })}
         placeholder="Describe the ticket issue freely. Prefilled from Freshdesk on pull."
       />
       {aiSettings.enabled && (
@@ -318,10 +319,10 @@ function WorkspacePage() {
   );
 
   const changesBody = (
-    <Textarea
-      rows={5}
+    <RichTextEditor
+      minHeight={110}
       value={session.changesText}
-      onChange={(e) => update({ changesText: e.target.value })}
+      onChange={(v) => update({ changesText: v })}
       placeholder="Describe what you changed. Bullets allowed."
     />
   );
@@ -376,10 +377,10 @@ function WorkspacePage() {
         <label className="text-xs uppercase tracking-wider text-muted-foreground">
           Testing / Result Notes
         </label>
-        <Textarea
+        <RichTextEditor
           value={session.resultNotes}
-          onChange={(e) => update({ resultNotes: e.target.value })}
-          rows={3}
+          onChange={(v) => update({ resultNotes: v })}
+          minHeight={72}
           className="mt-1"
         />
       </div>
@@ -389,10 +390,10 @@ function WorkspacePage() {
   const notesBody = (
     <div className="space-y-3">
       <div className="flex gap-2">
-        <Textarea
+        <RichTextEditor
           value={noteDraft}
-          onChange={(e) => setNoteDraft(e.target.value)}
-          rows={2}
+          onChange={setNoteDraft}
+          minHeight={72}
           placeholder="Add a Hub note (LTP, Central timestamp)."
         />
         <Button
@@ -682,10 +683,10 @@ function WorkspacePage() {
         <label className="text-xs uppercase tracking-wider text-muted-foreground">
           Generated Note Preview (editable)
         </label>
-        <Textarea
+        <RichTextEditor
           value={session.generatedNote}
-          onChange={(e) => update({ generatedNote: e.target.value })}
-          rows={12}
+          onChange={(v) => update({ generatedNote: v })}
+          minHeight={264}
           className="mt-1 font-mono text-xs"
           placeholder="Click Generate Note to build a preview from the sections above."
         />

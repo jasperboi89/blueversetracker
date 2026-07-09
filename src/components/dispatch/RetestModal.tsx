@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { dispatchStore } from "@/lib/dispatch-store";
 import { formatCentralShort } from "@/lib/shift";
@@ -44,7 +44,7 @@ export function RetestModal({
           </div>
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Retest Notes</label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="mt-1" />
+            <RichTextEditor value={notes} onChange={setNotes} minHeight={72} className="mt-1" />
           </div>
         </div>
         <DialogFooter>

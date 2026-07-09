@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
 import { useNow } from "@/hooks/use-now";
 import { getCentralNow } from "@/lib/shift";
@@ -186,10 +186,10 @@ export function ShiftSummaryButton() {
                 </div>
                 {aiDraft && (
                   <div className="mt-2 space-y-1">
-                    <Textarea
+                    <RichTextEditor
                       value={aiDraft}
-                      onChange={(e) => setAiDraft(e.target.value)}
-                      rows={8}
+                      onChange={setAiDraft}
+                      minHeight={176}
                       className="text-xs"
                     />
                     <Button

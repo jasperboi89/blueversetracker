@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { ticketsStore } from "@/lib/tickets-store";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ export function AddNoteModal({ ticketId, open, onOpenChange }: { ticketId: strin
         <DialogHeader>
           <DialogTitle>Add Hub Note</DialogTitle>
         </DialogHeader>
-        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Note saved to Hub only — does not post to Freshdesk." autoFocus />
+        <RichTextEditor value={body} onChange={setBody} minHeight={110} placeholder="Note saved to Hub only — does not post to Freshdesk." autoFocus />
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={save} disabled={!body.trim()}

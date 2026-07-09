@@ -8,7 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { aiCopilot, aiFocus } from "@/lib/ai/ai.functions";
@@ -82,7 +82,7 @@ export function CopilotSheet() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -91,7 +91,11 @@ export function CopilotSheet() {
   }, []);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 60);
+    if (open)
+      setTimeout(() => {
+        const el = inputRef.current?.querySelector<HTMLElement>('[contenteditable="true"]');
+        el?.focus();
+      }, 60);
   }, [open]);
 
   const ask = async (q: string) => {
@@ -204,11 +208,11 @@ export function CopilotSheet() {
             </div>
 
             <div className="flex gap-2">
-              <Textarea
+              <RichTextEditor
                 ref={inputRef}
-                rows={2}
+                minHeight={72}
                 value={question}
-                onChange={(e) => setQuestion(e.target.value)}
+                onChange={setQuestion}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void ask(question);
                 }}
