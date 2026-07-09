@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, Building2, FileText, StickyNote } from "lucide-react";
+import { AlertTriangle, Building2, FileText, Loader2, Sparkles, StickyNote } from "lucide-react";
+import { toast } from "sonner";
 import { useTickets, STATUS_LABEL } from "@/lib/tickets-store";
 import { accountsStore, useAccounts } from "@/lib/accounts-store";
 import { useRecurringRows } from "@/lib/reports/recurring-issues";
+import { aiAccountIntel } from "@/lib/ai/ai.functions";
+import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
 import { formatCentralShort } from "@/lib/shift";
 
 /**
@@ -19,6 +23,9 @@ export function AccountMemoryPane({
   const { tickets } = useTickets();
   useAccounts();
   const rows = useRecurringRows();
+  const ai = useAISettings();
+  const [intel, setIntel] = useState("");
+  const [intelBusy, setIntelBusy] = useState(false);
 
   if (!accountNumber) {
     return (
@@ -36,6 +43,33 @@ export function AccountMemoryPane({
   const templates = accountsStore.templatesFor(accountNumber);
   const notes = accountsStore.notesFor(accountNumber).slice(0, 4);
   const recurring = rows.find((r) => r.accountNumber === accountNumber);
+
+  const runIntel = async () => {
+    setIntelBusy(true);
+    setIntel("");
+    const history = tickets
+      .filter((t) => t.accountNumber === accountNumber)
+      .slice(0, 50)
+      .map((t) => ({
+        number: t.number,
+        subject: t.details.subject,
+        classification: t.issueClassification ?? undefined,
+      }));
+    const res = await aiAccountIntel({
+      data: {
+        accountNumber,
+        accountName: account?.name,
+        tickets: history,
+        style: aiStyleHint(ai),
+      },
+    });
+    setIntelBusy(false);
+    if (!res.ok) {
+      toast.error(res.error ?? "AI failed.");
+      return;
+    }
+    setIntel(res.text ?? "");
+  };
 
   return (
     <div className="space-y-3 text-xs">
@@ -67,6 +101,28 @@ export function AccountMemoryPane({
             Recurring issues: {recurring.rollingCount} in 30 days, {recurring.sixMonthCount} total.
             {recurring.active ? " Flagged for review." : ""}
           </span>
+        </div>
+      )}
+
+      {ai.enabled && (
+        <div>
+          <button
+            className="flex items-center gap-1.5 rounded-md border border-border/40 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
+            onClick={runIntel}
+            disabled={intelBusy}
+          >
+            {intelBusy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Sparkles className="h-3 w-3" style={{ color: "var(--cyan-glow)" }} />
+            )}
+            Synthesize recurring issues
+          </button>
+          {intel && (
+            <div className="mt-1 whitespace-pre-wrap rounded-md border border-border/30 bg-white/[0.02] p-2 text-foreground/90">
+              {intel}
+            </div>
+          )}
         </div>
       )}
 

@@ -99,6 +99,71 @@ export const aiDraftNote = createServerFn({ method: "POST" })
     return res;
   });
 
+/**
+ * Intel Copilot: answer a natural-language question using ONLY a bounded
+ * snapshot of the operator's Hub data that the client assembles and sends.
+ */
+export const aiCopilot = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) =>
+    z.object({ question: z.string().min(1).max(600), snapshot: z.string().max(8000) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "copilot", "");
+    return aiComplete({
+      system: [
+        "You are Intel Copilot for a night-shift support/programming operator.",
+        "Answer using ONLY the provided Hub snapshot. If the answer isn't in it, say so.",
+        "Be concise and specific. Reference ticket numbers and accounts where relevant.",
+      ].join("\n"),
+      prompt: `Question: ${data.question}\n\nHub snapshot:\n${data.snapshot}`,
+    });
+  });
+
+/** Account intelligence: synthesize recurring issues + typical fixes from past tickets. */
+export const aiAccountIntel = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        accountNumber: z.string().max(50),
+        accountName: z.string().max(200).optional(),
+        tickets: z
+          .array(
+            z.object({
+              number: z.string().max(20),
+              subject: z.string().max(400).optional(),
+              classification: z.string().max(40).optional(),
+              summary: z.string().max(1000).optional(),
+            }),
+          )
+          .max(60),
+        style: z.string().max(600).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "account-intel", data.accountNumber);
+    const body = data.tickets
+      .map((t) =>
+        `#${t.number} [${t.classification ?? "?"}] ${t.subject ?? ""} ${t.summary ?? ""}`.trim(),
+      )
+      .join("\n");
+    return aiComplete({
+      system: [
+        `Synthesize the recurring issues and typical fixes for account ${data.accountNumber} (${data.accountName ?? ""}).`,
+        "Group by theme, note how often each recurs, and what usually resolves it.",
+        "Use ONLY the provided ticket history. Keep it tight — a few grouped bullets.",
+        data.style ?? "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      prompt: body || "No ticket history provided.",
+    });
+  });
+
 /** Suggest an issue classification and next action (structured). */
 export const aiClassifyTicket = createServerFn({ method: "POST" })
   .middleware([requireActiveAuthorizedUser])

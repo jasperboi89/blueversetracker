@@ -35,6 +35,7 @@ import { purgeLocalAppData } from "@/lib/purge-local-data";
 import { setTheme, useTheme } from "@/lib/settings/theme-store";
 import { accountsStore, useAccounts } from "@/lib/accounts-store";
 import { ticketsStore, useTickets, type Ticket } from "@/lib/tickets-store";
+import { openCopilot } from "@/components/workspace/CopilotSheet";
 
 const PAGES = [
   { title: "Home", url: "/", icon: Home },
@@ -226,6 +227,16 @@ export function CommandPalette() {
 
         <CommandSeparator />
         <CommandGroup heading="Actions">
+          <CommandItem
+            value="ask intel copilot ai assistant question"
+            onSelect={() => {
+              close();
+              openCopilot();
+            }}
+          >
+            <Sparkles style={{ color: "var(--cyan-glow)" }} />
+            Ask Intel Copilot
+          </CommandItem>
           <CommandItem
             value="switch theme quantum bloom blueverse"
             onSelect={() => {
