@@ -53,6 +53,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { FloatingPane } from "@/components/workspace/FloatingPane";
 import type { PaneDefault } from "@/lib/workspace/pane-layout-store";
+import { setActiveWork } from "@/lib/workspace/active-work-store";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,18 @@ function WorkspacePage() {
   useEffect(() => {
     ticketsStore.touchRecent(ticketId);
   }, [ticketId]);
+
+  useEffect(() => {
+    if (!ticket) return;
+    setActiveWork({
+      kind: "ticket",
+      id: ticketId,
+      label: `Ticket #${ticket.number}`,
+      to: "/_authenticated/freshdesk-tickets/$ticketId/work",
+      params: { ticketId },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketId, ticket?.number]);
 
   if (!ticket) {
     return (

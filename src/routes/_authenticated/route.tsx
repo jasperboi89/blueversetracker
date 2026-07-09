@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { AuthorizationGuard } from "@/components/auth/AuthorizationGuard";
 import { InactivityWatcher } from "@/components/auth/InactivityWatcher";
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { ActiveWorkDock } from "@/components/workspace/ActiveWorkDock";
 import { useThemeSync } from "@/hooks/use-theme-sync";
 import { useTuningSync } from "@/hooks/use-tuning-sync";
 
@@ -31,6 +32,7 @@ function AuthorizedShell() {
       </AppShell>
       <InactivityWatcher />
       <CommandPalette />
+      <ActiveWorkDock />
     </>
   );
 }

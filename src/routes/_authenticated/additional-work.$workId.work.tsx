@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { setActiveWork } from "@/lib/workspace/active-work-store";
 import {
   ArrowLeft,
   Building2,
@@ -45,6 +46,18 @@ function WorkspacePage() {
   const w = items.find((x) => x.id === workId);
 
   const [confirmComplete, setConfirmComplete] = useState(false);
+
+  useEffect(() => {
+    if (!w) return;
+    setActiveWork({
+      kind: "additional",
+      id: workId,
+      label: w.title || "Additional Work",
+      to: "/_authenticated/additional-work/$workId/work",
+      params: { workId },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workId, w?.title]);
 
   if (!w) {
     return (

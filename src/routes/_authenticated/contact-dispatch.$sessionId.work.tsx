@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { setActiveWork } from "@/lib/workspace/active-work-store";
 import { Archive, ArrowLeft, Building2, CheckCircle2, ExternalLink, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,18 @@ function Workspace() {
   const [readyOpen, setReadyOpen] = useState(false);
   const [postedOpen, setPostedOpen] = useState(false);
   const [activatedOpen, setActivatedOpen] = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    setActiveWork({
+      kind: "dispatch",
+      id: sessionId,
+      label: `Dispatch ${session.accountNumber || session.accountName || ""}`.trim(),
+      to: "/_authenticated/contact-dispatch/$sessionId/work",
+      params: { sessionId },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, session?.accountNumber]);
 
   if (!session) {
     return (
