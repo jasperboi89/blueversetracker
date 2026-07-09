@@ -1,10 +1,49 @@
 import { useState } from "react";
-import { FileText } from "lucide-react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FileText, Loader2, Sparkles, ClipboardCopy } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { useNow } from "@/hooks/use-now";
 import { getCentralNow } from "@/lib/shift";
 import { useNavigate } from "@tanstack/react-router";
+import { aiShiftSummary } from "@/lib/ai/ai.functions";
+import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
+import { ticketsStore, isOverdue, STATUS_LABEL } from "@/lib/tickets-store";
+import { nightPlanStore } from "@/lib/night-plan-store";
+
+function buildShiftSnapshot(): string {
+  const { tickets } = ticketsStore.getState();
+  const completed = tickets.filter((t) => t.status === "completed");
+  const open = tickets.filter((t) => t.status !== "completed");
+  const plan = nightPlanStore.get().items;
+  const lines: string[] = [];
+  lines.push(`COMPLETED (${completed.length}):`);
+  for (const t of completed.slice(0, 40)) {
+    lines.push(
+      `#${t.number} acct ${t.accountNumber || "?"} [${t.issueClassification ?? "?"}]: ${t.details.subject || ""}`,
+    );
+  }
+  lines.push(`\nSTILL OPEN (${open.length}):`);
+  for (const t of open.slice(0, 30)) {
+    lines.push(
+      `#${t.number} acct ${t.accountNumber || "?"} — ${STATUS_LABEL[t.status]}${isOverdue(t) ? " [OVERDUE]" : ""}`,
+    );
+  }
+  lines.push(
+    `\nNIGHT PLAN: ${plan
+      .map((i) => `${i.task} (${i.status})`)
+      .slice(0, 20)
+      .join("; ")}`,
+  );
+  return lines.join("\n").slice(0, 7500);
+}
 
 function computeWindow(now: Date) {
   const p = getCentralNow();
@@ -46,6 +85,23 @@ export function ShiftSummaryButton() {
   const now = useNow(60_000);
   const win = computeWindow(now);
   const navigate = useNavigate();
+  const ai = useAISettings();
+  const [aiDraft, setAiDraft] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const draftWithAI = async () => {
+    setAiBusy(true);
+    setAiDraft("");
+    const res = await aiShiftSummary({
+      data: { snapshot: buildShiftSnapshot(), style: aiStyleHint(ai) },
+    });
+    setAiBusy(false);
+    if (!res.ok) {
+      toast.error(res.error ?? "AI failed.");
+      return;
+    }
+    setAiDraft(res.text ?? "");
+  };
 
   const goCurrent = () => {
     setOpen(false);
@@ -87,17 +143,78 @@ export function ShiftSummaryButton() {
             <DialogTitle>Generate Shift Summary</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <button onClick={goCurrent} className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
+            <button
+              onClick={goCurrent}
+              className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70"
+            >
               <div className="text-sm font-medium text-foreground">Use Current Shift</div>
               <div className="mt-1 text-xs text-muted-foreground">{win}</div>
             </button>
-            <button onClick={goCustom} className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70">
-              <div className="text-sm font-medium text-foreground">Choose Custom Date / Time Range</div>
-              <div className="mt-1 text-xs text-muted-foreground">Pick a custom date/time window.</div>
+            <button
+              onClick={goCustom}
+              className="w-full rounded-lg border border-border/40 bg-white/[0.03] p-4 text-left transition hover:border-border/70"
+            >
+              <div className="text-sm font-medium text-foreground">
+                Choose Custom Date / Time Range
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Pick a custom date/time window.
+              </div>
             </button>
+
+            {ai.enabled && (
+              <div className="rounded-lg border border-border/40 bg-white/[0.03] p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-foreground">Draft narrative with AI</div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7"
+                    onClick={draftWithAI}
+                    disabled={aiBusy}
+                  >
+                    {aiBusy ? (
+                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles
+                        className="mr-1 h-3.5 w-3.5"
+                        style={{ color: "var(--cyan-glow)" }}
+                      />
+                    )}
+                    {aiDraft ? "Redraft" : "Draft"}
+                  </Button>
+                </div>
+                {aiDraft && (
+                  <div className="mt-2 space-y-1">
+                    <Textarea
+                      value={aiDraft}
+                      onChange={(e) => setAiDraft(e.target.value)}
+                      rows={8}
+                      className="text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7"
+                      onClick={() => {
+                        navigator.clipboard.writeText(aiDraft);
+                        toast.success("Copied.");
+                      }}
+                    >
+                      <ClipboardCopy className="mr-1 h-3.5 w-3.5" /> Copy
+                    </Button>
+                  </div>
+                )}
+                <div className="mt-1 text-[10px] text-muted-foreground/70">
+                  Draft only — review before sending. Recorded in the Audit Log.
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Close</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

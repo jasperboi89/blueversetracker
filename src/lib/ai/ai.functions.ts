@@ -121,6 +121,30 @@ export const aiCopilot = createServerFn({ method: "POST" })
     });
   });
 
+/** Draft an end-of-shift narrative from a bounded, client-assembled shift snapshot. */
+export const aiShiftSummary = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ snapshot: z.string().max(8000), style: z.string().max(600).optional() })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "shift-summary", "");
+    return aiComplete({
+      system: [
+        "Draft a concise end-of-shift summary for a night-shift support/programming operator.",
+        "Cover: tickets completed (by theme), items still open or waiting, dispatches, and night-plan progress.",
+        "Use ONLY the provided snapshot. A short narrative plus a few bullets. No preamble.",
+        data.style ?? "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      prompt: data.snapshot,
+    });
+  });
+
 /** Account intelligence: synthesize recurring issues + typical fixes from past tickets. */
 export const aiAccountIntel = createServerFn({ method: "POST" })
   .middleware([requireActiveAuthorizedUser])

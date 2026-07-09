@@ -6,6 +6,7 @@ import { CommandPalette } from "@/components/command/CommandPalette";
 import { ActiveWorkDock } from "@/components/workspace/ActiveWorkDock";
 import { GlobalSnipPaste } from "@/components/workspace/GlobalSnipPaste";
 import { CopilotSheet } from "@/components/workspace/CopilotSheet";
+import { MilestoneWatcher } from "@/components/workspace/MilestoneWatcher";
 import { useThemeSync } from "@/hooks/use-theme-sync";
 import { useTuningSync } from "@/hooks/use-tuning-sync";
 
@@ -37,6 +38,7 @@ function AuthorizedShell() {
       <ActiveWorkDock />
       <GlobalSnipPaste />
       <CopilotSheet />
+      <MilestoneWatcher />
     </>
   );
 }
