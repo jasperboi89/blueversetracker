@@ -52,7 +52,6 @@ const FontSize = TextStyle.extend({
   addCommands() {
     return {
       ...this.parent?.(),
-      // @ts-expect-error – augmenting TextStyle commands
       setFontSize:
         (size: string) =>
         ({ chain }: any) =>
