@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { GreetingPanel } from "@/components/home/GreetingPanel";
 import { ShiftCard } from "@/components/home/ShiftCard";
@@ -19,7 +20,7 @@ const HOME_PANES: Array<{
   title: string;
   chip?: string;
   def: PaneDefault;
-  body: () => JSX.Element;
+  body: () => ReactNode;
 }> = [
   { id: "home:greeting", title: "Greeting", def: { xPct: 0, yPct: 0, wPct: 62, hPct: 34 }, body: () => <GreetingPanel /> },
   { id: "home:shift", title: "Shift", def: { xPct: 63, yPct: 0, wPct: 37, hPct: 34 }, body: () => <ShiftCard /> },
