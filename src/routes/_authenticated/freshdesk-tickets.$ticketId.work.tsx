@@ -238,7 +238,7 @@ function WorkspacePage() {
                 <span className="truncate">{n.author}</span>
                 <span>{formatCentralShort(new Date(n.createdAt))}</span>
               </div>
-              <div className="whitespace-pre-wrap text-foreground/90">{n.body}</div>
+              <RichText className="text-foreground/90" html={n.body} />
             </div>
           ))}
         </div>
