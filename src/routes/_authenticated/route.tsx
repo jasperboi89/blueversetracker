@@ -1,4 +1,5 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthorizationGuard } from "@/components/auth/AuthorizationGuard";
 import { InactivityWatcher } from "@/components/auth/InactivityWatcher";
@@ -6,7 +7,9 @@ import { CommandPalette } from "@/components/command/CommandPalette";
 import { ActiveWorkDock } from "@/components/workspace/ActiveWorkDock";
 import { GlobalSnipPaste } from "@/components/workspace/GlobalSnipPaste";
 import { CopilotSheet } from "@/components/workspace/CopilotSheet";
+import { CopilotLauncher } from "@/components/workspace/CopilotLauncher";
 import { MilestoneWatcher } from "@/components/workspace/MilestoneWatcher";
+import { recordActivity } from "@/lib/workspace/activity-store";
 import { useThemeSync } from "@/hooks/use-theme-sync";
 import { useTuningSync } from "@/hooks/use-tuning-sync";
 
@@ -28,6 +31,10 @@ function AuthenticatedLayout() {
 function AuthorizedShell() {
   useThemeSync();
   useTuningSync();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    recordActivity("nav", pathname);
+  }, [pathname]);
   return (
     <>
       <AppShell>
@@ -38,6 +45,7 @@ function AuthorizedShell() {
       <ActiveWorkDock />
       <GlobalSnipPaste />
       <CopilotSheet />
+      <CopilotLauncher />
       <MilestoneWatcher />
     </>
   );

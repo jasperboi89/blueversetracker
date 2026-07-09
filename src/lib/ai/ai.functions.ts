@@ -145,6 +145,41 @@ export const aiShiftSummary = createServerFn({ method: "POST" })
     });
   });
 
+/**
+ * On-demand "what should I focus on?" — reasons over the operator's recent
+ * movements + a bounded Hub snapshot to suggest the next best action and why.
+ */
+export const aiFocus = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        activity: z.string().max(3000),
+        snapshot: z.string().max(6000),
+        insights: z.string().max(2000).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "focus", "");
+    return aiComplete({
+      system: [
+        "You are Intel Copilot's focus advisor for a night-shift support/programming operator.",
+        "Given their recent movements, current Hub state, and detected signals, recommend the",
+        "next 1-3 concrete actions and briefly why. Prioritize overdue/at-risk work and unblocking.",
+        "Use ONLY the provided data. Be short and directive.",
+      ].join("\n"),
+      prompt: [
+        data.insights ? `SIGNALS:\n${data.insights}` : "",
+        `RECENT MOVEMENTS:\n${data.activity}`,
+        `HUB SNAPSHOT:\n${data.snapshot}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    });
+  });
+
 /** Account intelligence: synthesize recurring issues + typical fixes from past tickets. */
 export const aiAccountIntel = createServerFn({ method: "POST" })
   .middleware([requireActiveAuthorizedUser])

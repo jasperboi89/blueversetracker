@@ -37,6 +37,16 @@ export function elapsedMs(w: ActiveWork, now = Date.now()): number {
   return w.accumulatedMs + (w.running ? Math.max(0, now - w.startedAt) : 0);
 }
 
+/** Format elapsed ms as m:ss or h:mm:ss. */
+export function formatElapsed(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+}
+
 function bank(state: ActiveWorkState): ActiveWorkState {
   const cur = state.current;
   if (!cur) return state;

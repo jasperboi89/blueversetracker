@@ -7,13 +7,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Lock, LockOpen, RotateCcw, Monitor, MonitorSmartphone } from "lucide-react";
+import { Lock, LockOpen, RotateCcw, Monitor, MonitorSmartphone, Rows3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   PRESET_NAMES,
   resetActivePreset,
   setActivePreset,
   setAllLocked,
+  setLayoutMode,
   usePaneLayout,
   type PresetName,
 } from "@/lib/workspace/pane-layout-store";
@@ -93,6 +94,15 @@ export function PaneCanvas({ paneIds, children }: { paneIds: string[]; children:
             size="sm"
             variant="ghost"
             className="h-7 text-muted-foreground"
+            title="Switch to stacked layout"
+            onClick={() => setLayoutMode("stacked")}
+          >
+            <Rows3 className="mr-1 h-3.5 w-3.5" /> Stacked
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-muted-foreground"
             onClick={() => setAllLocked(!allLocked, paneIds)}
           >
             {allLocked ? (
@@ -130,7 +140,7 @@ export function PaneCanvas({ paneIds, children }: { paneIds: string[]; children:
 }
 
 /** True on viewport widths where floating panes would be cramped (use the stacked fallback). */
-export function useIsNarrow(breakpoint = 1024): boolean {
+export function useIsNarrow(breakpoint = 880): boolean {
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;

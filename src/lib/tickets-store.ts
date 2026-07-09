@@ -6,11 +6,7 @@ import { attachCloudSync } from "./cloud-sync/blob-sync";
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
 export type SnipCategory =
-  | "Before Change"
-  | "After Change"
-  | "Testing Result"
-  | "Error / Issue"
-  | "Other";
+  "Before Change" | "After Change" | "Testing Result" | "Error / Issue" | "Other";
 export type IssueClassification = "Scripting Issue" | "Client Change" | "Other";
 
 export interface TicketDetails {
@@ -83,7 +79,13 @@ export interface Ticket {
   hubSnips: HubSnip[];
   /** Due-date source tracking — Phase 6 */
   dueSource?: "freshdesk" | "hub-manual" | "hub-override";
-  dueHistory?: Array<{ prev?: number; next?: number; source: NonNullable<Ticket["dueSource"]>; at: number; initials: string }>;
+  dueHistory?: Array<{
+    prev?: number;
+    next?: number;
+    source: NonNullable<Ticket["dueSource"]>;
+    at: number;
+    initials: string;
+  }>;
   /** Seed/demo flag — hidden when Demo Mode is OFF */
   isDemo?: boolean;
 }
@@ -104,9 +106,7 @@ export interface WorkSession {
 }
 
 export type NoteTemplate =
-  | "Standard Ticket Work Note"
-  | "Client Change Note"
-  | "Scripting Issue Note";
+  "Standard Ticket Work Note" | "Client Change Note" | "Scripting Issue Note";
 
 interface State {
   tickets: Ticket[];
@@ -288,7 +288,9 @@ export const ticketsStore = {
     state = {
       ...state,
       tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, hubHistory: [entry, ...t.hubHistory], updatedAt: Date.now() } : t,
+        t.id === ticketId
+          ? { ...t, hubHistory: [entry, ...t.hubHistory], updatedAt: Date.now() }
+          : t,
       ),
     };
     persist();
@@ -307,7 +309,12 @@ export const ticketsStore = {
       ...state,
       tickets: state.tickets.map((t) =>
         t.id === ticketId
-          ? { ...t, hubSnips: [s, ...t.hubSnips], hubHistory: [histEntry, ...t.hubHistory], updatedAt: Date.now() }
+          ? {
+              ...t,
+              hubSnips: [s, ...t.hubSnips],
+              hubHistory: [histEntry, ...t.hubHistory],
+              updatedAt: Date.now(),
+            }
           : t,
       ),
     };
@@ -331,9 +338,7 @@ export const ticketsStore = {
     ensureLoaded();
     state = {
       ...state,
-      tickets: state.tickets.map((t) =>
-        t.id === ticketId ? { ...t, lastSyncFailed: true } : t,
-      ),
+      tickets: state.tickets.map((t) => (t.id === ticketId ? { ...t, lastSyncFailed: true } : t)),
     };
     persist();
   },
@@ -342,7 +347,9 @@ export const ticketsStore = {
    * a simple ok/fail back. Tries the real Freshdesk API; falls back to
    * recording a failure if creds are missing or the call errors.
    */
-  async sync(ticketId: string): Promise<{ ok: boolean; error?: string; newNotes?: number; newAttachments?: number }> {
+  async sync(
+    ticketId: string,
+  ): Promise<{ ok: boolean; error?: string; newNotes?: number; newAttachments?: number }> {
     ensureLoaded();
     const t = state.tickets.find((x) => x.id === ticketId);
     if (!t) return { ok: false, error: "Ticket not found in Hub." };
@@ -400,6 +407,7 @@ export const ticketsStore = {
       return this.createFromFreshdesk({
         number: res.ticket.number,
         subject: res.ticket.subject,
+        description: res.ticket.description,
         accountNumber: res.ticket.accountNumber,
         accountName: res.ticket.accountName,
         status: res.ticket.status,
@@ -449,14 +457,21 @@ export const ticketsStore = {
       newNotes: FreshdeskNote[];
       newAttachments: FreshdeskAttachment[];
     },
-  ): { newNotes: number; newAttachments: number; alreadyNotes: number; alreadyAttachments: number } {
+  ): {
+    newNotes: number;
+    newAttachments: number;
+    alreadyNotes: number;
+    alreadyAttachments: number;
+  } {
     ensureLoaded();
     const t = state.tickets.find((x) => x.id === ticketId);
     if (!t) return { newNotes: 0, newAttachments: 0, alreadyNotes: 0, alreadyAttachments: 0 };
 
     const existingNoteKeys = new Set(
       t.freshdeskNotes.map((n) =>
-        n.freshdeskId ? `id:${n.freshdeskId}` : `k:${n.author}|${n.createdAt}|${(n.body ?? "").slice(0, 80)}`,
+        n.freshdeskId
+          ? `id:${n.freshdeskId}`
+          : `k:${n.author}|${n.createdAt}|${(n.body ?? "").slice(0, 80)}`,
       ),
     );
     const existingAttKeys = new Set(
@@ -468,16 +483,26 @@ export const ticketsStore = {
     const addNotes: FreshdeskNote[] = [];
     let alreadyNotes = 0;
     for (const n of payload.newNotes) {
-      const key = n.freshdeskId ? `id:${n.freshdeskId}` : `k:${n.author}|${n.createdAt}|${(n.body ?? "").slice(0, 80)}`;
-      if (existingNoteKeys.has(key)) { alreadyNotes++; continue; }
+      const key = n.freshdeskId
+        ? `id:${n.freshdeskId}`
+        : `k:${n.author}|${n.createdAt}|${(n.body ?? "").slice(0, 80)}`;
+      if (existingNoteKeys.has(key)) {
+        alreadyNotes++;
+        continue;
+      }
       addNotes.push({ ...n, source: "freshdesk" });
     }
 
     const addAtts: FreshdeskAttachment[] = [];
     let alreadyAtts = 0;
     for (const a of payload.newAttachments) {
-      const key = a.freshdeskId ? `id:${a.freshdeskId}` : `k:${a.name}|${a.size ?? ""}|${a.createdAt}`;
-      if (existingAttKeys.has(key)) { alreadyAtts++; continue; }
+      const key = a.freshdeskId
+        ? `id:${a.freshdeskId}`
+        : `k:${a.name}|${a.size ?? ""}|${a.createdAt}`;
+      if (existingAttKeys.has(key)) {
+        alreadyAtts++;
+        continue;
+      }
       addAtts.push({ ...a, source: "freshdesk" });
     }
 
@@ -490,8 +515,12 @@ export const ticketsStore = {
           details: { ...tk.details, ...(payload.details ?? {}) },
           ...(payload.status ? { status: payload.status } : {}),
           ...(payload.priority ? { priority: payload.priority } : {}),
-          freshdeskNotes: [...addNotes, ...tk.freshdeskNotes].sort((x, y) => y.createdAt - x.createdAt),
-          freshdeskAttachments: [...addAtts, ...tk.freshdeskAttachments].sort((x, y) => y.createdAt - x.createdAt),
+          freshdeskNotes: [...addNotes, ...tk.freshdeskNotes].sort(
+            (x, y) => y.createdAt - x.createdAt,
+          ),
+          freshdeskAttachments: [...addAtts, ...tk.freshdeskAttachments].sort(
+            (x, y) => y.createdAt - x.createdAt,
+          ),
           syncedAt: Date.now(),
           lastSyncFailed: false,
         };
@@ -514,7 +543,13 @@ export const ticketsStore = {
             next.dueAt = payload.dueAt;
             next.dueSource = "freshdesk";
             next.dueHistory = [
-              { prev: tk.dueAt, next: payload.dueAt, source: "freshdesk", at: Date.now(), initials: "LTP" },
+              {
+                prev: tk.dueAt,
+                next: payload.dueAt,
+                source: "freshdesk",
+                at: Date.now(),
+                initials: "LTP",
+              },
               ...(tk.dueHistory ?? []),
             ];
           }
@@ -523,7 +558,12 @@ export const ticketsStore = {
       }),
     };
     persist();
-    return { newNotes: addNotes.length, newAttachments: addAtts.length, alreadyNotes, alreadyAttachments: alreadyAtts };
+    return {
+      newNotes: addNotes.length,
+      newAttachments: addAtts.length,
+      alreadyNotes,
+      alreadyAttachments: alreadyAtts,
+    };
   },
   /** Set/override due date with source tracking. */
   setDueDate(ticketId: string, dueAt: number | undefined, source: "hub-manual" | "hub-override") {
@@ -582,7 +622,12 @@ export const ticketsStore = {
       ...state,
       tickets: state.tickets.map((t) =>
         t.id === ticketId
-          ? { ...t, status: "completed", completedAt: Date.now(), issueClassification: classification }
+          ? {
+              ...t,
+              status: "completed",
+              completedAt: Date.now(),
+              issueClassification: classification,
+            }
           : t,
       ),
     };
@@ -595,6 +640,9 @@ export const ticketsStore = {
           context: { ticketId },
         });
       });
+      void import("./workspace/activity-store").then(({ recordActivity }) =>
+        recordActivity("ticket_complete", prev ? `#${prev.number}` : undefined),
+      );
     }
   },
   reopen(ticketId: string) {
@@ -639,7 +687,10 @@ export const ticketsStore = {
     let created = false;
     if (!acct) {
       try {
-        acct = accountsStore.create({ number: num, name: accountName?.trim() || "Unlinked Account" });
+        acct = accountsStore.create({
+          number: num,
+          name: accountName?.trim() || "Unlinked Account",
+        });
         created = true;
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : "Could not create account." };
@@ -674,7 +725,9 @@ export const ticketsStore = {
     return { ok: true, created };
   },
   /** Refresh the account number from Freshdesk, overwriting any manual entry. */
-  async refreshAccountFromFreshdesk(ticketId: string): Promise<{ ok: boolean; error?: string; found?: boolean }> {
+  async refreshAccountFromFreshdesk(
+    ticketId: string,
+  ): Promise<{ ok: boolean; error?: string; found?: boolean }> {
     ensureLoaded();
     const t = state.tickets.find((x) => x.id === ticketId);
     if (!t) return { ok: false, error: "Ticket not found." };
@@ -691,7 +744,10 @@ export const ticketsStore = {
         res.ticket.accountName ?? res.ticket.companyName,
       );
       const name =
-        ensured?.account.name ?? res.ticket.accountName ?? res.ticket.companyName ?? "Unlinked Account";
+        ensured?.account.name ??
+        res.ticket.accountName ??
+        res.ticket.companyName ??
+        "Unlinked Account";
       state = {
         ...state,
         tickets: state.tickets.map((tk) =>
@@ -735,7 +791,13 @@ export const ticketsStore = {
       details: initialDetails({ subject: "Manual ticket work session" }),
       freshdeskNotes: [],
       hubHistory: [
-        { id: newId("hh"), initials: "LTP", createdAt: Date.now(), body: "Created manually in Hub.", kind: "system" },
+        {
+          id: newId("hh"),
+          initials: "LTP",
+          createdAt: Date.now(),
+          body: "Created manually in Hub.",
+          kind: "system",
+        },
       ],
       freshdeskAttachments: [],
       hubSnips: [],
@@ -748,6 +810,7 @@ export const ticketsStore = {
   createFromFreshdesk(input: {
     number: string;
     subject: string;
+    description?: string;
     accountNumber?: string;
     accountName?: string;
     status?: TicketStatus;
@@ -794,20 +857,37 @@ export const ticketsStore = {
       freshdeskNotes: input.notes.map((n) => ({ ...n, source: "freshdesk" as const })),
       hubHistory: [
         ...(ensured?.created
-          ? [{
-              id: newId("hh"),
-              initials: "LTP" as const,
-              createdAt: Date.now(),
-              body: `Account ${ensured.account.number} (${ensured.account.name}) auto-created from Freshdesk company field.`,
-              kind: "system" as const,
-            }]
+          ? [
+              {
+                id: newId("hh"),
+                initials: "LTP" as const,
+                createdAt: Date.now(),
+                body: `Account ${ensured.account.number} (${ensured.account.name}) auto-created from Freshdesk company field.`,
+                kind: "system" as const,
+              },
+            ]
           : []),
-        { id: newId("hh"), initials: "LTP", createdAt: Date.now(), body: "Pulled ticket from Freshdesk.", kind: "system" },
+        {
+          id: newId("hh"),
+          initials: "LTP",
+          createdAt: Date.now(),
+          body: "Pulled ticket from Freshdesk.",
+          kind: "system",
+        },
       ],
       freshdeskAttachments: input.attachments.map((a) => ({ ...a, source: "freshdesk" as const })),
       hubSnips: [],
     };
-    state = { ...state, tickets: [t, ...state.tickets] };
+    void import("./workspace/activity-store").then(({ recordActivity }) =>
+      recordActivity("ticket_pull", `#${t.number}`),
+    );
+    // Seed the Ticket Issue field from the Freshdesk description (or first note)
+    // so the operator starts with the customer's issue in hand, editable.
+    const seedIssue = (input.description ?? input.notes[0]?.body ?? "").trim();
+    const workSessions = seedIssue
+      ? { ...state.workSessions, [t.id]: { ...defaultSession(t.id), issueText: seedIssue } }
+      : state.workSessions;
+    state = { ...state, tickets: [t, ...state.tickets], workSessions };
     persist();
     return t;
   },
@@ -844,11 +924,7 @@ export function suggestTemplate(c?: IssueClassification | null): NoteTemplate {
   return "Standard Ticket Work Note";
 }
 
-export function buildGeneratedNote(
-  t: Ticket,
-  s: WorkSession,
-  template: NoteTemplate,
-): string {
+export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemplate): string {
   const lines: string[] = [];
   lines.push(`[${template}]`);
   lines.push("");
@@ -901,8 +977,16 @@ export function buildGeneratedNote(
 }
 attachCloudSync<State>({
   storeKey: "tickets",
-  subscribe: (cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; },
-  getSnapshot: () => { ensureLoaded(); return state; },
+  subscribe: (cb) => {
+    listeners.add(cb);
+    return () => {
+      listeners.delete(cb);
+    };
+  },
+  getSnapshot: () => {
+    ensureLoaded();
+    return state;
+  },
   applyServerSnapshot: (next) => {
     state = {
       tickets: Array.isArray(next.tickets) ? next.tickets : [],

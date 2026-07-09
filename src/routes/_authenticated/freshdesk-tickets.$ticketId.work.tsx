@@ -10,10 +10,13 @@ import {
   ExternalLink,
   FileText,
   ImagePlus,
+  LayoutGrid,
+  Loader2,
   MessageSquarePlus,
   RefreshCw,
   Save,
   Send,
+  Sparkles,
   Trash2,
   Wand2,
 } from "lucide-react";
@@ -51,11 +54,15 @@ import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
 import { AccountLinker } from "@/components/freshdesk/AccountLinker";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
+import { resolveFloating, setLayoutMode, usePaneLayout } from "@/lib/workspace/pane-layout-store";
 import { FloatingPane } from "@/components/workspace/FloatingPane";
 import type { PaneDefault } from "@/lib/workspace/pane-layout-store";
 import { setActiveWork } from "@/lib/workspace/active-work-store";
 import { AccountMemoryPane } from "@/components/workspace/AccountMemoryPane";
 import { TicketAIPane } from "@/components/workspace/TicketAIPane";
+import { InlineWorkTimer } from "@/components/workspace/InlineWorkTimer";
+import { aiSummarizeTicket } from "@/lib/ai/ai.functions";
+import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -99,6 +106,10 @@ function WorkspacePage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const isNarrow = useIsNarrow();
+  const paneLayout = usePaneLayout();
+  const floating = resolveFloating(paneLayout.mode, isNarrow);
+  const aiSettings = useAISettings();
+  const [summarizingIssue, setSummarizingIssue] = useState(false);
 
   useEffect(() => {
     ticketsStore.touchRecent(ticketId);
@@ -256,13 +267,54 @@ function WorkspacePage() {
     </div>
   );
 
+  const summarizeIntoIssue = async () => {
+    setSummarizingIssue(true);
+    const res = await aiSummarizeTicket({
+      data: {
+        number: ticket.number,
+        subject: ticket.details.subject,
+        description: ticket.freshdeskNotes[0]?.body,
+        accountName: ticket.accountName,
+        notes: ticket.freshdeskNotes.slice(0, 40).map((n) => ({ author: n.author, body: n.body })),
+        style: aiStyleHint(aiSettings),
+      },
+    });
+    setSummarizingIssue(false);
+    if (!res.ok) {
+      toast.error(res.error ?? "AI failed.");
+      return;
+    }
+    if (res.text) {
+      update({ issueText: res.text });
+      toast.success("Issue summarized.");
+    }
+  };
+
   const issueBody = (
-    <Textarea
-      rows={5}
-      value={session.issueText}
-      onChange={(e) => update({ issueText: e.target.value })}
-      placeholder="Describe the ticket issue freely."
-    />
+    <div className="space-y-2">
+      <Textarea
+        rows={5}
+        value={session.issueText}
+        onChange={(e) => update({ issueText: e.target.value })}
+        placeholder="Describe the ticket issue freely. Prefilled from Freshdesk on pull."
+      />
+      {aiSettings.enabled && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7"
+          onClick={summarizeIntoIssue}
+          disabled={summarizingIssue}
+        >
+          {summarizingIssue ? (
+            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="mr-1 h-3.5 w-3.5" style={{ color: "var(--cyan-glow)" }} />
+          )}
+          Summarize into Issue
+        </Button>
+      )}
+    </div>
   );
 
   const changesBody = (
@@ -695,9 +747,12 @@ function WorkspacePage() {
             <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               Ticket Work Workspace
             </div>
-            <h1 className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-              Ticket #{ticket.number}
-            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold tabular-nums text-foreground">
+                Ticket #{ticket.number}
+              </h1>
+              <InlineWorkTimer id={ticketId} />
+            </div>
             <div className="mt-1">
               <AccountLinker ticket={ticket} />
             </div>
@@ -779,9 +834,19 @@ function WorkspacePage() {
         )}
       </div>
 
-      {/* Sections — stacked accordion on narrow screens, floating glass desk on wide */}
-      {isNarrow ? (
+      {/* Sections — stacked accordion or floating glass desk, per the layout mode */}
+      {!floating ? (
         <div className="flex flex-col gap-4">
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-muted-foreground"
+              onClick={() => setLayoutMode("floating")}
+            >
+              <LayoutGrid className="mr-1 h-3.5 w-3.5" /> Floating layout
+            </Button>
+          </div>
           {sections.map((s) => (
             <SectionCard
               key={s.id}

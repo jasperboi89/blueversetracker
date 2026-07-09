@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Send, Sparkles, ShieldOff } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Loader2, Send, Sparkles, ShieldOff, Compass, ArrowUpRight } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -10,11 +11,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { aiCopilot } from "@/lib/ai/ai.functions";
+import { aiCopilot, aiFocus } from "@/lib/ai/ai.functions";
 import { useAISettings } from "@/lib/settings/ai-settings-store";
 import { ticketsStore, isOverdue, STATUS_LABEL } from "@/lib/tickets-store";
 import { accountsStore } from "@/lib/accounts-store";
 import { nightPlanStore } from "@/lib/night-plan-store";
+import { activitySummary } from "@/lib/workspace/activity-store";
+import { useInsights, type InsightSeverity } from "@/lib/ai/awareness";
 
 export const COPILOT_OPEN_EVENT = "intel-copilot:open";
 export function openCopilot() {
@@ -65,8 +68,16 @@ const SUGGESTIONS = [
   "What should I work next?",
 ];
 
+const SEVERITY_TONE: Record<InsightSeverity, string> = {
+  high: "oklch(0.82 0.18 25)",
+  warn: "oklch(0.85 0.16 85)",
+  info: "var(--cyan-glow)",
+};
+
 export function CopilotSheet() {
   const ai = useAISettings();
+  const navigate = useNavigate();
+  const insights = useInsights();
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -97,6 +108,31 @@ export function CopilotSheet() {
     setAnswer(res.text ?? "");
   };
 
+  const askFocus = async () => {
+    if (busy) return;
+    setBusy(true);
+    setAnswer("");
+    const res = await aiFocus({
+      data: {
+        activity: activitySummary(),
+        snapshot: buildHubSnapshot(),
+        insights: insights.map((i) => `- ${i.text}`).join("\n"),
+      },
+    });
+    setBusy(false);
+    if (!res.ok) {
+      toast.error(res.error ?? "Copilot failed.");
+      return;
+    }
+    setAnswer(res.text ?? "");
+  };
+
+  const jump = (to?: string, params?: Record<string, string>) => {
+    if (!to) return;
+    setOpen(false);
+    navigate({ to: to as never, params: (params ?? {}) as never });
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
@@ -112,6 +148,39 @@ export function CopilotSheet() {
             Answers from your Hub data. Every request is recorded in the Audit Log.
           </SheetDescription>
         </SheetHeader>
+
+        {insights.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Awareness
+              </span>
+              {ai.enabled && (
+                <button
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => void askFocus()}
+                >
+                  <Compass className="h-3 w-3" /> What should I focus on?
+                </button>
+              )}
+            </div>
+            {insights.map((i) => (
+              <button
+                key={i.id}
+                onClick={() => jump(i.to, i.params)}
+                disabled={!i.to}
+                className="flex w-full items-start gap-2 rounded-md border border-border/30 bg-white/[0.02] p-2 text-left text-xs text-foreground/90 disabled:cursor-default hover:bg-white/[0.04]"
+              >
+                <span
+                  className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: SEVERITY_TONE[i.severity] }}
+                />
+                <span className="flex-1">{i.text}</span>
+                {i.to && <ArrowUpRight className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />}
+              </button>
+            ))}
+          </div>
+        )}
 
         {!ai.enabled ? (
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">

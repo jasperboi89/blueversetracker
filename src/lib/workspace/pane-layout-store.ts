@@ -24,14 +24,19 @@ export interface PaneDefault {
 export type PresetName = "Single" | "Dual";
 export const PRESET_NAMES: PresetName[] = ["Single", "Dual"];
 
+/** "auto" = Floating on wide screens, Stacked on narrow; the others force it. */
+export type LayoutMode = "auto" | "floating" | "stacked";
+
 /** presetName -> paneId -> stored rect (only panes the user has touched are stored). */
 export interface PaneLayoutState {
   activePreset: PresetName;
+  mode: LayoutMode;
   presets: Record<string, Record<string, Partial<PaneRect>>>;
 }
 
 const DEFAULT: PaneLayoutState = {
   activePreset: "Single",
+  mode: "auto",
   presets: { Single: {}, Dual: {} },
 };
 
@@ -51,6 +56,17 @@ function ensurePreset(s: PaneLayoutState, preset: string): PaneLayoutState {
 
 export function setActivePreset(preset: PresetName) {
   paneLayoutStore.update((s) => ensurePreset({ ...s, activePreset: preset }, preset));
+}
+
+export function setLayoutMode(mode: LayoutMode) {
+  paneLayoutStore.update((s) => ({ ...s, mode }));
+}
+
+/** Resolve the effective layout: honor an explicit mode, else fall back to width. */
+export function resolveFloating(mode: LayoutMode, isNarrow: boolean): boolean {
+  if (mode === "floating") return true;
+  if (mode === "stacked") return false;
+  return !isNarrow;
 }
 
 export function patchPane(paneId: string, patch: Partial<PaneRect>) {
