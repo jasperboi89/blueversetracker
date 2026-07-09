@@ -954,9 +954,10 @@ export const ticketsStore = {
     void import("./workspace/activity-store").then(({ recordActivity }) =>
       recordActivity("ticket_pull", `#${t.number}`),
     );
-    // Seed the Ticket Issue field from the Freshdesk description (or first note)
-    // so the operator starts with the customer's issue in hand, editable.
-    const seedIssue = (input.description ?? input.notes[0]?.body ?? "").trim();
+    // Seed the Ticket Issue field with ONLY the Request + Background Info
+    // sections parsed from the Freshdesk description. Leave empty if neither
+    // is found — the rest of the templated body is noise.
+    const seedIssue = extractRequestAndBackground(input.description ?? "");
     const workSessions = seedIssue
       ? { ...state.workSessions, [t.id]: { ...defaultSession(t.id), issueText: seedIssue } }
       : state.workSessions;
