@@ -3,6 +3,79 @@ import { getShiftKey } from "./shift";
 import { accountsStore } from "./accounts-store";
 import { attachCloudSync } from "./cloud-sync/blob-sync";
 
+/**
+ * Extract only the "Request" and "Background Info" sections from a Freshdesk
+ * ticket description. Returns "" if neither is found. Keeps the operator's
+ * Ticket Issue field free of the noisy rest of the templated body.
+ */
+export function extractRequestAndBackground(html: string): string {
+  if (!html) return "";
+  // Convert to line-preserving plain text.
+  let text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+  text = text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"');
+
+  const STOP = [
+    "request",
+    "background info",
+    "background information",
+    "background",
+    "steps to reproduce",
+    "expected",
+    "actual",
+    "impact",
+    "priority",
+    "environment",
+    "attachments",
+    "notes",
+    "additional info",
+    "additional information",
+    "contact",
+    "account",
+  ];
+  const stopPattern = STOP.map((s) => s.replace(/ /g, "\\s+")).join("|");
+  const headerRe = new RegExp(`^\\s*(${stopPattern})\\s*:?\\s*$`, "gim");
+
+  type Section = { label: string; start: number; end: number };
+  const matches: { label: string; index: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = headerRe.exec(text)) !== null) {
+    matches.push({ label: m[1].toLowerCase().replace(/\s+/g, " "), index: m.index, end: headerRe.lastIndex });
+  }
+
+  const sections: Section[] = matches.map((mm, i) => ({
+    label: mm.label,
+    start: mm.end,
+    end: i + 1 < matches.length ? matches[i + 1].index : text.length,
+  }));
+
+  const pick = (labels: string[]): string => {
+    const s = sections.find((x) => labels.includes(x.label));
+    if (!s) return "";
+    return text
+      .slice(s.start, s.end)
+      .replace(/\r/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
+
+  const request = pick(["request"]);
+  const background = pick(["background info", "background information", "background"]);
+
+  const out: string[] = [];
+  if (request) out.push(`Request:\n${request}`);
+  if (background) out.push(`Background Info:\n${background}`);
+  return out.join("\n\n");
+}
+
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
 export type ResultStatus = "passed" | "failed" | "waiting-cs" | "waiting-prog" | "completed";
 export type SnipCategory =
