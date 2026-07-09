@@ -10,7 +10,14 @@ import { toast } from "sonner";
 export function AccountLinker({ ticket }: { ticket: Ticket }) {
   const [editing, setEditing] = useState(false);
   const [num, setNum] = useState(ticket.accountNumber || "");
-  const [name, setName] = useState("");
+  // Pre-fill the new-account name from whatever company context the ticket
+  // carries (e.g. the "Dr. Movassaghi's" half of the Freshdesk company field),
+  // so the create option is ready to confirm rather than blank.
+  const prefillName =
+    !ticket.accountNumber && ticket.accountName && ticket.accountName !== "Unlinked Account"
+      ? ticket.accountName
+      : "";
+  const [name, setName] = useState(prefillName);
   const [busy, setBusy] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
 
@@ -27,7 +34,11 @@ export function AccountLinker({ ticket }: { ticket: Ticket }) {
       toast.error(res.error ?? "Could not link account.");
       return;
     }
-    toast.success(res.created ? `Account ${num.trim()} created and linked.` : `Linked to account ${num.trim()}.`);
+    toast.success(
+      res.created
+        ? `Account ${num.trim()} created and linked.`
+        : `Linked to account ${num.trim()}.`,
+    );
     setEditing(false);
     setConfirmReplace(false);
     setName("");
@@ -65,7 +76,15 @@ export function AccountLinker({ ticket }: { ticket: Ticket }) {
             Manual
           </span>
         )}
-        <Button size="sm" variant="ghost" className="h-6 px-1.5" onClick={() => { setNum(ticket.accountNumber); setEditing(true); }}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-1.5"
+          onClick={() => {
+            setNum(ticket.accountNumber);
+            setEditing(true);
+          }}
+        >
           <Pencil className="h-3 w-3" />
         </Button>
         <Button size="sm" variant="ghost" className="h-6 px-1.5" onClick={refresh} disabled={busy}>
@@ -88,16 +107,32 @@ export function AccountLinker({ ticket }: { ticket: Ticket }) {
     >
       {!linked && (
         <div className="mb-2 flex items-start gap-2 text-foreground/90">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: "oklch(0.85 0.16 85)" }} />
-          <span>No account number found from Freshdesk. Enter one manually to link this ticket to an account.</span>
+          <AlertTriangle
+            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+            style={{ color: "oklch(0.85 0.16 85)" }}
+          />
+          <span>
+            No account number found from Freshdesk. Enter one manually to link this ticket to an
+            account.
+          </span>
         </div>
       )}
       {linked && ticket.accountSource === "manual" && !confirmReplace && (
         <div className="mb-2 text-foreground/80">
-          This ticket has a manually entered account number. Replacing it will lose the current link.
+          This ticket has a manually entered account number. Replacing it will lose the current
+          link.
           <div className="mt-1.5 flex gap-1.5">
-            <Button size="sm" variant="ghost" className="h-7" onClick={() => setConfirmReplace(true)}>Replace Account Number</Button>
-            <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7"
+              onClick={() => setConfirmReplace(true)}
+            >
+              Replace Account Number
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
           </div>
         </div>
       )}
@@ -125,7 +160,15 @@ export function AccountLinker({ ticket }: { ticket: Ticket }) {
               {willCreate ? "Create & Link" : "Link Account"}
             </Button>
             {editing && (
-              <Button size="sm" variant="ghost" className="h-8" onClick={() => { setEditing(false); setConfirmReplace(false); }}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8"
+                onClick={() => {
+                  setEditing(false);
+                  setConfirmReplace(false);
+                }}
+              >
                 <X className="h-3 w-3" />
               </Button>
             )}
@@ -137,7 +180,8 @@ export function AccountLinker({ ticket }: { ticket: Ticket }) {
           )}
           {isValid && existing && (
             <div className="text-[11px] text-muted-foreground">
-              Will link to existing account: <span className="text-foreground">{existing.name}</span>
+              Will link to existing account:{" "}
+              <span className="text-foreground">{existing.name}</span>
             </div>
           )}
           {willCreate && (
