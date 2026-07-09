@@ -1035,15 +1035,33 @@ export const ticketsStore = {
     void import("./workspace/activity-store").then(({ recordActivity }) =>
       recordActivity("ticket_pull", `#${t.number}`),
     );
-    // Seed the Ticket Issue field with ONLY the Request + Background Info
-    // sections parsed from the Freshdesk description. Leave empty if neither
-    // is found — the rest of the templated body is noise.
+    // Seed synchronously with the regex Request/Background fallback so the
+    // operator sees something immediately, then upgrade to the AI structured
+    // parse in the background.
     const seedIssue = extractRequestAndBackground(input.description ?? "");
     const workSessions = seedIssue
       ? { ...state.workSessions, [t.id]: { ...defaultSession(t.id), issueText: seedIssue } }
       : state.workSessions;
     state = { ...state, tickets: [t, ...state.tickets], workSessions };
     persist();
+    const desc = input.description ?? "";
+    if (desc.trim()) {
+      void import("./ai/ai.functions")
+        .then(({ aiParseTicketIssue }) =>
+          aiParseTicketIssue({
+            data: { number: t.number, subject: input.subject, description: desc.slice(0, 12000) },
+          }),
+        )
+        .then((res) => {
+          if (res?.ok && res.parsed) {
+            const formatted = formatTicketIssue(res.parsed);
+            if (formatted.trim()) ticketsStore.updateSession(t.id, { issueText: formatted });
+          }
+        })
+        .catch(() => {
+          /* keep the regex fallback already seeded */
+        });
+    }
     return t;
   },
   /** Internal: append seed tickets, dedupe by id. Used by reports demo data. */
