@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { HipaaPill } from "@/components/auth/HipaaPill";
 import { SanctuaryButton } from "@/components/quantum-bloom/SanctuaryButton";
 import { InsightToaster } from "@/components/workspace/InsightToaster";
+import { AssignedInboxPoller } from "@/components/assigned-inbox/AssignedInboxPoller";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -55,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
         </div>
         <InsightToaster />
+        <AssignedInboxPoller />
       </div>
     </SidebarProvider>
   );
