@@ -328,6 +328,7 @@ export interface RichTextEditorProps {
   autoFocus?: boolean;
   disabled?: boolean;
   onBlur?: () => void;
+  onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   toolbar?: boolean;
 }
 
@@ -343,6 +344,7 @@ export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorPro
       autoFocus,
       disabled,
       onBlur,
+      onKeyDown,
       toolbar = true,
     },
     ref,
@@ -397,6 +399,7 @@ export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorPro
     return (
       <div
         ref={ref}
+        onKeyDown={onKeyDown}
         className={cn(
           "flex w-full flex-col rounded-md border border-input bg-transparent shadow-sm focus-within:ring-1 focus-within:ring-ring",
           disabled && "opacity-50",
