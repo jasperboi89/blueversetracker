@@ -57,23 +57,48 @@ export function extractRequestAndBackground(html: string): string {
     end: i + 1 < matches.length ? matches[i + 1].index : text.length,
   }));
 
+  const normalizeBody = (raw: string): string => {
+    const lines = raw
+      .replace(/\r/g, "")
+      .split("\n")
+      .map((ln) => ln.replace(/[ \t]+/g, " ").trimEnd());
+    // Collapse leading blank lines
+    while (lines.length && lines[0].trim() === "") lines.shift();
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    // Collapse 2+ blank lines to a single blank line
+    const out: string[] = [];
+    let blank = false;
+    for (const ln of lines) {
+      const isBlank = ln.trim() === "";
+      if (isBlank) {
+        if (!blank && out.length) out.push("");
+        blank = true;
+      } else {
+        out.push(ln.trimStart() === ln ? ln : ln.replace(/^\s+/, (s) => (/^[-*•]|^\d+[.)]/.test(ln.trim()) ? "" : s)));
+        blank = false;
+      }
+    }
+    return out.join("\n");
+  };
+
   const pick = (labels: string[]): string => {
     const s = sections.find((x) => labels.includes(x.label));
     if (!s) return "";
-    return text
-      .slice(s.start, s.end)
-      .replace(/\r/g, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    return normalizeBody(text.slice(s.start, s.end));
   };
 
   const request = pick(["request"]);
   const background = pick(["background info", "background information", "background"]);
 
-  const out: string[] = [];
-  if (request) out.push(`Request:\n${request}`);
-  if (background) out.push(`Background Info:\n${background}`);
-  return out.join("\n\n");
+  const formatSection = (title: string, body: string): string => {
+    const rule = "─".repeat(title.length);
+    return `${title}\n${rule}\n${body}`;
+  };
+
+  const parts: string[] = [];
+  if (request) parts.push(formatSection("REQUEST", request));
+  if (background) parts.push(formatSection("BACKGROUND INFO", background));
+  return parts.join("\n\n\n");
 }
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
