@@ -82,7 +82,7 @@ export function CopilotSheet() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -91,7 +91,11 @@ export function CopilotSheet() {
   }, []);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 60);
+    if (open)
+      setTimeout(() => {
+        const el = inputRef.current?.querySelector<HTMLElement>('[contenteditable="true"]');
+        el?.focus();
+      }, 60);
   }, [open]);
 
   const ask = async (q: string) => {
