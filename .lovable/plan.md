@@ -1,58 +1,61 @@
-## Problem
+## Goal
 
-The generated Freshdesk note dumps the entire Ticket Issue field (Issue, Background, Requested Action, Specific Field, Category, Message Taking/Dispatching, F9 Issue, and the whole Attached Message / Example block) into the note body. Then `htmlToPlainText` flattens all of it into one giant squished paragraph before `buildSummaryHtml` wraps it in `<pre>`. The user only wants:
+Make "Copy with Snips (Rich)" produce a note that's visually organized and easy to scan when pasted into Freshdesk — Changes Made on top in bold, Result/Testing next, then Issue and Background, with real vertical space between sections and snips inline under their correct section.
 
-- Issue + Background (from Ticket Issue box)
-- Changes Made (with Before / After snips)
-- Result / Testing (with Testing snips)
+## Target layout (rendered)
 
-## Fix
-
-### 1. Extract only Issue + Background from `issueText`
-
-In `src/lib/tickets-store.ts`, add a helper `extractIssueAndBackground(issueHtml: string): { issue: string; background: string }` that parses the HTML produced by `formatTicketIssue()`:
-
-- Split on `<p><strong>…</strong></p>` heading markers.
-- Return only the text following `Issue:` and `Background:` headings.
-- Fallback: if the HTML doesn't match the expected shape (operator-edited freeform), treat the whole thing as `issue` and leave `background` empty.
-- Return plain text (not HTML) since `buildGeneratedNote` returns a plain-text string that later gets re-rendered by `buildSummaryHtml`.
-
-### 2. Rewrite `buildGeneratedNote` to only include the three requested sections
-
-In `src/lib/tickets-store.ts` (`buildGeneratedNote`, lines ~1108-1158):
-
-```
-[Template Name]
-
-Issue:
-<issue text>
-
-Background:
-<background text>          ← omit whole block if empty
-
-Changes Made:
+```text
+Changes Made:                       ← bold heading
 <changes text>
-  [[SNIP:before-1]]        ← Before Change snips grouped under Changes Made
-  [[SNIP:after-1]]         ← After Change snips grouped under Changes Made
+[Before Change snip]
+[After Change snip]
 
-Result / Testing:
+Result / Testing:                   ← bold heading
 Status: …
 <result notes>
-  [[SNIP:testing-1]]       ← Testing Result snips grouped under Result/Testing
+[Testing Result snip]
+
+Issue:                              ← bold heading
+<issue text>
+
+Background:                         ← bold heading (omitted if empty)
+<background text>
 ```
 
-Specifically:
-- Replace the `s.issueText.trim()` dump with `Issue:` + issue body, then `Background:` + background body (skipped if empty).
-- Remove the standalone `Before Change:` and `After Change:` sub-headings and their separate snip blocks; instead append **all Before Change and After Change snip markers directly after** the `Changes Made:` body.
-- Keep `Result / Testing:` section and append Testing Result snip markers directly under it (drop the separate `Testing Snips:` heading).
-- Drop the intermediate "Before Change:" / "After Change:" / "Testing Snips:" labels since snips now sit under their parent section.
+Section blocks are separated by real vertical whitespace (not just a `\n` inside a `<pre>`), and section headings render bold so the note is skimmable at a glance.
 
-### 3. No changes to snip rendering pipeline
+## Changes
 
-`buildSummaryHtml` in `src/lib/summary/rich-copy.ts` already renders `[[SNIP:id]]` markers inline with the surrounding text, and unknown/leftover snips fall through to "Other Snips". No changes needed there — the new note shape naturally produces the requested layout.
+### 1. Reorder `buildGeneratedNote` in `src/lib/tickets-store.ts`
 
-## Out of scope
+Emit sections in this order with a blank line between each block, and drop the leading `[Template Name]` line (that label doesn't help the reader in Freshdesk):
 
-- No change to `formatTicketIssue()` (the operator-facing editor still shows the full structured layout — only the generated Freshdesk note is trimmed).
-- No change to snip categories, storage, or the AI prompt.
-- No change to the rich-copy HTML/markdown builders.
+1. `Changes Made:` + body + Before/After snip markers
+2. `Result / Testing:` + Status/Failure/Waiting/notes + Testing snip markers
+3. `Issue:` + body
+4. `Background:` + body (skip entire block if empty)
+
+Keep snip-marker indentation as-is so `buildSummaryHtml` still recognizes them.
+
+### 2. Upgrade `buildSummaryHtml` in `src/lib/summary/rich-copy.ts`
+
+Today it dumps everything into one `<pre>` which is why Freshdesk shows it "squished". Rewrite the text-rendering path so the output is structured HTML instead of one monolithic `<pre>`:
+
+- Split the plain text into blocks by blank lines.
+- Within a block, if the first line matches a known section heading (`Changes Made:`, `Result / Testing:`, `Issue:`, `Background:`) — or more generally a short line ending in `:` at column 0 — render it as `<div style="font-weight:600; margin-top:14px; margin-bottom:6px;">Heading</div>` and render the remaining lines of the block as a `<div style="white-space:pre-wrap; margin-bottom:10px;">…</div>` paragraph.
+- Non-heading blocks render as the same styled `<div>` paragraph with bottom margin so paragraphs breathe.
+- Snip markers (`[[SNIP:id]]`) continue to render inline as image/file blocks via the existing `renderSnipHtml`; keep their own margin so they sit visually under the preceding section.
+- Preserve the existing "unknown snip id → drop marker" and "leftover snips → Other Snips block" behavior.
+- Preserve the embed-size budget / truncation reporting.
+
+Markdown builder (`buildSummaryMarkdown`) gets a small tweak so headings render as `**Heading**` on their own line followed by a blank line, matching the rich version.
+
+### 3. No other changes
+
+- `formatTicketIssue()`, snip storage, AI prompt, `copyRich`/`copyText` helpers, and version-history flow are untouched.
+- Plain-text copy ("Copy Text Only") already reads from `htmlToPlainText(session.summaryNotes)`; because the editor value keeps the blank lines between sections, plain-text copy improves for free.
+
+## Files touched
+
+- `src/lib/tickets-store.ts` — reorder `buildGeneratedNote` (Changes → Result/Testing → Issue → Background), drop `[Template]` header line, ensure blank lines between blocks.
+- `src/lib/summary/rich-copy.ts` — new block-based renderer in `buildSummaryHtml`, matching heading treatment in `buildSummaryMarkdown`.

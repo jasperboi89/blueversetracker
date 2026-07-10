@@ -86,37 +86,66 @@ export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: strin
   const consumed = new Set<string>();
   const state: RenderState = { budget: MAX_EMBED_BYTES, truncated: false };
 
-  // Walk the text line-by-line, accumulating runs of plain text into <pre>
-  // blocks and replacing [[SNIP:id]] markers with inline image/file HTML.
+  // Render line-by-line, promoting section headings (short lines ending in ":"
+  // at column 0) to bold blocks with real vertical spacing, and inlining
+  // [[SNIP:id]] markers as image/file blocks.
+  const isHeading = (line: string): boolean =>
+    /^[A-Za-z][A-Za-z0-9 /()&.-]{0,60}:\s*$/.test(line) && !line.startsWith(" ");
+
   const out: string[] = [];
   let buf: string[] = [];
-  const flush = () => {
+  let paraOpen = false;
+
+  const flushPara = () => {
     if (!buf.length) return;
-    const joined = buf.join("\n");
-    out.push(
-      `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; margin:0;">${escapeHtml(joined)}</pre>`,
-    );
+    // Trim trailing empty lines from the paragraph but preserve interior line breaks.
+    while (buf.length && buf[buf.length - 1].trim() === "") buf.pop();
+    if (buf.length) {
+      out.push(
+        `<div style="white-space:pre-wrap; margin:0 0 10px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px;">${escapeHtml(
+          buf.join("\n"),
+        )}</div>`,
+      );
+      paraOpen = true;
+    }
     buf = [];
   };
 
-  plain.split("\n").forEach((line) => {
-    const m = line.match(SNIP_MARKER);
-    if (m) {
-      const id = m[2];
+  const lines = plain.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const snipMatch = line.match(SNIP_MARKER);
+    if (snipMatch) {
+      const id = snipMatch[2];
       const snip = byId.get(id);
       if (snip) {
-        flush();
-        const indent = Math.min(m[1].length * 6, 60);
+        flushPara();
+        const indent = Math.min(snipMatch[1].length * 6, 60);
         out.push(renderSnipHtml(snip, state, indent));
         consumed.add(id);
-        return;
       }
-      // Unknown id: drop the marker silently (don't leak `[[SNIP:..]]` into pasted output).
-      return;
+      // Unknown id: drop the marker silently.
+      continue;
+    }
+    if (line.trim() === "") {
+      flushPara();
+      continue;
+    }
+    if (isHeading(line)) {
+      flushPara();
+      const topMargin = out.length === 0 ? 0 : 16;
+      out.push(
+        `<div style="font-weight:700; font-size:14px; margin:${topMargin}px 0 6px 0;">${escapeHtml(
+          line.trim(),
+        )}</div>`,
+      );
+      paraOpen = true;
+      continue;
     }
     buf.push(line);
-  });
-  flush();
+  }
+  flushPara();
+  void paraOpen;
 
   const leftover = snips.filter((s) => !consumed.has(s.id));
   if (leftover.length) {
@@ -143,6 +172,9 @@ export function buildSummaryMarkdown(text: string, snips: SnipLike[]): string {
   const consumed = new Set<string>();
   const out: string[] = [];
 
+  const isHeading = (line: string): boolean =>
+    /^[A-Za-z][A-Za-z0-9 /()&.-]{0,60}:\s*$/.test(line) && !line.startsWith(" ");
+
   plain.split("\n").forEach((line) => {
     const m = line.match(SNIP_MARKER);
     if (m) {
@@ -152,6 +184,12 @@ export function buildSummaryMarkdown(text: string, snips: SnipLike[]): string {
         renderSnipMarkdown(snip).forEach((l) => out.push(`${m[1]}${l}`));
         consumed.add(id);
       }
+      return;
+    }
+    if (isHeading(line)) {
+      if (out.length && out[out.length - 1] !== "") out.push("");
+      out.push(`**${line.trim()}**`);
+      out.push("");
       return;
     }
     out.push(line);
