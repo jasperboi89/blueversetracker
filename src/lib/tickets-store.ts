@@ -1038,10 +1038,13 @@ export const ticketsStore = {
     // Seed synchronously with the regex Request/Background fallback so the
     // operator sees something immediately, then upgrade to the AI structured
     // parse in the background.
-    const seedIssue = extractRequestAndBackground(input.description ?? "");
-    const workSessions = seedIssue
-      ? { ...state.workSessions, [t.id]: { ...defaultSession(t.id), issueText: seedIssue } }
-      : state.workSessions;
+    // Always seed with the structured schema (all "Not provided.") — never raw
+    // Freshdesk text. AI parse below fills in real values asynchronously.
+    const seedIssue = formatTicketIssue({});
+    const workSessions = {
+      ...state.workSessions,
+      [t.id]: { ...defaultSession(t.id), issueText: seedIssue },
+    };
     state = { ...state, tickets: [t, ...state.tickets], workSessions };
     persist();
     const desc = input.description ?? "";
