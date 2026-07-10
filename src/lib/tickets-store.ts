@@ -1105,34 +1105,81 @@ export function suggestTemplate(c?: IssueClassification | null): NoteTemplate {
   return "Standard Ticket Work Note";
 }
 
+/**
+ * Parse the HTML produced by `formatTicketIssue()` and return only the Issue
+ * and Background sections as plain text. If the input isn't in the expected
+ * shape (e.g. operator-edited freeform), the whole thing becomes `issue` and
+ * `background` is empty. Skips "Not provided." placeholders.
+ */
+export function extractIssueAndBackground(issueHtml: string): {
+  issue: string;
+  background: string;
+} {
+  const src = (issueHtml ?? "").trim();
+  if (!src) return { issue: "", background: "" };
+
+  const clean = (s: string): string => {
+    const withBreaks = s
+      .replace(/<\s*br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6])>/gi, "\n");
+    const stripped = withBreaks.replace(/<[^>]+>/g, "");
+    const decoded = stripped
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    return decoded.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+
+  const isPlaceholder = (v: string) => !v || /^not provided\.?$/i.test(v.trim());
+
+  // Match headings emitted by formatTicketIssue: <p><strong>Label:</strong></p>
+  const headingRe = /<p>\s*<strong>\s*([^<]+?)\s*<\/strong>\s*<\/p>/gi;
+  const matches: { label: string; start: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = headingRe.exec(src)) !== null) {
+    matches.push({ label: m[1].replace(/:\s*$/, "").trim().toLowerCase(), start: m.index, end: m.index + m[0].length });
+  }
+
+  if (matches.length === 0) {
+    const asText = clean(src);
+    return { issue: isPlaceholder(asText) ? "" : asText, background: "" };
+  }
+
+  const pick = (label: string): string => {
+    const idx = matches.findIndex((h) => h.label === label);
+    if (idx === -1) return "";
+    const start = matches[idx].end;
+    const end = idx + 1 < matches.length ? matches[idx + 1].start : src.length;
+    const body = clean(src.slice(start, end));
+    return isPlaceholder(body) ? "" : body;
+  };
+
+  return { issue: pick("issue"), background: pick("background") };
+}
+
 export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemplate): string {
   const lines: string[] = [];
   lines.push(`[${template}]`);
   lines.push("");
-  const issueHeader =
-    template === "Scripting Issue Note"
-      ? "Scripting Issue:"
-      : template === "Client Change Note"
-        ? "Client Requested Change:"
-        : "Ticket Issue:";
-  lines.push(issueHeader);
-  lines.push(s.issueText.trim() || "(none provided)");
+  const { issue, background } = extractIssueAndBackground(s.issueText);
+  lines.push("Issue:");
+  lines.push(issue || "(none provided)");
   lines.push("");
-  const beforeSnips = t.hubSnips.filter((x) => x.category === "Before Change");
-  if (beforeSnips.length) {
-    lines.push("Before Change:");
-    beforeSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
+  if (background) {
+    lines.push("Background:");
+    lines.push(background);
     lines.push("");
   }
   lines.push("Changes Made:");
   lines.push(s.changesText.trim() || "(none provided)");
-  lines.push("");
+  const beforeSnips = t.hubSnips.filter((x) => x.category === "Before Change");
   const afterSnips = t.hubSnips.filter((x) => x.category === "After Change");
-  if (afterSnips.length) {
-    lines.push("After Change:");
-    afterSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
-    lines.push("");
-  }
+  beforeSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
+  afterSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
+  lines.push("");
   lines.push("Result / Testing:");
   const statusLabelMap: Record<ResultStatus, string> = {
     passed: "Passed",
@@ -1148,11 +1195,7 @@ export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemp
     lines.push(`Waiting Reason: ${s.waitingReason}`);
   if (s.resultNotes.trim()) lines.push(s.resultNotes.trim());
   const testSnips = t.hubSnips.filter((x) => x.category === "Testing Result");
-  if (testSnips.length) {
-    lines.push("");
-    lines.push("Testing Snips:");
-    testSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
-  }
+  testSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
   while (lines.length && lines[lines.length - 1] === "") lines.pop();
   return lines.join("\n");
 }
