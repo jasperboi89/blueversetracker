@@ -282,7 +282,7 @@ export function buildEmailHtml(opts: {
   sorted.forEach((w) => {
     if (sorted.length > 1) {
       sections.push(
-        `<h2 style="margin:24px 0 8px;font-size:16px;padding:6px 10px;background:#eef3fa;border-radius:4px;">Shift: ${esc(w.label)} <span style="font-weight:400;color:#666;font-size:12px;">(${esc(w.timeLabel)})</span></h2>`,
+        `<h2 style="margin:28px 0 10px;font-size:18px;padding:8px 12px;background:#eef3fa;border-radius:6px;">Shift: ${esc(w.label)} <span style="font-weight:400;color:#666;font-size:13px;">(${esc(w.timeLabel)})</span></h2>`,
       );
     }
     sections.push(renderWindow(ctx, w, attentionIds, hiddenSectionKeys));
