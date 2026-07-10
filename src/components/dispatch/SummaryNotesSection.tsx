@@ -13,6 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyRichSummary, copyMarkdownSummary, snipCounts } from "@/lib/summary/rich-copy";
+import { htmlToPlainText } from "@/lib/rich-text";
 
 export function SummaryNotesSection({ session, onMarkPostedRequest }: { session: DispatchSession; onMarkPostedRequest: () => void }) {
   const [onlyIssues, setOnlyIssues] = useState(false);
@@ -120,7 +121,7 @@ export function SummaryNotesSection({ session, onMarkPostedRequest }: { session:
         <Button size="sm" variant="ghost" disabled={!session.summaryNotes} onClick={() => copyMarkdownSummary(session.summaryNotes, session.snips)}>
           Copy Markdown
         </Button>
-        <Button size="sm" variant="ghost" disabled={!session.summaryNotes} onClick={() => { navigator.clipboard.writeText(session.summaryNotes.replace(/^\s*[-•].*$/gm, "").trim()); toast.success("Copied text only."); }}>
+        <Button size="sm" variant="ghost" disabled={!session.summaryNotes} onClick={() => { navigator.clipboard.writeText(htmlToPlainText(session.summaryNotes).trim()); toast.success("Copied text only."); }}>
           Copy Text Only
         </Button>
         <Button size="sm" variant="ghost" disabled={session.snips.length === 0} onClick={() => {
