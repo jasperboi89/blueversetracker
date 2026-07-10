@@ -314,7 +314,7 @@ export function buildEmailHtml(opts: {
   // Render the structured per-item sections (with inline snips). The Waiting and
   // Attention sections, which currently lack rich rendering and have no snips,
   // are appended at the end as a plain-text block so they still travel through.
-  const tailRegex = /\n(Items Still In Progress \/ Waiting|Items Needing Attention)\n[\s\S]*$/;
+  const tailRegex = /\n(Items Still In Progress \/ Waiting|Items Needing Attention)\n[\s\S]*$/i;
   const tailMatch = plainBody.match(tailRegex);
   const tail = tailMatch ? tailMatch[0] : "";
 
