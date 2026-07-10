@@ -19,7 +19,7 @@ import { useAccounts, accountsStore } from "@/lib/accounts-store";
 import { formatCentralShort } from "@/lib/shift";
 import { currentShiftWindow, windowFromRange, shiftLabelFromKey, type ShiftWindow } from "@/lib/reports/shift-window";
 import { recentNightlyShiftWindows } from "@/lib/reports/shift-window";
-import { buildEmail, buildEmailMulti, getAttentionCandidates, SECTION_KEYS } from "@/lib/reports/prog-email-format";
+import { buildEmailMulti, getAttentionCandidates, SECTION_KEYS } from "@/lib/reports/prog-email-format";
 import { buildEmailHtml } from "@/lib/reports/prog-email-rich";
 import { copyRich } from "@/lib/summary/rich-copy";
 import { progEmailStore, useProgEmail } from "@/lib/reports/programming-email-store";
