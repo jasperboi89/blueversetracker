@@ -1,63 +1,36 @@
 ## Problem
 
-- The active-work timer starts when you open a ticket/dispatch/additional-work `.work` route, but keeps running after you navigate away. It only stops when you manually hit stop in the dock or open a different work item.
-- Time worked isn't recorded anywhere durable — it's just banked into an in-memory `totals` map for the shift summary.
+The "Copy with Snips (Rich)" and "Copy Markdown" buttons in the dispatch Summary Notes section (and any other Freshdesk-bound summary copy paths) pass `session.summaryNotes` straight through. Since we upgraded those boxes to a Rich Text editor, `summaryNotes` may now contain HTML (bold, colors, fonts, lists). That formatting leaks into what gets pasted into Freshdesk — and worse, `buildSummaryHtml` escapes the HTML into a `<pre>` block so raw tags can appear literally.
+
+You want notes pasted into Freshdesk to be **plain text only**, with the snips still attached inline.
 
 ## Fix
 
-### 1. Auto-stop when leaving a work page
+### 1. Strip formatting inside the copy helpers
 
-Add a cleanup effect to each of the three `.work` routes so navigating away stops the timer:
+`src/lib/summary/rich-copy.ts`:
 
-- `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx`
-- `src/routes/_authenticated/additional-work.$workId.work.tsx`
-- `src/routes/_authenticated/contact-dispatch.$sessionId.work.tsx`
+- Import `htmlToPlainText` from `src/lib/rich-text.ts`.
+- At the top of `buildSummaryHtml(text, snips)` and `buildSummaryMarkdown(text, snips)`, normalize the input:
+  ```ts
+  const plain = htmlToPlainText(text);
+  ```
+  Then run the existing line-walker / SNIP marker logic against `plain` instead of `text`. The `[[SNIP:id]]` markers survive `htmlToPlainText` because they're just text.
+- `copyRichSummary` and `copyMarkdownSummary` also pass the plain-text version to the clipboard's `text/plain` slot so Freshdesk's plain-text paste target gets clean text too.
 
-Each already calls `setActiveWork(...)` in an effect. Extend that effect's return cleanup to call a new helper `leaveActiveWork(id)` — it stops the timer only if the current active item still matches this route's id (so switching directly from one work item to another still hands off cleanly via `setActiveWork`'s existing banking logic).
+Result: no `<span style=...>`, no `<strong>`, no font/color styles, no `<p>` wrappers — just the text lines plus inline `<img>` / 📎 file snips exactly like before.
 
-### 2. New `leaveActiveWork` helper in `src/lib/workspace/active-work-store.ts`
+### 2. "Copy Text Only" cleanup
 
-- If `state.current?.id === id`: bank the elapsed time, append a session entry to the new work-log store, then clear `current`.
-- If a different item is current: no-op.
+Same file / `SummaryNotesSection.tsx`: the current "Copy Text Only" button does a regex on `summaryNotes` that only strips bullet lines. Route it through `htmlToPlainText` too so it produces clean plain text regardless of formatting.
 
-### 3. Persist work sessions
+### 3. Generated summary body stays plain
 
-New file `src/lib/workspace/work-log-store.ts` — persisted store `aih:workspace:worklog:v1` with cloud sync. Shape:
+`buildDispatchSummary` in `src/lib/dispatch-store.ts` already returns plain text, so no change there. But when the user hits "Generate Summary Note", the current flow stores the plain string into `summaryNotes` and then the RichTextEditor may wrap subsequent edits in HTML. That's fine for on-screen editing; the copy helpers above guarantee formatting is stripped at paste time.
 
-```ts
-interface WorkLogEntry {
-  id: string;
-  kind: "ticket" | "dispatch" | "additional";
-  workId: string;
-  label: string;           // e.g. "Ticket #12345"
-  accountNumber: string;   // "" when unknown
-  accountName?: string;
-  startedAt: number;
-  endedAt: number;
-  durationMs: number;
-  to: string;
-  params: Record<string, string>;
-}
-```
+## Scope
 
-Exports: `logWorkSession(entry)`, `useWorkLog()`, selector `workLogForAccount(num)`.
-
-`leaveActiveWork` resolves the current item's `accountNumber` / `accountName` from `ticketsStore`, `dispatchStore`, or `additionalWorkStore` (by `kind` + `id`) before writing the entry. Sessions shorter than ~10s are dropped to avoid noise.
-
-### 4. Show sessions on the Account timeline
-
-`src/routes/_authenticated/accounts.$accountNumber.tsx`:
-
-- Add `"timelog"` to the `TimelineFilter` union and the filter tabs.
-- Read entries via `workLogForAccount(accountNumber)` and push a new timeline `Item` per entry with a Clock icon, the label (linking back via `entry.to` + `entry.params`), the formatted duration (`formatElapsed`), and `formatCentralShort(new Date(entry.endedAt))`.
-
-### 5. Shift summary continues to work
-
-`activeWorkStore.totals` stays as-is (used by the shift summary for per-item time this shift). `leaveActiveWork` still updates it via the existing `bank()` call, so nothing downstream changes.
-
-## Out of scope
-
-- No manual "edit session" UI — entries are append-only for now.
-- No backend schema change — the log rides existing user-blob cloud sync.
-- Dock pause/resume/stop buttons unchanged.
-- No new AI features.
+- Touch only `src/lib/summary/rich-copy.ts` and the "Copy Text Only" call site in `src/components/dispatch/SummaryNotesSection.tsx`.
+- The Rich Text editor UI stays exactly as-is — users can still bold/color/list inside the box for their own reference; the formatting just isn't carried into Freshdesk.
+- No changes to snip embedding, size limits, or the "Other Snips" fallback block.
+- No backend, no store schema, no AI changes.
