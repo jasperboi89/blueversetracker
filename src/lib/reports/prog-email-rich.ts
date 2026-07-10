@@ -204,7 +204,7 @@ function renderWindow(
         (t.status !== "completed" && isInWindow(t.updatedAt, w)),
     );
     if (worked.length) {
-      out.push(`<h3 style="margin:22px 0 10px;font-size:16px;border-bottom:2px solid #d1d5db;padding-bottom:6px;">${SECTION_KEYS.worked_freshdesk}</h3>`);
+      out.push(sectionHeading(SECTION_KEYS.worked_freshdesk));
       worked.forEach((t, i) => {
         out.push(cardOpen(i + 1, `Ticket #${esc(t.number)} — Account ${esc(t.accountNumber)} / ${esc(t.accountName)}`));
         out.push(line(`<strong>Summary:</strong> ${esc(ticketSummary(t))}`));
@@ -224,7 +224,7 @@ function renderWindow(
         (s.status !== "ready" && isInWindow(s.updatedAt, w)),
     );
     if (cd.length) {
-      out.push(`<h3 style="margin:22px 0 10px;font-size:16px;border-bottom:2px solid #d1d5db;padding-bottom:6px;">${SECTION_KEYS.dispatch}</h3>`);
+      out.push(sectionHeading(SECTION_KEYS.dispatch));
       cd.forEach((s, i) => {
         out.push(cardOpen(i + 1, `Account ${esc(s.accountNumber)} / ${esc(s.accountName)}`));
         out.push(line(`<strong>Summary:</strong> ${esc(dispatchSummary(s))}`));
@@ -245,7 +245,7 @@ function renderWindow(
     );
     const np = collectAttentionNightPlan(attentionIds);
     if (aw.length || np.length) {
-      out.push(`<h3 style="margin:22px 0 10px;font-size:16px;border-bottom:2px solid #d1d5db;padding-bottom:6px;">${SECTION_KEYS.additional}</h3>`);
+      out.push(sectionHeading(SECTION_KEYS.additional));
       let idx = 0;
       aw.forEach((a) => {
         idx += 1;
@@ -259,7 +259,7 @@ function renderWindow(
       np.forEach((n) => {
         idx += 1;
         out.push(cardOpen(idx, esc(n.task)));
-        out.push(notesBlock("Notes", n.notes ?? ""));
+        out.push(notesBlock("Notes", cleanText(n.notes)));
         out.push(cardClose());
       });
     }
@@ -319,11 +319,11 @@ export function buildEmailHtml(opts: {
   const tail = tailMatch ? tailMatch[0] : "";
 
   const html =
-    `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;font-size:15px;line-height:1.6;">` +
+    `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;font-size:16px;line-height:1.7;">` +
     sections.join("") +
     (tail
-      ? `<hr style="border:none;border-top:1px solid #ddd;margin:18px 0;" />` +
-        `<pre style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap;margin:0;font-size:14px;line-height:1.6;color:#111;background:#f7f7f9;padding:14px;border-radius:6px;">${esc(tail.trimStart())}</pre>`
+      ? `<hr style="border:none;border-top:1px solid #d8dee8;margin:28px 0;" />` +
+        `<pre style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap;margin:0;font-size:15px;line-height:1.7;color:#111;background:#f7f7f9;padding:18px 20px;border-radius:8px;">${esc(tail.trimStart())}</pre>`
       : "") +
     `</div>`;
 
