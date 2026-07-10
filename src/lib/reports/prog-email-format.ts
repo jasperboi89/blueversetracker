@@ -2,7 +2,7 @@ import { ticketsStore, STATUS_LABEL, type Ticket } from "../tickets-store";
 import { dispatchStore, DISPATCH_STATUS_LABEL, type DispatchSession } from "../dispatch-store";
 import { additionalWorkStore, type AdditionalWork } from "../additional-work-store";
 import { htmlToPlainText } from "../rich-text";
-import { isInWindow, isInWindowEither, type ShiftWindow } from "./shift-window";
+import { isInWindow, type ShiftWindow } from "./shift-window";
 import { nightPlanHistory } from "./night-plan-history";
 import { nightPlanStore, isActive as isNPActive } from "../night-plan-store";
 
