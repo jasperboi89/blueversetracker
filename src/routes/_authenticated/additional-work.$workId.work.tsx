@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { setActiveWork } from "@/lib/workspace/active-work-store";
+import { setActiveWork, leaveActiveWork } from "@/lib/workspace/active-work-store";
 import {
   ArrowLeft,
   Building2,
@@ -56,9 +56,12 @@ function WorkspacePage() {
       label: w.title || "Additional Work",
       to: "/_authenticated/additional-work/$workId/work",
       params: { workId },
+      accountNumber: w.accountNumber || "",
+      accountName: w.accountName,
     });
+    return () => leaveActiveWork(workId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workId, w?.title]);
+  }, [workId, w?.title, w?.accountNumber, w?.accountName]);
 
   if (!w) {
     return (
