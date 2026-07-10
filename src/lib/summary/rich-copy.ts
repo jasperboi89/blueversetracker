@@ -7,6 +7,7 @@
  * - Non-image files render as 📎 name with a download anchor.
  */
 import { toast } from "sonner";
+import { htmlToPlainText } from "@/lib/rich-text";
 
 export interface SnipLike {
   id: string;
@@ -80,6 +81,7 @@ function renderSnipHtml(s: SnipLike, state: RenderState, indentPx = 0): string {
 }
 
 export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: string; truncated: boolean } {
+  const plain = htmlToPlainText(text);
   const byId = new Map(snips.map((s) => [s.id, s]));
   const consumed = new Set<string>();
   const state: RenderState = { budget: MAX_EMBED_BYTES, truncated: false };
@@ -97,7 +99,7 @@ export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: strin
     buf = [];
   };
 
-  text.split("\n").forEach((line) => {
+  plain.split("\n").forEach((line) => {
     const m = line.match(SNIP_MARKER);
     if (m) {
       const id = m[2];
@@ -136,11 +138,12 @@ function renderSnipMarkdown(s: SnipLike): string[] {
 }
 
 export function buildSummaryMarkdown(text: string, snips: SnipLike[]): string {
+  const plain = htmlToPlainText(text);
   const byId = new Map(snips.map((s) => [s.id, s]));
   const consumed = new Set<string>();
   const out: string[] = [];
 
-  text.split("\n").forEach((line) => {
+  plain.split("\n").forEach((line) => {
     const m = line.match(SNIP_MARKER);
     if (m) {
       const id = m[2];
@@ -213,7 +216,8 @@ export async function copyText(text: string): Promise<boolean> {
 /** One-call helper used by buttons. Shows a toast on success/failure. */
 export async function copyRichSummary(text: string, snips: SnipLike[]) {
   const { html, truncated } = buildSummaryHtml(text, snips);
-  const ok = await copyRich(html, text);
+  const plain = htmlToPlainText(text);
+  const ok = await copyRich(html, plain);
   if (!ok) {
     toast.error("Copy failed. Try Copy Text Only.");
     return;
