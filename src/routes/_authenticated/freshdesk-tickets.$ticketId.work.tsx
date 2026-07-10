@@ -117,6 +117,17 @@ function WorkspacePage() {
     ticketsStore.touchRecent(ticketId);
   }, [ticketId]);
 
+  // Backfill legacy plain-text issueText into HTML so the rich editor
+  // renders it as separate paragraphs instead of one squished line.
+  useEffect(() => {
+    const cur = session.issueText;
+    if (!cur) return;
+    if (cur.includes("<")) return; // already HTML (or operator edit)
+    if (!/^\s*Issue:/.test(cur)) return; // not the old skeleton
+    ticketsStore.updateSession(ticketId, { issueText: formatTicketIssue({}) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketId]);
+
   useEffect(() => {
     if (!ticket) return;
     setActiveWork({
