@@ -716,10 +716,15 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
         </div>
 
         <div>
-          <RichTextEditor minHeight={572} value={body} onChange={(v) => {
-            setBody(v);
-            if (draft) progEmailStore.saveVersion(draft.id, "User Edited", v);
-          }} className="font-mono text-xs" />
+          <textarea
+            value={body}
+            onChange={(event) => {
+              const nextBody = event.target.value;
+              setBody(nextBody);
+              if (draft) progEmailStore.saveVersion(draft.id, "User Edited", nextBody);
+            }}
+            className="min-h-[572px] w-full resize-y rounded-md border border-input bg-background px-4 py-3 font-sans text-[15px] leading-7 text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
+          />
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" onClick={copyRichEmail}
               style={{ background: "linear-gradient(110deg, oklch(0.45 0.16 200 / 0.7), oklch(0.4 0.18 290 / 0.55))", border: "1px solid oklch(0.78 0.18 220 / 0.5)" }}>
