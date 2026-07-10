@@ -62,8 +62,9 @@ import { setActiveWork, leaveActiveWork } from "@/lib/workspace/active-work-stor
 import { AccountMemoryPane } from "@/components/workspace/AccountMemoryPane";
 import { TicketAIPane } from "@/components/workspace/TicketAIPane";
 import { InlineWorkTimer } from "@/components/workspace/InlineWorkTimer";
-import { aiSummarizeTicket } from "@/lib/ai/ai.functions";
-import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
+import { aiParseTicketIssue } from "@/lib/ai/ai.functions";
+import { formatTicketIssue } from "@/lib/tickets-store";
+import { useAISettings } from "@/lib/settings/ai-settings-store";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -273,14 +274,11 @@ function WorkspacePage() {
 
   const summarizeIntoIssue = async () => {
     setSummarizingIssue(true);
-    const res = await aiSummarizeTicket({
+    const res = await aiParseTicketIssue({
       data: {
         number: ticket.number,
         subject: ticket.details.subject,
-        description: ticket.freshdeskNotes[0]?.body,
-        accountName: ticket.accountName,
-        notes: ticket.freshdeskNotes.slice(0, 40).map((n) => ({ author: n.author, body: n.body })),
-        style: aiStyleHint(aiSettings),
+        description: (ticket.freshdeskNotes[0]?.body ?? "").slice(0, 12000),
       },
     });
     setSummarizingIssue(false);
@@ -288,9 +286,9 @@ function WorkspacePage() {
       toast.error(res.error ?? "AI failed.");
       return;
     }
-    if (res.text) {
-      update({ issueText: res.text });
-      toast.success("Issue summarized.");
+    if (res.parsed) {
+      update({ issueText: formatTicketIssue(res.parsed) });
+      toast.success("Issue rebuilt from structured schema.");
     }
   };
 

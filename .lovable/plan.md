@@ -1,36 +1,42 @@
 ## Problem
 
-The "Copy with Snips (Rich)" and "Copy Markdown" buttons in the dispatch Summary Notes section (and any other Freshdesk-bound summary copy paths) pass `session.summaryNotes` straight through. Since we upgraded those boxes to a Rich Text editor, `summaryNotes` may now contain HTML (bold, colors, fonts, lists). That formatting leaks into what gets pasted into Freshdesk — and worse, `buildSummaryHtml` escapes the HTML into a `<pre>` block so raw tags can appear literally.
+The structured Ticket Issue schema is already wired for ticket pulls, but two paths still drop raw/paragraph text into the Ticket Issue field:
 
-You want notes pasted into Freshdesk to be **plain text only**, with the snips still attached inline.
+1. **Initial seed on ticket pull** — `ticketsStore.pullFromFreshdesk` seeds `issueText` with `extractRequestAndBackground(description)`, which is the raw REQUEST / BACKGROUND INFO block copied from Freshdesk. It stays visible until the async AI parse completes, and permanently if AI fails.
+2. **"Summarize into Issue" button** on the ticket work page — calls `aiSummarizeTicket`, which returns a free-form paragraph summary and overwrites `issueText` with it. That directly violates "do not summarize everything as one paragraph."
 
 ## Fix
 
-### 1. Strip formatting inside the copy helpers
+### 1. Always seed the structured layout
 
-`src/lib/summary/rich-copy.ts`:
+`src/lib/tickets-store.ts`, inside `pullFromFreshdesk`:
 
-- Import `htmlToPlainText` from `src/lib/rich-text.ts`.
-- At the top of `buildSummaryHtml(text, snips)` and `buildSummaryMarkdown(text, snips)`, normalize the input:
-  ```ts
-  const plain = htmlToPlainText(text);
-  ```
-  Then run the existing line-walker / SNIP marker logic against `plain` instead of `text`. The `[[SNIP:id]]` markers survive `htmlToPlainText` because they're just text.
-- `copyRichSummary` and `copyMarkdownSummary` also pass the plain-text version to the clipboard's `text/plain` slot so Freshdesk's plain-text paste target gets clean text too.
+- Replace `const seedIssue = extractRequestAndBackground(...)` with `const seedIssue = formatTicketIssue({})`. Since every field is missing at seed time, this produces the full schema with `Not provided.` in every slot.
+- Keep the async `aiParseTicketIssue` → `formatTicketIssue` upgrade exactly as-is. When it succeeds, real values replace the "Not provided." lines. If it fails, the operator still sees a clean structured skeleton instead of raw Freshdesk text.
+- `extractRequestAndBackground` stays exported (other callers unaffected) but is no longer used for seeding.
 
-Result: no `<span style=...>`, no `<strong>`, no font/color styles, no `<p>` wrappers — just the text lines plus inline `<img>` / 📎 file snips exactly like before.
+### 2. Route "Summarize into Issue" through the structured parser
 
-### 2. "Copy Text Only" cleanup
+`src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx`, `summarizeIntoIssue`:
 
-Same file / `SummaryNotesSection.tsx`: the current "Copy Text Only" button does a regex on `summaryNotes` that only strips bullet lines. Route it through `htmlToPlainText` too so it produces clean plain text regardless of formatting.
+- Swap `aiSummarizeTicket` for `aiParseTicketIssue` (`src/lib/ai/ai.functions.ts`), passing `{ number, subject, description }`. Description = `ticket.freshdeskNotes[0]?.body ?? ""` truncated to 12000 chars to match the validator.
+- On success, `update({ issueText: formatTicketIssue(res.parsed) })`.
+- On failure, existing toast path.
+- Button label stays "Summarize into Issue" (or rename to "Rebuild Structured Issue" — flag in build turn).
 
-### 3. Generated summary body stays plain
+### 3. Verify the AI prompt matches the requested rules
 
-`buildDispatchSummary` in `src/lib/dispatch-store.ts` already returns plain text, so no change there. But when the user hits "Generate Summary Note", the current flow stores the plain string into `summaryNotes` and then the RichTextEditor may wrap subsequent edits in HTML. That's fine for on-screen editing; the copy helpers above guarantee formatting is stripped at paste time.
+The prompt already in `aiParseTicketIssue` (system message) already enforces:
+- Strict JSON of the exact schema (issue, background, requestedAction, specificField, category, messageTakingOrDispatching, f9Issue, attached.{msgId, callTimestamp, messageSummary, for, caller, phone, patient, message}).
+- "Use ONLY facts present in the ticket text. Do NOT invent values." → empty string when missing → renders as "Not provided." via `formatTicketIssue`.
+- Preserve account numbers, company names, phone numbers, timestamps, field names, categories, message IDs verbatim.
+- Separate the main ticket issue from the attached phone-message block.
 
-## Scope
+No prompt change needed. If any rule is missing after re-read, tighten it in the same edit.
 
-- Touch only `src/lib/summary/rich-copy.ts` and the "Copy Text Only" call site in `src/components/dispatch/SummaryNotesSection.tsx`.
-- The Rich Text editor UI stays exactly as-is — users can still bold/color/list inside the box for their own reference; the formatting just isn't carried into Freshdesk.
-- No changes to snip embedding, size limits, or the "Other Snips" fallback block.
-- No backend, no store schema, no AI changes.
+## Out of scope
+
+- No schema or DB changes.
+- No changes to `formatTicketIssue` output.
+- No new UI, no rich-text rules change, no snip changes.
+- Manual edits by operators in the Ticket Issue box are still free-form; we only control the auto-populated value.
