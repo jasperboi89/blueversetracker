@@ -1109,30 +1109,22 @@ export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemp
   const lines: string[] = [];
   lines.push(`[${template}]`);
   lines.push("");
-  const issueHeader =
-    template === "Scripting Issue Note"
-      ? "Scripting Issue:"
-      : template === "Client Change Note"
-        ? "Client Requested Change:"
-        : "Ticket Issue:";
-  lines.push(issueHeader);
-  lines.push(s.issueText.trim() || "(none provided)");
+  const { issue, background } = extractIssueAndBackground(s.issueText);
+  lines.push("Issue:");
+  lines.push(issue || "(none provided)");
   lines.push("");
-  const beforeSnips = t.hubSnips.filter((x) => x.category === "Before Change");
-  if (beforeSnips.length) {
-    lines.push("Before Change:");
-    beforeSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
+  if (background) {
+    lines.push("Background:");
+    lines.push(background);
     lines.push("");
   }
   lines.push("Changes Made:");
   lines.push(s.changesText.trim() || "(none provided)");
-  lines.push("");
+  const beforeSnips = t.hubSnips.filter((x) => x.category === "Before Change");
   const afterSnips = t.hubSnips.filter((x) => x.category === "After Change");
-  if (afterSnips.length) {
-    lines.push("After Change:");
-    afterSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
-    lines.push("");
-  }
+  beforeSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
+  afterSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
+  lines.push("");
   lines.push("Result / Testing:");
   const statusLabelMap: Record<ResultStatus, string> = {
     passed: "Passed",
@@ -1148,11 +1140,7 @@ export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemp
     lines.push(`Waiting Reason: ${s.waitingReason}`);
   if (s.resultNotes.trim()) lines.push(s.resultNotes.trim());
   const testSnips = t.hubSnips.filter((x) => x.category === "Testing Result");
-  if (testSnips.length) {
-    lines.push("");
-    lines.push("Testing Snips:");
-    testSnips.forEach((s) => lines.push(`  [[SNIP:${s.id}]]`));
-  }
+  testSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
   while (lines.length && lines[lines.length - 1] === "") lines.pop();
   return lines.join("\n");
 }
