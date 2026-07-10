@@ -67,17 +67,17 @@ function renderSnipHtml(s: SnipLike, state: RenderState, indentPx = 0): string {
     if (size <= state.budget) {
       state.budget -= size;
       return (
-        `<div style="margin:8px 0;${pad}"><div style="font-size:11px;color:#666;margin-bottom:3px;">${meta}</div>` +
-        `<img src="${s.dataUrl}" alt="${escapeHtml(s.name)}" style="max-width:600px;height:auto;border:1px solid #ddd;border-radius:6px;" /></div>`
+        `<div style="margin:10px 0;${pad}"><div style="font-size:12px;color:#666;margin-bottom:4px;">${meta}</div>` +
+        `<img src="${s.dataUrl}" alt="${escapeHtml(s.name)}" style="max-width:640px;height:auto;border:1px solid #ddd;border-radius:6px;" /></div>`
       );
     }
     state.truncated = true;
-    return `<div style="margin:6px 0;${pad}">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a> <span style="color:#999;">(too large to embed)</span></div>`;
+    return `<div style="margin:8px 0;${pad};font-size:14px;">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a> <span style="color:#999;">(too large to embed)</span></div>`;
   }
   if (s.dataUrl) {
-    return `<div style="margin:6px 0;${pad}">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a></div>`;
+    return `<div style="margin:8px 0;${pad};font-size:14px;">📎 <a href="${s.dataUrl}" download="${escapeHtml(s.name)}">${meta}</a></div>`;
   }
-  return `<div style="margin:6px 0;${pad}">📎 ${meta}</div>`;
+  return `<div style="margin:8px 0;${pad};font-size:14px;">📎 ${meta}</div>`;
 }
 
 export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: string; truncated: boolean } {
@@ -86,35 +86,28 @@ export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: strin
   const consumed = new Set<string>();
   const state: RenderState = { budget: MAX_EMBED_BYTES, truncated: false };
 
-  // Render line-by-line, promoting section headings (short lines ending in ":"
-  // at column 0) to bold blocks with real vertical spacing, and inlining
-  // [[SNIP:id]] markers as image/file blocks.
+  // Render line-by-line. Section headings (short lines ending in ":" at
+  // column 0) become bold header blocks with real spacing. Runs of plain
+  // (unindented) text lines join into a single paragraph. Indented lines
+  // become their own indented block so bullets + sub-details stay readable.
   const isHeading = (line: string): boolean =>
     /^[A-Za-z][A-Za-z0-9 /()&.-]{0,60}:\s*$/.test(line) && !line.startsWith(" ");
 
   const out: string[] = [];
-  let buf: string[] = [];
-  let paraOpen = false;
+  let paraBuf: string[] = [];
 
   const flushPara = () => {
-    if (!buf.length) return;
-    // Trim trailing empty lines from the paragraph but preserve interior line breaks.
-    while (buf.length && buf[buf.length - 1].trim() === "") buf.pop();
-    if (buf.length) {
-      out.push(
-        `<div style="white-space:pre-wrap; margin:0 0 10px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px;">${escapeHtml(
-          buf.join("\n"),
-        )}</div>`,
-      );
-      paraOpen = true;
-    }
-    buf = [];
+    if (!paraBuf.length) return;
+    out.push(
+      `<div style="margin:0 0 10px 0;">${paraBuf.map(escapeHtml).join("<br>")}</div>`,
+    );
+    paraBuf = [];
   };
 
   const lines = plain.split("\n");
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const snipMatch = line.match(SNIP_MARKER);
+    const raw = lines[i];
+    const snipMatch = raw.match(SNIP_MARKER);
     if (snipMatch) {
       const id = snipMatch[2];
       const snip = byId.get(id);
@@ -124,28 +117,41 @@ export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: strin
         out.push(renderSnipHtml(snip, state, indent));
         consumed.add(id);
       }
-      // Unknown id: drop the marker silently.
       continue;
     }
-    if (line.trim() === "") {
+    if (raw.trim() === "") {
       flushPara();
       continue;
     }
-    if (isHeading(line)) {
+    if (isHeading(raw)) {
       flushPara();
-      const topMargin = out.length === 0 ? 0 : 16;
+      const topMargin = out.length === 0 ? 0 : 18;
       out.push(
-        `<div style="font-weight:700; font-size:14px; margin:${topMargin}px 0 6px 0;">${escapeHtml(
-          line.trim(),
+        `<div style="font-size:16px;font-weight:700;margin:${topMargin}px 0 8px 0;padding-bottom:4px;border-bottom:1px solid #e5e7eb;">${escapeHtml(
+          raw.trim(),
         )}</div>`,
       );
-      paraOpen = true;
       continue;
     }
-    buf.push(line);
+    // Indented line — own block so bullets/sub-details keep hierarchy.
+    const leading = raw.match(/^ */)?.[0].length ?? 0;
+    if (leading > 0) {
+      flushPara();
+      const indentPx = Math.min(leading * 6, 60);
+      const content = raw.slice(leading);
+      const isBullet = content.startsWith("•");
+      const marginTop = isBullet ? 8 : 2;
+      out.push(
+        `<div style="margin:${marginTop}px 0 2px ${indentPx}px;">${escapeHtml(
+          content,
+        )}</div>`,
+      );
+      continue;
+    }
+    // Plain unindented line — accumulate into paragraph.
+    paraBuf.push(raw);
   }
   flushPara();
-  void paraOpen;
 
   const leftover = snips.filter((s) => !consumed.has(s.id));
   if (leftover.length) {
@@ -156,7 +162,13 @@ export function buildSummaryHtml(text: string, snips: SnipLike[]): { html: strin
     );
   }
 
-  return { html: `<div>${out.join("")}</div>`, truncated: state.truncated };
+  return {
+    html:
+      `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.55;color:#111;">` +
+      out.join("") +
+      `</div>`,
+    truncated: state.truncated,
+  };
 }
 
 function renderSnipMarkdown(s: SnipLike): string[] {

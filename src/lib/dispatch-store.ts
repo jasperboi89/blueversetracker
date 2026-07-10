@@ -563,10 +563,14 @@ export function buildDispatchSummary(
   lines.push("");
 
   lines.push("Reasons for Call:");
+  lines.push("");
   const reasonsToShow = opts.onlyIssues
     ? s.reasons.filter((r) => !isReasonOk(r) || r.retests.length > 0)
     : s.reasons;
-  if (reasonsToShow.length === 0) lines.push("  (none)");
+  if (reasonsToShow.length === 0) {
+    lines.push("  (none)");
+    lines.push("");
+  }
   reasonsToShow.forEach((r) => {
     const st = SECTION_STATUS_LABEL[reasonStatus(r)];
     lines.push(`  • [${st}] ${r.text || "(untitled)"} (${r.type ? REASON_TYPE_LABEL[r.type] : "no type"})`);
@@ -583,13 +587,15 @@ export function buildDispatchSummary(
       });
     }
     r.snipIds.forEach((sid) => lines.push(`      [[SNIP:${sid}]]`));
+    lines.push("");
   });
   lines.push("");
 
   const sec = (label: string, c: CheckSection) => {
     const ok = c.status === "passed" || c.status === "passed-retest" || c.status === "complete" || c.status === "na";
     if (opts.onlyIssues && ok && c.retests.length === 0) return;
-    lines.push(`${label}: ${SECTION_STATUS_LABEL[c.status]}`);
+    lines.push(`${label}:`);
+    lines.push(`  Status: ${SECTION_STATUS_LABEL[c.status]}`);
     if (!ok || c.retests.length > 0) {
       if (c.failureReason) lines.push(`  Failure: ${c.failureReason}`);
       if (c.changesMade) lines.push(`  Changes: ${c.changesMade}`);
@@ -599,6 +605,7 @@ export function buildDispatchSummary(
       });
     }
     c.snipIds.forEach((sid) => lines.push(`  [[SNIP:${sid}]]`));
+    lines.push("");
   };
   sec("Phone Number Field Check", s.phone);
   sec("Repeat Caller Button Check", s.repeat);
