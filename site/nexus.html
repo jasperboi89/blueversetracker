@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Nexus — BlueVerse Studio</title>
+  <meta name="description" content="The Nexus — your private command center inside BlueVerse Studio." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="nexus.css" />
+</head>
+<body class="nexus">
+  <div class="stars"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <!-- TOP BAR -->
+  <header class="nx-top">
+    <a class="brand" href="index.html"><span class="logo"></span>BlueVerse Studio</a>
+    <span class="here">The Nexus <span class="spark">◈</span></span>
+    <div class="nx-search">
+      <span>⌕</span>
+      <input placeholder="Search The Nexus..." aria-label="Search The Nexus" />
+      <span class="kbd">⌘K</span>
+    </div>
+    <div class="nx-top-right">
+      <button class="icon-btn" aria-label="signal">▤</button>
+      <button class="icon-btn" aria-label="notifications">🔔<span class="badge"></span></button>
+      <div class="nx-user">
+        <span class="av"></span>
+        <span class="nm"><b>Liam</b><small>Architect</small></span>
+        <span class="chev">▾</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="nx-layout">
+    <!-- SIDEBAR -->
+    <aside class="nx-side">
+      <nav class="nx-nav">
+        <a class="active" href="nexus.html"><span class="ni">⌂</span> Nexus Home</a>
+        <a href="#"><span class="ni">◎</span> Liam AI Console</a>
+        <a href="#"><span class="ni">▣</span> Project Tracker</a>
+        <a href="#"><span class="ni">▤</span> Prompt Vault</a>
+        <a href="#"><span class="ni">✎</span> Writing Vault</a>
+        <a href="#"><span class="ni">△</span> Local AI Lab</a>
+        <a href="#"><span class="ni">⚙</span> Workflow Tools</a>
+        <a href="#"><span class="ni">🗄</span> Private Archive</a>
+        <a href="#"><span class="ni">📡</span> Signal Monitor</a>
+        <a href="#"><span class="ni">📚</span> Knowledge Hub</a>
+        <a href="#"><span class="ni">⚙</span> Settings</a>
+      </nav>
+
+      <div class="side-h">Nexus Status</div>
+      <div class="live-card">
+        <div class="lh"><b>Live Signal</b><span class="badge-on">ONLINE</span></div>
+        <div class="radar"><span class="sweep"></span><span class="core"></span></div>
+        <div class="live-stats">
+          <p><span>Signal Strength</span><b class="ex" id="sigStrength">Excellent 98.7%</b></p>
+          <p><span>Nodes Active</span><b>12 / 12</b></p>
+          <p><span>Encrypted</span><b>AES-256</b></p>
+        </div>
+      </div>
+
+      <div class="side-h">System Uptime</div>
+      <div class="uptime">
+        <div class="big">⏱ 15d 7h 42m</div>
+        <small>All systems operational</small>
+      </div>
+
+      <div class="side-portal">
+        <b>The Nexus</b>
+        <small>Private Layer of BlueVerse</small>
+        <div class="ring-viz"></div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="nx-main">
+      <!-- welcome -->
+      <section class="welcome">
+        <span class="wstars"></span>
+        <h1>Welcome back, Liam.</h1>
+        <p>You are in The Nexus — your private command center.</p>
+        <div class="wchips">
+          <div class="wchip"><span class="wi">◐</span><span><small>Focus Mode</small><b>Deep Work</b></span></div>
+          <div class="wchip"><span class="wi">◎</span><span><small>AI Status</small><b>Optimal</b></span></div>
+          <div class="wchip"><span class="wi">🛡</span><span><small>Privacy</small><b>Fort Knox</b></span></div>
+        </div>
+      </section>
+
+      <!-- console + tracker -->
+      <div class="row c2a">
+        <section class="nx-card pad">
+          <div class="console-top">
+            <span class="av"></span>
+            <div><h3>Liam AI Console</h3><div class="ver">Liam AI v2.7.4 · Your Personal AI Partner</div></div>
+            <span class="live">Live</span>
+          </div>
+          <div class="eq">
+            <i style="--h:20px"></i><i style="--h:44px"></i><i style="--h:30px"></i><i style="--h:56px"></i>
+            <i style="--h:38px"></i><i style="--h:60px"></i><i style="--h:34px"></i><i style="--h:48px"></i>
+            <i style="--h:26px"></i><i style="--h:52px"></i><i style="--h:40px"></i><i style="--h:58px"></i>
+            <i style="--h:30px"></i><i style="--h:46px"></i><i style="--h:22px"></i>
+          </div>
+          <div class="console-quote">&ldquo;I&rsquo;m here. What shall we build, create, or solve today?&rdquo;</div>
+          <div class="console-btns">
+            <button class="new" id="newChat">▢ New Chat</button>
+            <button class="open">⧉ Open Console</button>
+          </div>
+          <div class="chips">
+            <button>◇ Brainstorm</button><button>✎ Write</button><button>◎ Analyze</button><button>✦ Build</button>
+          </div>
+        </section>
+
+        <section class="nx-card pad">
+          <div class="card-h"><h3>Project Tracker</h3><a class="view-all" href="#">View All</a></div>
+          <div class="track-list">
+            <div class="track"><span class="ti" style="color:var(--cyan)">▣</span><div class="tt"><b>BlueVerse OS</b><small>Core platform rebuild</small></div><span class="pct" style="--p:78%;--pc:var(--cyan)"><span>78%</span></span></div>
+            <div class="track"><span class="ti" style="color:var(--violet);background:rgba(155,101,255,.1);border-color:rgba(155,101,255,.24)">◎</span><div class="tt"><b>Liam AI Evolution</b><small>Next-gen personality layer</small></div><span class="pct" style="--p:63%;--pc:var(--gold)"><span>63%</span></span></div>
+            <div class="track"><span class="ti" style="color:var(--green);background:rgba(82,247,164,.1);border-color:rgba(82,247,164,.24)">◉</span><div class="tt"><b>Nexus Command Center</b><small>Private dashboard + tools</small></div><span class="pct" style="--p:91%;--pc:var(--green)"><span>91%</span></span></div>
+            <div class="track"><span class="ti" style="color:var(--mag);background:rgba(226,93,255,.1);border-color:rgba(226,93,255,.24)">✎</span><div class="tt"><b>BV Writer&rsquo;s Suite</b><small>Pro writing environment</small></div><span class="pct" style="--p:47%;--pc:var(--gold)"><span>47%</span></span></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- three vaults -->
+      <div class="row c3">
+        <section class="nx-card pad">
+          <div class="card-h"><h3>Prompt Vault</h3><a class="plus" href="#">+ New</a></div>
+          <div class="vlist">
+            <a class="vrow" href="#"><span class="vi">🗣</span><div class="vt"><b>Brand Voice Architect</b><small>23 prompts</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">✍</span><div class="vt"><b>Story Engine Pro</b><small>18 prompts</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">🚀</span><div class="vt"><b>Product Launch OS</b><small>31 prompts</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">👤</span><div class="vt"><b>Customer Avatar Builder</b><small>14 prompts</small></div><span class="chev">›</span></a>
+          </div>
+          <a class="card-foot" href="#">Browse Vault →</a>
+        </section>
+
+        <section class="nx-card pad card--writing">
+          <div class="card-h"><h3>Writing Vault</h3><a class="plus" href="#">+ New</a></div>
+          <div class="vlist">
+            <a class="vrow" href="#"><span class="vi">📕</span><div class="vt"><b>Book: The Nexus Protocol</b><small>87,421 words</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">📄</span><div class="vt"><b>Article: The Future of AI</b><small>2,341 words</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">📘</span><div class="vt"><b>Guide: Prompt Engineering</b><small>5,612 words</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">📓</span><div class="vt"><b>Journal: Nexus Logs</b><small>12 entries</small></div><span class="chev">›</span></a>
+          </div>
+          <a class="card-foot" href="#">Open Writing Vault →</a>
+        </section>
+
+        <section class="nx-card pad card--notes">
+          <div class="card-h"><h3>Local AI Lab Notes</h3><a class="plus" href="#">+ New</a></div>
+          <div class="vlist">
+            <a class="vrow" href="#"><span class="vi">◎</span><div class="vt"><b>Liam AI — Training Notes</b><small>Updated 2h ago</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">△</span><div class="vt"><b>RAG System Experiments</b><small>Updated 1d ago</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">&lt;/&gt;</span><div class="vt"><b>Embedding Tests</b><small>Updated 3d ago</small></div><span class="chev">›</span></a>
+            <a class="vrow" href="#"><span class="vi">&lt;/&gt;</span><div class="vt"><b>Model Fine-Tuning</b><small>Updated 5d ago</small></div><span class="chev">›</span></a>
+          </div>
+          <a class="card-foot" href="#">Open Lab Notes →</a>
+        </section>
+      </div>
+
+      <!-- tools + activity -->
+      <div class="row c2b">
+        <section class="nx-card pad">
+          <div class="card-h"><h3>Workflow Tools</h3></div>
+          <p style="color:var(--muted);font-size:.85rem;margin:0 0 4px">Power tools for creators and builders.</p>
+          <div class="tool-grid">
+            <div class="tool t1"><div class="tgi">✎</div><b>Prompt Builder</b><small>Craft powerful prompts</small></div>
+            <div class="tool t2"><div class="tgi">🖼</div><b>AI Image Lab</b><small>Generate &amp; refine</small></div>
+            <div class="tool t3"><div class="tgi">📄</div><b>Doc Analyzer</b><small>Extract &amp; summarize</small></div>
+            <div class="tool t4"><div class="tgi">◇</div><b>Mind Mapper</b><small>Visualize ideas</small></div>
+            <div class="tool t5"><div class="tgi">&lt;/&gt;</div><b>Code Assistant</b><small>Write &amp; debug</small></div>
+            <div class="tool t6"><div class="tgi">🎙</div><b>Voice Synthesis</b><small>Listen &amp; iterate</small></div>
+          </div>
+          <a class="card-foot" href="#">Open All Tools →</a>
+        </section>
+
+        <section class="nx-card pad">
+          <div class="card-h"><h3>Activity Feed</h3><span class="view-all" style="color:var(--green);display:inline-flex;gap:6px;align-items:center">● Live</span></div>
+          <div class="feed">
+            <div class="fitem"><span class="fdot">▣</span><div><div class="ft">You updated project <b>Nexus Command Center</b></div><span class="fw">2m ago</span></div></div>
+            <div class="fitem v"><span class="fdot">◎</span><div><div class="ft"><b>Liam AI</b> completed a deep analysis</div><span class="fw">7m ago</span></div></div>
+            <div class="fitem"><span class="fdot">📄</span><div><div class="ft">New document added to <b>Writing Vault</b></div><span class="fw">15m ago</span></div></div>
+            <div class="fitem v"><span class="fdot">✎</span><div><div class="ft">Prompt <b>&ldquo;Story Engine Pro&rdquo;</b> edited</div><span class="fw">32m ago</span></div></div>
+            <div class="fitem g"><span class="fdot">△</span><div><div class="ft">AI Lab note updated: <b>RAG System Experiments</b></div><span class="fw">1h ago</span></div></div>
+          </div>
+          <a class="card-foot" href="#">View Full Activity →</a>
+        </section>
+      </div>
+
+      <!-- private archive -->
+      <section class="archive">
+        <div class="ah">
+          <h3>Private Archive</h3>
+          <p>Encrypted. Private. Yours.</p>
+        </div>
+        <div class="abody">
+          <div class="astats">
+            <div class="astat"><div class="asi">📄</div><b>1,248</b><small>Documents</small></div>
+            <div class="astat"><div class="asi" style="color:var(--gold);background:rgba(255,190,95,.1);border-color:rgba(255,190,95,.24)">💬</div><b>532</b><small>Conversations</small></div>
+            <div class="astat"><div class="asi" style="color:var(--violet);background:rgba(155,101,255,.1);border-color:rgba(155,101,255,.24)">🖼</div><b>873</b><small>Images</small></div>
+            <div class="astat"><div class="asi" style="color:var(--green);background:rgba(82,247,164,.1);border-color:rgba(82,247,164,.24)">🔊</div><b>231</b><small>Audio</small></div>
+            <div class="astat"><div class="asi" style="color:var(--mag);background:rgba(226,93,255,.1);border-color:rgba(226,93,255,.24)">🗒</div><b>612</b><small>Archive Notes</small></div>
+          </div>
+          <div class="vault-panel">
+            <div class="vault-dial"></div>
+            <b>NEXUS VAULT</b>
+            <small>Secure &amp; Encrypted</small>
+            <button class="access">Access Archive</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="nx-foot">
+        <span class="bv">◆ BlueVerse Studio</span> &nbsp;•&nbsp; The Nexus &nbsp;•&nbsp; Private by Design 🛡
+      </footer>
+    </main>
+  </div>
+
+  <div id="toast" class="toast">Ready.</div>
+  <script src="nexus.js"></script>
+</body>
+</html>

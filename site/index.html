@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlueVerse Studio</title>
+  <meta name="description" content="BlueVerse Studio — a creative AI homebase by Luke Tesch." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="stars"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+
+  <div class="shell">
+    <!-- browser chrome -->
+    <div class="browser-bar">
+      <span class="dot red"></span><span class="dot amber"></span><span class="dot green"></span>
+      <span class="b-tab"><span class="mini-orb"></span>BlueVerse Studio</span>
+      <span class="b-url">🔒 https://blueversestudio.com</span>
+      <span class="b-tools">☆ ⌂ ⋮</span>
+    </div>
+
+    <!-- nav -->
+    <header class="nav">
+      <a class="brand" href="index.html"><span class="logo"></span>BlueVerse Studio</a>
+      <nav id="links" class="links">
+        <a class="active" href="#home">Home</a>
+        <a href="#projects">Projects</a>
+        <a href="#books">Books &amp; Writing</a>
+        <a href="#ai">BlueVerse AI</a>
+        <a href="#lab">Local AI Lab</a>
+        <a href="#about">About Luke</a>
+        <a href="#connect">Connect</a>
+        <a href="nexus.html">The Nexus</a>
+      </nav>
+      <div class="nav-icons">
+        <button class="menu-btn icon-btn" id="menuBtn" aria-label="menu">☰</button>
+        <button class="icon-btn" id="searchBtn" aria-label="search">⌕</button>
+        <button class="icon-btn" aria-label="notifications">🔔<span class="badge"></span></button>
+        <button class="avatar" aria-label="profile"></button>
+      </div>
+    </header>
+
+    <main class="frame">
+      <!-- HERO -->
+      <section id="home" class="hero">
+        <div class="hero-scene" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <span class="pill">✦ Welcome home, Luke</span>
+          <h1>BlueVerse<br>Studio</h1>
+          <p class="lead">A creative AI homebase by <b>Luke Tesch</b>.</p>
+          <p>Where imagination meets intelligence. Build, write, explore, and create the future&mdash;your way.</p>
+          <div class="actions">
+            <a href="#projects" class="btn primary">Explore the Universe &rsaquo;</a>
+            <a href="#projects" class="btn secondary">View Latest Projects</a>
+          </div>
+        </div>
+
+        <aside class="signal glass">
+          <div class="panel-head"><b>Studio Signal</b><span class="online">Online</span></div>
+          <div class="row"><small>System Status</small><b>All systems nominal</b></div>
+          <div class="row">
+            <div class="meter-head"><span>Creative Flow</span><b id="flow">92%</b></div>
+            <div class="wave">
+              <svg viewBox="0 0 260 46" preserveAspectRatio="none" aria-hidden="true">
+                <defs><linearGradient id="flowgrad" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0" stop-color="#22d7ff"/><stop offset="1" stop-color="#9b65ff"/>
+                </linearGradient></defs>
+                <path d="M0,23 C13,6 26,6 39,23 S65,40 78,23 S104,6 117,23 S143,40 156,23 S182,6 195,23 S221,40 234,23 S260,10 260,23"/>
+              </svg>
+            </div>
+          </div>
+          <div class="row">
+            <div class="meter-head"><span>Inspiration Level</span><b>High</b></div>
+            <div class="bar violet"><i style="width:86%"></i></div>
+          </div>
+          <div class="row">
+            <small>Next Milestone</small><b>BlueVerse Chronicles: Volume II</b>
+            <div class="bar cyan" style="margin-top:8px"><i style="width:67%"></i></div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- CARD GRID -->
+      <div class="grid-wrap">
+        <div class="card-row three">
+          <!-- Projects -->
+          <article id="projects" class="card card--c1">
+            <div class="head">
+              <span class="ico">🗂</span>
+              <div><h3>Projects</h3><div class="sub">Build. Ship. Create.</div></div>
+              <span class="gem">◆</span>
+            </div>
+            <div class="tabs" data-tabs="projects">
+              <button>All</button><button class="on">In Progress</button><button>Completed</button><button>Archived</button>
+            </div>
+            <div class="mini">
+              <div class="t"><div class="thumb m1"></div><div class="meta"><b>BlueVerse Chronicles</b><div class="pr"><small>In Progress</small><span class="track"><i style="width:72%"></i></span><small>72%</small></div></div></div>
+              <div class="t"><div class="thumb m2"></div><div class="meta"><b>AI Story Architect</b><div class="pr"><small>In Progress</small><span class="track"><i style="width:64%"></i></span><small>64%</small></div></div></div>
+              <div class="t"><div class="thumb m4"></div><div class="meta"><b>Stellar Realms</b><div class="pr"><small>In Progress</small><span class="track"><i style="width:48%"></i></span><small>48%</small></div></div></div>
+              <div class="t"><div class="thumb m3"></div><div class="meta"><b>DreamForge</b><div class="pr"><small>In Progress</small><span class="track"><i style="width:31%"></i></span><small>31%</small></div></div></div>
+            </div>
+            <a class="card-link" href="nexus.html">View All Projects &rsaquo;</a>
+          </article>
+
+          <!-- Books & Writing -->
+          <article id="books" class="card card--c2">
+            <div class="head">
+              <span class="ico">📖</span>
+              <div><h3>Books &amp; Writing</h3><div class="sub">Write. Publish. Inspire.</div></div>
+              <span class="gem">◆</span>
+            </div>
+            <div class="tabs" data-tabs="books">
+              <button class="on">All</button><button>Books</button><button>Short Stories</button><button>Notes</button>
+            </div>
+            <div class="shelf">
+              <span class="book b1">BlueVerse<br>Chronicles</span>
+              <span class="book b2">Fragments</span>
+              <span class="book b3">The Signal</span>
+            </div>
+            <div class="stat3">
+              <div class="s"><b>12</b><small>Books</small></div>
+              <div class="s"><b>24</b><small>Stories</small></div>
+              <div class="s"><b>8.4k</b><small>Words Today</small></div>
+            </div>
+            <a class="card-link" href="nexus.html">Enter the Library &rsaquo;</a>
+          </article>
+
+          <!-- BlueVerse AI -->
+          <article id="ai" class="card card--c3">
+            <div class="head">
+              <span class="ico">◎</span>
+              <div><h3>BlueVerse AI</h3><div class="sub">Create with Intelligence.</div></div>
+              <span class="gem">✧</span>
+            </div>
+            <div class="tabs" data-tabs="ai">
+              <button class="on">Chat</button><button>Generate</button><button>Assist</button><button>Imagine</button>
+            </div>
+            <div class="chat" id="homeChat">
+              <div class="msg bot"><span class="who"></span><div><div class="name">BlueVerse AI</div><div class="bub">Hello Luke. What shall we create today?</div></div></div>
+              <div class="msg you"><div class="bub">Help me outline the next chapter of BlueVerse Chronicles.</div></div>
+              <div class="msg bot"><span class="who"></span><div><div class="name">BlueVerse AI</div><div class="bub">On it &mdash; let&rsquo;s map the arc.</div></div></div>
+            </div>
+            <form class="ask" id="homeAsk">
+              <input placeholder="Ask anything..." aria-label="Ask BlueVerse AI" />
+              <button type="submit" aria-label="send">➤</button>
+            </form>
+          </article>
+        </div>
+
+        <div class="card-row four">
+          <!-- Local AI Lab -->
+          <article id="lab" class="card card--c4">
+            <div class="head">
+              <span class="ico">🧪</span>
+              <div><h3>Local AI Lab</h3><div class="sub">Private. Powerful. Local.</div></div>
+              <span class="gem">◆</span>
+            </div>
+            <div class="models">
+              <div class="mh"><span>Models Loaded</span><span class="n">4</span></div>
+              <p><span>Llama 3.1 70B</span><b>Ready</b></p>
+              <p><span>Mistral Nemo 12B</span><b>Ready</b></p>
+              <p><span>Phi-3 Mini 4K</span><b>Ready</b></p>
+              <p><span>CodeLlama 34B</span><b>Ready</b></p>
+            </div>
+            <div class="gauges">
+              <div class="gauge"><div class="ring" style="--p:42%"></div><b>42%</b><small>GPU</small></div>
+              <div class="gauge"><div class="ring" style="--p:68%"></div><b>68%</b><small>VRAM</small></div>
+              <div class="gauge"><div class="ring" style="--p:51%"></div><b>51%</b><small>RAM</small></div>
+              <div class="gauge"><div class="ring" style="--p:38%"></div><b>38%</b><small>CPU</small></div>
+            </div>
+            <a class="card-link" href="nexus.html">Open Lab Console &rsaquo;</a>
+          </article>
+
+          <!-- About Luke -->
+          <article id="about" class="card card--c5">
+            <div class="head">
+              <span class="ico">👤</span>
+              <div><h3>About Luke</h3><div class="sub">Creator. Thinker. Dreamer.</div></div>
+              <span class="gem">◆</span>
+            </div>
+            <div class="profile">
+              <span class="pic"></span>
+              <span class="nm">Luke Tesch <span class="ok">✔</span></span>
+              <span class="role">Author • Developer • AI Explorer</span>
+              <p>Building worlds, stories, and tools that empower creativity.</p>
+              <div class="mini-icons"><span>📖</span><span>&lt;/&gt;</span><span>✎</span><span>✦</span></div>
+            </div>
+            <a class="card-link" href="#about">Learn More About Luke &rsaquo;</a>
+          </article>
+
+          <!-- Contact / Connect -->
+          <article id="connect" class="card card--c6">
+            <div class="head">
+              <span class="ico">✈</span>
+              <div><h3>Contact / Connect</h3><div class="sub">Let&rsquo;s Connect.</div></div>
+              <span class="gem">◆</span>
+            </div>
+            <div class="contact">
+              <a href="#" data-copy="hello@blueversestudio.com"><span class="ci">✉</span><b>Email</b><small>hello@blueversestudio.com</small></a>
+              <a href="#" data-copy="@LukeTesch"><span class="ci">𝕏</span><b>X / Twitter</b><small>@LukeTesch</small></a>
+              <a href="#" data-copy="BlueVerse Studio Discord"><span class="ci">◈</span><b>Discord</b><small>Join the community</small></a>
+              <a href="#" data-copy="Newsletter"><span class="ci">✉</span><b>Newsletter</b><small>Stay in the loop</small></a>
+            </div>
+            <a class="card-link" href="#connect">Send a Message &rsaquo;</a>
+          </article>
+
+          <!-- The Nexus -->
+          <article class="card card--c7">
+            <div class="head">
+              <span class="ico">◌</span>
+              <div><h3>The Nexus</h3><div class="sub">Private Portal. Creator Access.</div></div>
+              <span class="gem">✦</span>
+            </div>
+            <div class="nexus-login">
+              <div class="lh">Nexus Login</div>
+              <span class="nexus-orb"></span>
+              <label>Username</label><div class="fld">LukeTesch</div>
+              <label>Password</label><div class="fld">••••••••••</div>
+              <div class="opt"><span>☑ Remember me</span><a href="#">Forgot?</a></div>
+              <a class="enter" href="nexus.html">Enter The Nexus &rsaquo;</a>
+            </div>
+            <small class="secure">🔒 Secure. Private. Yours.</small>
+          </article>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- BOTTOM UTILITY BAR -->
+  <div class="shell">
+    <div class="util glass">
+      <div class="now">
+        <span class="art"></span>
+        <div class="lbl"><small>Now Playing</small><b>Interstellar Ambient</b><small>Focus Mode</small>
+          <div class="ctrls">⏮ ⏯ ⏭</div></div>
+      </div>
+      <div class="focus">
+        <span class="ring"><b id="focusTime">45:00</b></span>
+        <div class="lbl"><small>Focus Timer</small><button class="fbtn" id="focusBtn">Start Focus</button></div>
+      </div>
+      <div class="quote">
+        <div class="q">&ldquo;The universe is made of stories, not atoms.&rdquo;<cite>— Muriel Rukeyser</cite></div>
+      </div>
+      <div class="wx"><small>Weather</small><span class="t">☁ 72°F</span><small>Clear Skies · St. Petersburg, FL</small></div>
+      <div class="clk"><small>Studio Time</small><b id="studioTime">10:42 PM</b><small id="studioDate">May 29, 2025</small></div>
+    </div>
+  </div>
+
+  <footer>
+    <span>© 2025 BlueVerse Studio. All rights reserved.</span>
+    <span class="fl"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a></span>
+  </footer>
+
+  <div id="toast" class="toast">Copied.</div>
+  <script src="script.js"></script>
+</body>
+</html>
