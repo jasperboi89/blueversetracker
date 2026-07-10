@@ -125,7 +125,6 @@ export interface ParsedTicketIssueShape {
   };
 }
 export function formatTicketIssue(p: ParsedTicketIssueShape): string {
-export function formatTicketIssue(p: ParsedTicketIssueShape): string {
   const esc = (s: string) =>
     s
       .replace(/&/g, "&amp;")
