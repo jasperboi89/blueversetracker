@@ -125,36 +125,42 @@ export interface ParsedTicketIssueShape {
   };
 }
 export function formatTicketIssue(p: ParsedTicketIssueShape): string {
+export function formatTicketIssue(p: ParsedTicketIssueShape): string {
+  const esc = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   const v = (s?: string) => {
     const t = (s ?? "").trim();
-    return t.length ? t : "Not provided.";
+    return t.length ? esc(t) : "Not provided.";
   };
+  const heading = (label: string) => `<p><strong>${label}</strong></p>`;
+  const body = (val: string) => `<p>${val}</p>`;
+  const field = (label: string, val: string) =>
+    `<p><strong>${label}:</strong> ${val}</p>`;
   const a = p.attached ?? {};
   return [
-    "Issue:",
-    v(p.issue),
-    "",
-    "Background:",
-    v(p.background),
-    "",
-    "Requested Action:",
-    v(p.requestedAction),
-    "",
-    `Specific Field: ${v(p.specificField)}`,
-    `Category: ${v(p.category)}`,
-    `Message Taking or Dispatching: ${v(p.messageTakingOrDispatching)}`,
-    `F9 Issue: ${v(p.f9Issue)}`,
-    "",
-    "Attached Message / Example:",
-    `MsgID: ${v(a.msgId)}`,
-    `Call Timestamp: ${v(a.callTimestamp)}`,
-    `Message Summary: ${v(a.messageSummary)}`,
-    `For: ${v(a.for)}`,
-    `Caller: ${v(a.caller)}`,
-    `Phone: ${v(a.phone)}`,
-    `Patient: ${v(a.patient)}`,
-    `Message: ${v(a.message)}`,
-  ].join("\n");
+    heading("Issue:"),
+    body(v(p.issue)),
+    heading("Background:"),
+    body(v(p.background)),
+    heading("Requested Action:"),
+    body(v(p.requestedAction)),
+    field("Specific Field", v(p.specificField)),
+    field("Category", v(p.category)),
+    field("Message Taking or Dispatching", v(p.messageTakingOrDispatching)),
+    field("F9 Issue", v(p.f9Issue)),
+    heading("Attached Message / Example:"),
+    field("MsgID", v(a.msgId)),
+    field("Call Timestamp", v(a.callTimestamp)),
+    field("Message Summary", v(a.messageSummary)),
+    field("For", v(a.for)),
+    field("Caller", v(a.caller)),
+    field("Phone", v(a.phone)),
+    field("Patient", v(a.patient)),
+    field("Message", v(a.message)),
+  ].join("");
 }
 
 export type TicketStatus = "working" | "waiting-cs" | "waiting-prog" | "completed";
