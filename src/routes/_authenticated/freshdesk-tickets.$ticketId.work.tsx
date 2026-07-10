@@ -64,7 +64,7 @@ import { TicketAIPane } from "@/components/workspace/TicketAIPane";
 import { InlineWorkTimer } from "@/components/workspace/InlineWorkTimer";
 import { aiParseTicketIssue } from "@/lib/ai/ai.functions";
 import { formatTicketIssue } from "@/lib/tickets-store";
-import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
+import { useAISettings } from "@/lib/settings/ai-settings-store";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
