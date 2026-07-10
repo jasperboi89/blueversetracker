@@ -53,7 +53,7 @@ export function useInsights(): Insight[] {
       id: "overdue",
       severity: "high",
       text: `${overdue.length} ticket${overdue.length === 1 ? "" : "s"} overdue.`,
-      to: "/_authenticated/freshdesk-tickets",
+      to: "/freshdesk-tickets",
       params: {},
     });
   }
@@ -82,7 +82,7 @@ export function useInsights(): Insight[] {
       id: "stale-waiting",
       severity: "warn",
       text: `${stale.length} waiting ticket${stale.length === 1 ? "" : "s"} idle 2+ days — nudge or close out.`,
-      to: "/_authenticated/freshdesk-tickets",
+      to: "/freshdesk-tickets",
       params: {},
     });
   }
@@ -98,7 +98,7 @@ export function useInsights(): Insight[] {
       id: "night-plan",
       severity: "info",
       text: `Night plan: ${mustDo.length} must-do item${mustDo.length === 1 ? "" : "s"} left.`,
-      to: "/_authenticated/",
+      to: "/",
       params: {},
     });
   }
@@ -111,7 +111,7 @@ export function useInsights(): Insight[] {
         id: "nothing-active",
         severity: "info",
         text: `Nothing in progress — ${open.length} open ticket${open.length === 1 ? "" : "s"} waiting.`,
-        to: "/_authenticated/freshdesk-tickets",
+        to: "/freshdesk-tickets",
         params: {},
       });
     }
