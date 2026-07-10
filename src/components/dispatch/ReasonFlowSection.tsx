@@ -362,7 +362,12 @@ export function RetestList({ retests, onAdd }: { sessionId: string; retests: Rea
                 </span>
                 <span>{formatCentralShort(new Date(rt.at))} · LTP</span>
               </div>
-              {rt.notes && <div className="mt-1 text-foreground/90">{rt.notes}</div>}
+              {rt.notes && (
+                <div
+                  className="mt-1 text-foreground/90 rich-text-content"
+                  dangerouslySetInnerHTML={{ __html: rt.notes }}
+                />
+              )}
             </div>
           ))}
         </div>
