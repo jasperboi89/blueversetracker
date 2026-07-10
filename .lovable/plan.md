@@ -1,36 +1,60 @@
-## Goal
-Make the Programming Status Email readable: numbered items, proper spacing, larger fonts, and clear separators — in both the rich (HTML) and plain text builders. Snips remain inline in the item's flow.
+I’ll rework the Programming Status Email so it reads like a structured report instead of a compressed paragraph.
 
-## Files to change
+## What will change
 
-### 1. `src/lib/reports/prog-email-rich.ts` (rich HTML — the "Copy Email with Snips (Rich)" path)
-- Bump base font to `font-size:15px; line-height:1.6; color:#111`.
-- Shift heading (`<h2>`): bigger (18px), more top margin (28px), keep subtle background band.
-- Section heading (`<h3>` — Freshdesk Tickets Worked, Contact Dispatch Testing, Additional Work): 16px, `margin:22px 0 10px`, stronger bottom border.
-- Each item wrapped in a `<div>` "card" with:
-  - `margin:14px 0; padding:12px 14px; border:1px solid #e5e7eb; border-left:4px solid #6b7280; border-radius:6px; background:#fff;`
-  - A numbered title line: `**1. Ticket #369427 — Account 48043 / Dr. Movassaghi's Office**` (bold, 15.5px). Numbering resets per section.
-  - Sub-lines (`Summary:`, `Status:`, `Programming Notes:` with indented notes) each on their own `<div style="margin:4px 0;">`.
-  - Notes rendered as separate `<div>` per line with `margin-left:16px`.
-  - Snip block appears at the end of the same card, inline (already exists, keep styling but a bit larger — image `max-width:640px`, snip caption 12px).
-- Between items: rely on card margin (no additional `<hr>` needed).
-- Tail plain-text fallback (Waiting / Attention sections) stays but rendered in a slightly larger, sans-serif `<pre>` (14px, `#111`, white-space:pre-wrap, padding:14px, background:#f7f7f9).
+1. **Fix the on-screen generated email preview**
+   - Stop rendering the plain-text email inside a rich text editor that collapses line breaks.
+   - Show/edit it in a newline-preserving editor with larger readable text.
+   - Remove the tiny monospace styling that makes the email feel cramped.
 
-### 2. `src/lib/reports/prog-email-format.ts` (plain-text builder — used by "Copy Email" and as fallback tail)
-- In `buildEmail`, number items within each section:
-  - `1. Ticket #369427 - Account 48043 / Dr. Movassaghi's Office`
-  - `2. Ticket #369462 - Account 5698 / Norco Medical...`
-  - Same numbering for Contact Dispatch Testing, Additional Work, Waiting, Attention (numbering restarts per section).
-- Add a visible separator line `----------------------------------------` between items in each section (in addition to the existing blank line) so pastes that collapse blank lines still show breaks.
-- Keep existing blank lines and the `while (out.length && out[out.length - 1] === "") out.pop();` trim.
-- No change to warnings, hidden sections, or data selection logic.
-- `buildEmailMulti` is unchanged aside from inheriting the new formatting from `buildEmail`.
+2. **Make the plain-text email much more separated**
+   - Add strong visual section dividers for:
+     - Freshdesk Tickets Worked
+     - Contact Dispatch Testing
+     - Additional Work
+     - Items Still In Progress / Waiting
+     - Items Needing Attention
+   - Put blank space before and after each section.
+   - Number every entry inside each section.
+   - Separate each ticket/work item with a clear divider and extra spacing.
+   - Put fields on their own lines, for example:
 
-## Out of scope
-- Data selection, warnings, night plan collection, attention picker, copy button wiring, RichTextEditor behavior.
-- Dispatch summary/rich-copy (already done in prior turn).
-- No changes to `programming-email-store.ts`, `shift-window.ts`, or any store.
+```text
+FRESHDESK TICKETS WORKED
+============================================================
 
-## Result
-- Rich copy: each ticket/dispatch/work item is a clearly bordered card with a numbered heading and inline snips, larger text.
-- Plain copy: numbered items separated by dashed rules that survive editors that collapse blank lines.
+1. Ticket #369427 - Account 48043 / Dr. Movassaghi's Office
+
+   Summary:
+   When the office checks in...
+
+   Status:
+   Completed Programming
+
+   Programming Notes:
+   Changes: ...
+   Notes: ...
+
+------------------------------------------------------------
+
+2. Ticket #369462 - Account 5698 / Norco Medical - Missoula
+...
+```
+
+3. **Make the rich “Copy Email with Snips” version more readable**
+   - Keep Freshdesk, Contact Dispatch, and Additional Work as distinct HTML sections.
+   - Render each ticket/work item as a larger, spaced card with a bold numbered header.
+   - Increase font size and line height.
+   - Keep snips inline within the correct ticket/work item, but give them spacing so they don’t crowd the text.
+
+4. **Keep scope limited**
+   - No changes to what items are included.
+   - No changes to ticket/dispatch/additional-work data logic.
+   - No backend changes.
+   - No changes to the dispatch summary feature unless it shares the same copy helper directly.
+
+## Files expected to change
+
+- `src/lib/reports/prog-email-format.ts`
+- `src/lib/reports/prog-email-rich.ts`
+- `src/routes/_authenticated/reports.tsx`
