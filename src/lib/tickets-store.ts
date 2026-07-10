@@ -1105,6 +1105,61 @@ export function suggestTemplate(c?: IssueClassification | null): NoteTemplate {
   return "Standard Ticket Work Note";
 }
 
+/**
+ * Parse the HTML produced by `formatTicketIssue()` and return only the Issue
+ * and Background sections as plain text. If the input isn't in the expected
+ * shape (e.g. operator-edited freeform), the whole thing becomes `issue` and
+ * `background` is empty. Skips "Not provided." placeholders.
+ */
+export function extractIssueAndBackground(issueHtml: string): {
+  issue: string;
+  background: string;
+} {
+  const src = (issueHtml ?? "").trim();
+  if (!src) return { issue: "", background: "" };
+
+  const clean = (s: string): string => {
+    const withBreaks = s
+      .replace(/<\s*br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6])>/gi, "\n");
+    const stripped = withBreaks.replace(/<[^>]+>/g, "");
+    const decoded = stripped
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    return decoded.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+
+  const isPlaceholder = (v: string) => !v || /^not provided\.?$/i.test(v.trim());
+
+  // Match headings emitted by formatTicketIssue: <p><strong>Label:</strong></p>
+  const headingRe = /<p>\s*<strong>\s*([^<]+?)\s*<\/strong>\s*<\/p>/gi;
+  const matches: { label: string; start: number; end: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = headingRe.exec(src)) !== null) {
+    matches.push({ label: m[1].replace(/:\s*$/, "").trim().toLowerCase(), start: m.index, end: m.index + m[0].length });
+  }
+
+  if (matches.length === 0) {
+    const asText = clean(src);
+    return { issue: isPlaceholder(asText) ? "" : asText, background: "" };
+  }
+
+  const pick = (label: string): string => {
+    const idx = matches.findIndex((h) => h.label === label);
+    if (idx === -1) return "";
+    const start = matches[idx].end;
+    const end = idx + 1 < matches.length ? matches[idx + 1].start : src.length;
+    const body = clean(src.slice(start, end));
+    return isPlaceholder(body) ? "" : body;
+  };
+
+  return { issue: pick("issue"), background: pick("background") };
+}
+
 export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemplate): string {
   const lines: string[] = [];
   lines.push(`[${template}]`);
