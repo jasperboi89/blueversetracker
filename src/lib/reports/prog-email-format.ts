@@ -78,6 +78,35 @@ function workActive(a: AdditionalWork, w: ShiftWindow): boolean {
   return a.status === "working" && isInWindow(a.updatedAt, w);
 }
 
+const SECTION_DIVIDER = "============================================================";
+const ITEM_DIVIDER = "------------------------------------------------------------";
+
+function pushSection(lines: string[], label: string): void {
+  if (lines.length && lines[lines.length - 1] !== "") lines.push("");
+  lines.push(label.toUpperCase());
+  lines.push(SECTION_DIVIDER);
+  lines.push("");
+}
+
+function pushDivider(lines: string[]): void {
+  lines.push("");
+  lines.push(ITEM_DIVIDER);
+  lines.push("");
+}
+
+function pushField(lines: string[], label: string, value: string): void {
+  lines.push(`   ${label}:`);
+  const clean = value || "(none documented)";
+  clean.split("\n").forEach((line) => lines.push(`   ${line}`));
+  lines.push("");
+}
+
+function pushEntry(lines: string[], num: number, title: string, fields: [string, string][]): void {
+  lines.push(`${num}. ${title}`);
+  lines.push("");
+  fields.forEach(([label, value]) => pushField(lines, label, value));
+}
+
 function ticketSummary(t: Ticket): string {
   const session = ticketsStore.getSession(t.id);
   const issue = cleanText(session.issueText);
@@ -138,23 +167,23 @@ function workNotes(a: AdditionalWork): string {
 function ticketWarnings(t: Ticket): string[] {
   const s = ticketsStore.getSession(t.id);
   const out: string[] = [];
-  if (!s.issueText.trim() && !t.details.subject) out.push("Ticket Issue missing");
-  if (!s.changesText.trim()) out.push("Changes Made / Work Completed missing");
-  if (!s.resultStatus && !s.resultNotes.trim()) out.push("Result / Testing or Current Status missing");
+  if (!cleanText(s.issueText) && !t.details.subject) out.push("Ticket Issue missing");
+  if (!cleanText(s.changesText)) out.push("Changes Made / Work Completed missing");
+  if (!s.resultStatus && !cleanText(s.resultNotes)) out.push("Result / Testing or Current Status missing");
   return out;
 }
 function sessionWarnings(s: DispatchSession): string[] {
   const out: string[] = [];
   if (!s.status) out.push("Final Status missing");
   if (s.reasons.length === 0) out.push("No reasons/section results documented");
-  if ((s.status === "waiting-cs" || s.status === "waiting-prog") && !s.statusReason.trim())
+  if ((s.status === "waiting-cs" || s.status === "waiting-prog") && !cleanText(s.statusReason))
     out.push("Review Needed Reason missing");
   return out;
 }
 function workWarnings(a: AdditionalWork): string[] {
   const out: string[] = [];
-  if (!a.whatNeedsDone.trim()) out.push("What needs done missing");
-  if (a.status === "completed" && !a.completionSummary?.trim())
+  if (!cleanText(a.whatNeedsDone)) out.push("What needs done missing");
+  if (a.status === "completed" && !cleanText(a.completionSummary))
     out.push("Completion summary missing");
   return out;
 }
