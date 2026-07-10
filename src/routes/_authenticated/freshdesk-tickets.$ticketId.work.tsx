@@ -58,7 +58,7 @@ import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { resolveFloating, setLayoutMode, usePaneLayout } from "@/lib/workspace/pane-layout-store";
 import { FloatingPane } from "@/components/workspace/FloatingPane";
 import type { PaneDefault } from "@/lib/workspace/pane-layout-store";
-import { setActiveWork } from "@/lib/workspace/active-work-store";
+import { setActiveWork, leaveActiveWork } from "@/lib/workspace/active-work-store";
 import { AccountMemoryPane } from "@/components/workspace/AccountMemoryPane";
 import { TicketAIPane } from "@/components/workspace/TicketAIPane";
 import { InlineWorkTimer } from "@/components/workspace/InlineWorkTimer";
@@ -124,9 +124,12 @@ function WorkspacePage() {
       label: `Ticket #${ticket.number}`,
       to: "/_authenticated/freshdesk-tickets/$ticketId/work",
       params: { ticketId },
+      accountNumber: ticket.accountNumber || "",
+      accountName: ticket.accountName,
     });
+    return () => leaveActiveWork(ticketId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketId, ticket?.number]);
+  }, [ticketId, ticket?.number, ticket?.accountNumber, ticket?.accountName]);
 
   if (!ticket) {
     return (
