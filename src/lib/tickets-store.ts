@@ -1162,17 +1162,10 @@ export function extractIssueAndBackground(issueHtml: string): {
 
 export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemplate): string {
   const lines: string[] = [];
-  lines.push(`[${template}]`);
-  lines.push("");
+  void template;
   const { issue, background } = extractIssueAndBackground(s.issueText);
-  lines.push("Issue:");
-  lines.push(issue || "(none provided)");
-  lines.push("");
-  if (background) {
-    lines.push("Background:");
-    lines.push(background);
-    lines.push("");
-  }
+
+  // 1. Changes Made
   lines.push("Changes Made:");
   lines.push(s.changesText.trim() || "(none provided)");
   const beforeSnips = t.hubSnips.filter((x) => x.category === "Before Change");
@@ -1180,6 +1173,8 @@ export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemp
   beforeSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
   afterSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
   lines.push("");
+
+  // 2. Result / Testing
   lines.push("Result / Testing:");
   const statusLabelMap: Record<ResultStatus, string> = {
     passed: "Passed",
@@ -1196,6 +1191,20 @@ export function buildGeneratedNote(t: Ticket, s: WorkSession, template: NoteTemp
   if (s.resultNotes.trim()) lines.push(s.resultNotes.trim());
   const testSnips = t.hubSnips.filter((x) => x.category === "Testing Result");
   testSnips.forEach((sn) => lines.push(`  [[SNIP:${sn.id}]]`));
+  lines.push("");
+
+  // 3. Issue
+  lines.push("Issue:");
+  lines.push(issue || "(none provided)");
+  lines.push("");
+
+  // 4. Background (skip if empty)
+  if (background) {
+    lines.push("Background:");
+    lines.push(background);
+    lines.push("");
+  }
+
   while (lines.length && lines[lines.length - 1] === "") lines.pop();
   return lines.join("\n");
 }
