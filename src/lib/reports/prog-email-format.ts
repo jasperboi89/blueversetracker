@@ -185,10 +185,11 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     if (worked.length) {
       lines.push(SECTION_KEYS.worked_freshdesk);
       lines.push("");
-      worked.forEach((t) => {
+      worked.forEach((t, i) => {
         const ws = ticketWarnings(t);
         if (ws.length) warnings.push({ ref: `Ticket #${t.number}`, reason: ws.join(", ") });
-        lines.push(`Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`);
+        if (i > 0) { lines.push("----------------------------------------"); lines.push(""); }
+        lines.push(`${i + 1}. Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`);
         lines.push(`Summary: ${ticketSummary(t)}`);
         lines.push(`Status: ${STATUS_LABEL[t.status]}`);
         const notes = ticketProgrammingNotes(t);
@@ -209,10 +210,11 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     if (cdItems.length) {
       lines.push(SECTION_KEYS.dispatch);
       lines.push("");
-      cdItems.forEach((s) => {
+      cdItems.forEach((s, i) => {
         const ws = sessionWarnings(s);
         if (ws.length) warnings.push({ ref: `Account ${s.accountNumber} (dispatch)`, reason: ws.join(", ") });
-        lines.push(`Account ${s.accountNumber} / ${s.accountName}`);
+        if (i > 0) { lines.push("----------------------------------------"); lines.push(""); }
+        lines.push(`${i + 1}. Account ${s.accountNumber} / ${s.accountName}`);
         lines.push(`Summary: ${dispatchSummary(s)}`);
         lines.push(`Final Status: ${dispatchFinalStatus(s)}`);
         const n = dispatchNotes(s);
@@ -235,11 +237,14 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     if (awItems.length || nightPlanAttention.length) {
       lines.push(SECTION_KEYS.additional);
       lines.push("");
+      let awIdx = 0;
       awItems.forEach((a) => {
         const ws = workWarnings(a);
         if (ws.length) warnings.push({ ref: `Work "${a.title}"`, reason: ws.join(", ") });
         const acct = a.accountNumber ? ` - Account ${a.accountNumber} / ${a.accountName}` : "";
-        lines.push(`${a.title}${acct}`);
+        awIdx += 1;
+        if (awIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+        lines.push(`${awIdx}. ${a.title}${acct}`);
         lines.push(`Summary: ${workSummary(a)}`);
         const n = workNotes(a);
         if (n) {
@@ -251,7 +256,9 @@ export function buildEmail(opts: BuildOptions): BuildResult {
         lines.push("");
       });
       nightPlanAttention.forEach((np) => {
-        lines.push(np.task);
+        awIdx += 1;
+        if (awIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+        lines.push(`${awIdx}. ${np.task}`);
         lines.push(`Summary: ${np.task}`);
         if (np.notes) {
           lines.push("Notes:");
@@ -272,8 +279,11 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     if (waitingTickets.length || waitingSessions.length || waitingWorks.length) {
       lines.push(SECTION_KEYS.waiting);
       lines.push("");
+      let wIdx = 0;
       waitingTickets.forEach((t) => {
-        lines.push(`Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`);
+        wIdx += 1;
+        if (wIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+        lines.push(`${wIdx}. Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`);
         lines.push(`Current status: ${STATUS_LABEL[t.status]}`);
         const s = ticketsStore.getSession(t.id);
         const waitingOn = t.status === "waiting-cs" ? "Customer Service" : t.status === "waiting-prog" ? "Programming" : "—";
@@ -283,7 +293,9 @@ export function buildEmail(opts: BuildOptions): BuildResult {
         lines.push("");
       });
       waitingSessions.forEach((s) => {
-        lines.push(`Dispatch — Account ${s.accountNumber} / ${s.accountName}`);
+        wIdx += 1;
+        if (wIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+        lines.push(`${wIdx}. Dispatch — Account ${s.accountNumber} / ${s.accountName}`);
         lines.push(`Current status: ${dispatchFinalStatus(s)}`);
         const waitingOn = s.status === "waiting-cs" ? "Customer Service Review" : s.status === "waiting-prog" ? "Programming Review" : "Still working";
         lines.push(`Waiting on: ${waitingOn}`);
@@ -292,7 +304,9 @@ export function buildEmail(opts: BuildOptions): BuildResult {
       });
       waitingWorks.forEach((a) => {
         const acct = a.accountNumber ? ` - Account ${a.accountNumber} / ${a.accountName}` : "";
-        lines.push(`Work: ${a.title}${acct}`);
+        wIdx += 1;
+        if (wIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+        lines.push(`${wIdx}. Work: ${a.title}${acct}`);
         lines.push(`Current status: Currently Working On`);
         lines.push(`Notes: ${a.programmingStatusNotes.trim() || a.notes.trim() || "(none documented)"}`);
         lines.push("");
@@ -307,11 +321,14 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     if (nonNP.length) {
       lines.push(SECTION_KEYS.attention);
       lines.push("");
+      let atIdx = 0;
       nonNP.forEach((ref) => {
         if (ref.kind === "freshdesk") {
           const t = tickets.find((x) => x.id === ref.id);
           if (!t) return;
-          lines.push(`Account ${t.accountNumber} / ${t.accountName} — Ticket #${t.number}`);
+          atIdx += 1;
+          if (atIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+          lines.push(`${atIdx}. Account ${t.accountNumber} / ${t.accountName} — Ticket #${t.number}`);
           lines.push(`Reason: Flagged for follow-up`);
           lines.push(`Current status: ${STATUS_LABEL[t.status]}`);
           const s = ticketsStore.getSession(t.id);
@@ -320,7 +337,9 @@ export function buildEmail(opts: BuildOptions): BuildResult {
         } else if (ref.kind === "dispatch") {
           const s = sessions.find((x) => x.id === ref.id);
           if (!s) return;
-          lines.push(`Account ${s.accountNumber} / ${s.accountName} — Dispatch`);
+          atIdx += 1;
+          if (atIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+          lines.push(`${atIdx}. Account ${s.accountNumber} / ${s.accountName} — Dispatch`);
           lines.push(`Reason: Flagged for follow-up`);
           lines.push(`Current status: ${dispatchFinalStatus(s)}`);
           lines.push(`Notes: ${s.statusReason.trim() || "(none documented)"}`);
@@ -329,7 +348,9 @@ export function buildEmail(opts: BuildOptions): BuildResult {
           const a = works.find((x) => x.id === ref.id);
           if (!a) return;
           const acct = a.accountNumber ? `Account ${a.accountNumber} / ${a.accountName}` : "No account linked";
-          lines.push(`${acct} — ${a.title}`);
+          atIdx += 1;
+          if (atIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
+          lines.push(`${atIdx}. ${acct} — ${a.title}`);
           lines.push(`Reason: Flagged for follow-up`);
           lines.push(`Current status: ${a.status === "completed" ? "Completed" : "Currently Working On"}`);
           lines.push(`Notes: ${a.programmingStatusNotes.trim() || a.notes.trim() || "(none documented)"}`);

@@ -1,42 +1,36 @@
-## Problem
+## Goal
+Make the Programming Status Email readable: numbered items, proper spacing, larger fonts, and clear separators — in both the rich (HTML) and plain text builders. Snips remain inline in the item's flow.
 
-Copy with Snips (HTML) for a Contact Dispatch summary produces one dense wall of monospace text. Two root causes:
+## Files to change
 
-1. `buildDispatchSummary` (src/lib/dispatch-store.ts) emits reasons and checks with no blank lines between them, so `buildSummaryHtml` treats the whole block as a single paragraph.
-2. `buildSummaryHtml` (src/lib/summary/rich-copy.ts) renders paragraphs as small monospace `<pre>`-style blocks (13px, ui-monospace). Bullets, indented sub-lines, and section labels all get squished together.
+### 1. `src/lib/reports/prog-email-rich.ts` (rich HTML — the "Copy Email with Snips (Rich)" path)
+- Bump base font to `font-size:15px; line-height:1.6; color:#111`.
+- Shift heading (`<h2>`): bigger (18px), more top margin (28px), keep subtle background band.
+- Section heading (`<h3>` — Freshdesk Tickets Worked, Contact Dispatch Testing, Additional Work): 16px, `margin:22px 0 10px`, stronger bottom border.
+- Each item wrapped in a `<div>` "card" with:
+  - `margin:14px 0; padding:12px 14px; border:1px solid #e5e7eb; border-left:4px solid #6b7280; border-radius:6px; background:#fff;`
+  - A numbered title line: `**1. Ticket #369427 — Account 48043 / Dr. Movassaghi's Office**` (bold, 15.5px). Numbering resets per section.
+  - Sub-lines (`Summary:`, `Status:`, `Programming Notes:` with indented notes) each on their own `<div style="margin:4px 0;">`.
+  - Notes rendered as separate `<div>` per line with `margin-left:16px`.
+  - Snip block appears at the end of the same card, inline (already exists, keep styling but a bit larger — image `max-width:640px`, snip caption 12px).
+- Between items: rely on card margin (no additional `<hr>` needed).
+- Tail plain-text fallback (Waiting / Attention sections) stays but rendered in a slightly larger, sans-serif `<pre>` (14px, `#111`, white-space:pre-wrap, padding:14px, background:#f7f7f9).
 
-## Fix (frontend / presentation only)
+### 2. `src/lib/reports/prog-email-format.ts` (plain-text builder — used by "Copy Email" and as fallback tail)
+- In `buildEmail`, number items within each section:
+  - `1. Ticket #369427 - Account 48043 / Dr. Movassaghi's Office`
+  - `2. Ticket #369462 - Account 5698 / Norco Medical...`
+  - Same numbering for Contact Dispatch Testing, Additional Work, Waiting, Attention (numbering restarts per section).
+- Add a visible separator line `----------------------------------------` between items in each section (in addition to the existing blank line) so pastes that collapse blank lines still show breaks.
+- Keep existing blank lines and the `while (out.length && out[out.length - 1] === "") out.pop();` trim.
+- No change to warnings, hidden sections, or data selection logic.
+- `buildEmailMulti` is unchanged aside from inheriting the new formatting from `buildEmail`.
 
-### 1. `src/lib/dispatch-store.ts` — space out the generated text
+## Out of scope
+- Data selection, warnings, night plan collection, attention picker, copy button wiring, RichTextEditor behavior.
+- Dispatch summary/rich-copy (already done in prior turn).
+- No changes to `programming-email-store.ts`, `shift-window.ts`, or any store.
 
-In `buildDispatchSummary`:
-- Header lines: emit `Contact Dispatch Summary — …`, account line, ticket line, completed line, reason line, each followed by a blank line separator between the header block and the first section.
-- `Reasons for Call:` heading, then a blank line, then each reason rendered as its own block:
-  - `• [Status] Reason text (Type)` on one line.
-  - Sub-details (`Expected:`, `Actual:`, `Failure:`, `Changes:`, `Urgent:`, `Retest [...]`) each on their own line, indented with two spaces.
-  - Any `[[SNIP:id]]` markers on their own indented line.
-  - **Blank line after every reason** so paragraphs split cleanly in the HTML renderer.
-- `sec()` (Phone Number Field Check / Repeat Caller / Save / Message Summary):
-  - Heading line `Phone Number Field Check:` alone (ends with colon so it hits the HTML heading rule), then a line `Status: Passed`, then details/retests/snips as their own lines, then a blank line separator.
-- Preserve existing content, `onlyIssues` filtering, and the `[[SNIP:id]]` markers exactly as today — this is a spacing/layout change, not a data change.
-
-### 2. `src/lib/summary/rich-copy.ts` — readable HTML renderer
-
-Rewrite the paragraph rendering inside `buildSummaryHtml` so the output is easy to scan:
-- Wrap everything in a root `<div>` with a readable sans-serif stack (system-ui / -apple-system / Segoe UI / sans-serif), `font-size:15px`, `line-height:1.55`, `color:#111`.
-- Section headings (existing `isHeading` rule — short line ending in `:`) render as `<div>` with `font-size:16px`, `font-weight:700`, `margin:18px 0 8px 0`, and a subtle bottom border for separation.
-- Body paragraphs render as `<div>` per line (not per blank-line-delimited block) so each bullet / sub-detail becomes its own block. Indented lines (leading spaces) get a proportional `margin-left` so the visual hierarchy from the text is preserved.
-- Lines that start with `•` render with the bullet kept and slightly tighter top/bottom margin, so a reason and its sub-lines read as a group.
-- Consecutive plain lines with no indent stay in a single paragraph (join with `<br>`) so free-form notes don't get chopped into single-word lines.
-- Keep the existing snip-marker handling (`renderSnipHtml`) and the leftover "Other Snips" block. Bump snip caption font to 12px and image `max-width` to 640px so embedded shots are legible.
-- No changes to `copyRich`, `copyText`, `copyRichSummary`, `copyMarkdownSummary`, `buildSummaryMarkdown`, `snipCounts`, or the sanitizer.
-
-### 3. Out of scope
-
-- Ticket note builder (`buildGeneratedNote` in tickets-store) — the user's screenshot is the dispatch summary path only.
-- RichTextEditor, storage shape, snip capture, sanitization rules.
-- Any business logic, dispatch state, or API calls.
-
-## Expected result
-
-The copied HTML pastes into Gmail / Freshdesk as a readable document: a bold header, spaced-out `Reasons for Call` section with each reason as its own block, snips inline right under their reason, and the three check sections (Phone Number, Repeat Caller, Save / Message Summary) as bold headings with their status and details grouped underneath.
+## Result
+- Rich copy: each ticket/dispatch/work item is a clearly bordered card with a numbered heading and inline snips, larger text.
+- Plain copy: numbered items separated by dashed rules that survive editors that collapse blank lines.

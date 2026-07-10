@@ -108,38 +108,54 @@ function renderSnips(ctx: RenderCtx, snips: AnySnip[]): string {
         ctx.budget -= size;
         ctx.images += 1;
         items.push(
-          `<div style="margin:8px 0;"><div style="font-size:11px;color:#666;margin-bottom:3px;">${meta}</div>` +
-            `<img src="${s.dataUrl}" alt="${esc(s.name)}" style="max-width:600px;height:auto;border:1px solid #ddd;border-radius:6px;" /></div>`,
+          `<div style="margin:10px 0;"><div style="font-size:12px;color:#555;margin-bottom:4px;">${meta}</div>` +
+            `<img src="${s.dataUrl}" alt="${esc(s.name)}" style="max-width:640px;height:auto;border:1px solid #ddd;border-radius:6px;" /></div>`,
         );
       } else {
         ctx.truncated = true;
         ctx.files += 1;
         items.push(
-          `<div style="margin:6px 0;">📎 <a href="${s.dataUrl}" download="${esc(s.name)}">${meta}</a> <span style="color:#999;">(too large to embed)</span></div>`,
+          `<div style="margin:8px 0;font-size:14px;">📎 <a href="${s.dataUrl}" download="${esc(s.name)}">${meta}</a> <span style="color:#999;">(too large to embed)</span></div>`,
         );
       }
     } else if (s.dataUrl) {
       ctx.files += 1;
       items.push(
-        `<div style="margin:6px 0;">📎 <a href="${s.dataUrl}" download="${esc(s.name)}">${meta}</a></div>`,
+        `<div style="margin:8px 0;font-size:14px;">📎 <a href="${s.dataUrl}" download="${esc(s.name)}">${meta}</a></div>`,
       );
     } else {
       ctx.files += 1;
-      items.push(`<div style="margin:6px 0;">📎 ${meta}</div>`);
+      items.push(`<div style="margin:8px 0;font-size:14px;">📎 ${meta}</div>`);
     }
   });
   return (
-    `<div style="margin:6px 0 12px 0;padding:8px 10px;background:#fafafa;border-left:3px solid #ccc;border-radius:4px;">` +
-    `<div style="font-size:11px;color:#555;font-weight:600;margin-bottom:4px;">Snips (${snips.length})</div>` +
+    `<div style="margin:10px 0 4px 0;padding:10px 12px;background:#fafafa;border-left:3px solid #ccc;border-radius:4px;">` +
+    `<div style="font-size:12px;color:#555;font-weight:600;margin-bottom:6px;">Snips (${snips.length})</div>` +
     items.join("") +
     `</div>`
   );
 }
 
 function notesBlock(label: string, text: string): string {
-  if (!text) return `<div><strong>${label}:</strong> (none documented)</div>`;
-  const lines = text.split("\n").map((l) => `<div style="margin-left:14px;">${esc(l)}</div>`).join("");
-  return `<div><strong>${label}:</strong></div>${lines}`;
+  if (!text) return `<div style="margin:4px 0;"><strong>${label}:</strong> (none documented)</div>`;
+  const lines = text
+    .split("\n")
+    .map((l) => `<div style="margin:2px 0 2px 16px;">${esc(l)}</div>`)
+    .join("");
+  return `<div style="margin:6px 0 2px 0;"><strong>${label}:</strong></div>${lines}`;
+}
+
+function cardOpen(num: number, titleHtml: string): string {
+  return (
+    `<div style="margin:14px 0;padding:12px 14px;border:1px solid #e5e7eb;border-left:4px solid #6b7280;border-radius:6px;background:#fff;">` +
+    `<div style="font-size:15.5px;font-weight:700;margin-bottom:6px;">${num}. ${titleHtml}</div>`
+  );
+}
+function cardClose(): string {
+  return `</div>`;
+}
+function line(html: string): string {
+  return `<div style="margin:4px 0;">${html}</div>`;
 }
 
 // ---------- per-window section renderers ----------
@@ -165,15 +181,14 @@ function renderWindow(
         (t.status !== "completed" && isInWindow(t.updatedAt, w)),
     );
     if (worked.length) {
-      out.push(`<h3 style="margin:18px 0 8px;font-size:14px;border-bottom:1px solid #ddd;padding-bottom:4px;">${SECTION_KEYS.worked_freshdesk}</h3>`);
-      worked.forEach((t) => {
-        out.push(
-          `<div style="margin:10px 0 4px;"><strong>Ticket #${esc(t.number)} — Account ${esc(t.accountNumber)} / ${esc(t.accountName)}</strong></div>`,
-        );
-        out.push(`<div>Summary: ${esc(ticketSummary(t))}</div>`);
-        out.push(`<div>Status: ${esc(STATUS_LABEL[t.status])}</div>`);
+      out.push(`<h3 style="margin:22px 0 10px;font-size:16px;border-bottom:2px solid #d1d5db;padding-bottom:6px;">${SECTION_KEYS.worked_freshdesk}</h3>`);
+      worked.forEach((t, i) => {
+        out.push(cardOpen(i + 1, `Ticket #${esc(t.number)} — Account ${esc(t.accountNumber)} / ${esc(t.accountName)}`));
+        out.push(line(`<strong>Summary:</strong> ${esc(ticketSummary(t))}`));
+        out.push(line(`<strong>Status:</strong> ${esc(STATUS_LABEL[t.status])}`));
         out.push(notesBlock("Programming Notes", ticketProgrammingNotes(t)));
         out.push(renderSnips(ctx, (t.hubSnips ?? []) as AnySnip[]));
+        out.push(cardClose());
       });
     }
   }
@@ -186,15 +201,14 @@ function renderWindow(
         (s.status !== "ready" && isInWindow(s.updatedAt, w)),
     );
     if (cd.length) {
-      out.push(`<h3 style="margin:18px 0 8px;font-size:14px;border-bottom:1px solid #ddd;padding-bottom:4px;">${SECTION_KEYS.dispatch}</h3>`);
-      cd.forEach((s) => {
-        out.push(
-          `<div style="margin:10px 0 4px;"><strong>Account ${esc(s.accountNumber)} / ${esc(s.accountName)}</strong></div>`,
-        );
-        out.push(`<div>Summary: ${esc(dispatchSummary(s))}</div>`);
-        out.push(`<div>Final Status: ${esc(s.status ? DISPATCH_STATUS_LABEL[s.status] : "(no final status)")}</div>`);
+      out.push(`<h3 style="margin:22px 0 10px;font-size:16px;border-bottom:2px solid #d1d5db;padding-bottom:6px;">${SECTION_KEYS.dispatch}</h3>`);
+      cd.forEach((s, i) => {
+        out.push(cardOpen(i + 1, `Account ${esc(s.accountNumber)} / ${esc(s.accountName)}`));
+        out.push(line(`<strong>Summary:</strong> ${esc(dispatchSummary(s))}`));
+        out.push(line(`<strong>Final Status:</strong> ${esc(s.status ? DISPATCH_STATUS_LABEL[s.status] : "(no final status)")}`));
         out.push(notesBlock("Notes", dispatchNotes(s)));
         out.push(renderSnips(ctx, (s.snips ?? []) as AnySnip[]));
+        out.push(cardClose());
       });
     }
   }
@@ -208,17 +222,22 @@ function renderWindow(
     );
     const np = collectAttentionNightPlan(attentionIds);
     if (aw.length || np.length) {
-      out.push(`<h3 style="margin:18px 0 8px;font-size:14px;border-bottom:1px solid #ddd;padding-bottom:4px;">${SECTION_KEYS.additional}</h3>`);
+      out.push(`<h3 style="margin:22px 0 10px;font-size:16px;border-bottom:2px solid #d1d5db;padding-bottom:6px;">${SECTION_KEYS.additional}</h3>`);
+      let idx = 0;
       aw.forEach((a) => {
+        idx += 1;
         const acct = a.accountNumber ? ` — Account ${esc(a.accountNumber)} / ${esc(a.accountName ?? "")}` : "";
-        out.push(`<div style="margin:10px 0 4px;"><strong>${esc(a.title)}${acct}</strong></div>`);
-        out.push(`<div>Summary: ${esc(workSummary(a))}</div>`);
+        out.push(cardOpen(idx, `${esc(a.title)}${acct}`));
+        out.push(line(`<strong>Summary:</strong> ${esc(workSummary(a))}`));
         out.push(notesBlock("Notes", workNotes(a)));
         out.push(renderSnips(ctx, (a.snips ?? []) as AnySnip[]));
+        out.push(cardClose());
       });
       np.forEach((n) => {
-        out.push(`<div style="margin:10px 0 4px;"><strong>${esc(n.task)}</strong></div>`);
+        idx += 1;
+        out.push(cardOpen(idx, esc(n.task)));
         out.push(notesBlock("Notes", n.notes ?? ""));
+        out.push(cardClose());
       });
     }
   }
@@ -263,7 +282,7 @@ export function buildEmailHtml(opts: {
   sorted.forEach((w) => {
     if (sorted.length > 1) {
       sections.push(
-        `<h2 style="margin:24px 0 8px;font-size:16px;padding:6px 10px;background:#eef3fa;border-radius:4px;">Shift: ${esc(w.label)} <span style="font-weight:400;color:#666;font-size:12px;">(${esc(w.timeLabel)})</span></h2>`,
+        `<h2 style="margin:28px 0 10px;font-size:18px;padding:8px 12px;background:#eef3fa;border-radius:6px;">Shift: ${esc(w.label)} <span style="font-weight:400;color:#666;font-size:13px;">(${esc(w.timeLabel)})</span></h2>`,
       );
     }
     sections.push(renderWindow(ctx, w, attentionIds, hiddenSectionKeys));
@@ -277,11 +296,11 @@ export function buildEmailHtml(opts: {
   const tail = tailMatch ? tailMatch[0] : "";
 
   const html =
-    `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#222;">` +
+    `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;font-size:15px;line-height:1.6;">` +
     sections.join("") +
     (tail
       ? `<hr style="border:none;border-top:1px solid #ddd;margin:18px 0;" />` +
-        `<pre style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;margin:0;font-size:12px;background:#f7f7f9;padding:12px;border-radius:6px;">${esc(tail.trimStart())}</pre>`
+        `<pre style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;white-space:pre-wrap;margin:0;font-size:14px;line-height:1.6;color:#111;background:#f7f7f9;padding:14px;border-radius:6px;">${esc(tail.trimStart())}</pre>`
       : "") +
     `</div>`;
 
