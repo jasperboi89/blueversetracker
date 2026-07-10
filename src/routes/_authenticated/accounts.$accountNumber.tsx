@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
-  ArrowLeft, Archive, Building2, ClipboardList, FileText, MessageSquarePlus,
+  ArrowLeft, Archive, Building2, ClipboardList, Clock, FileText, MessageSquarePlus,
   PhoneOutgoing, RotateCcw, Ticket as TicketIcon, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { accountsStore, useAccounts, type AccountTemplateType } from "@/lib/acco
 import { useTickets } from "@/lib/tickets-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
+import { useWorkLog, workLogForAccount } from "@/lib/workspace/work-log-store";
+import { formatElapsed } from "@/lib/workspace/active-work-store";
 import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAdditionalWorkModal";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/accounts/$accountNumber")(
   component: AccountProfilePage,
 });
 
-type TimelineFilter = "all" | "freshdesk" | "dispatch" | "additional" | "notes";
+type TimelineFilter = "all" | "freshdesk" | "dispatch" | "additional" | "notes" | "timelog";
 
 function AccountProfilePage() {
   const { accountNumber } = Route.useParams();
@@ -35,6 +37,7 @@ function AccountProfilePage() {
   const { tickets } = useTickets();
   const { sessions } = useDispatch();
   const { items: workItems } = useAdditionalWork();
+  useWorkLog();
   const recurringRows = useRecurringRows();
   const recurring = recurringRows.find((r) => r.accountNumber === accountNumber && r.active);
 
@@ -61,6 +64,7 @@ function AccountProfilePage() {
   const tks = tickets.filter((t) => t.accountNumber === accountNumber);
   const ds = sessions.filter((s) => s.accountNumber === accountNumber);
   const aw = workItems.filter((w) => w.accountNumber === accountNumber);
+  const worklog = workLogForAccount(accountNumber);
 
   type Item = { id: string; kind: TimelineFilter; at: number; node: React.ReactNode };
   const timeline: Item[] = useMemo(() => {
@@ -155,8 +159,24 @@ function AccountProfilePage() {
         </div>
       ),
     }));
+    worklog.forEach((e) => arr.push({
+      id: `wl-${e.id}`, kind: "timelog", at: e.endedAt,
+      node: (
+        <div className="flex items-start gap-3">
+          <Clock className="mt-0.5 h-4 w-4" style={{ color: "var(--green-glow)" }} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-medium text-foreground">Time logged · {formatElapsed(e.durationMs)}</div>
+              <span className="rounded-full border border-border/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">{e.kind}</span>
+            </div>
+            <div className="text-xs text-muted-foreground">{e.label}</div>
+            <div className="mt-0.5 text-[10px] text-muted-foreground">{formatCentralShort(new Date(e.endedAt))}</div>
+          </div>
+        </div>
+      ),
+    }));
     return arr.sort((a, b) => b.at - a.at);
-  }, [tks, ds, aw, notes]);
+  }, [tks, ds, aw, notes, worklog]);
 
   const filtered = filter === "all" ? timeline : timeline.filter((i) => i.kind === filter);
 
@@ -250,12 +270,13 @@ function AccountProfilePage() {
               <h2 className="text-sm font-semibold text-foreground">Account Timeline</h2>
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as TimelineFilter)} className="mt-3">
-              <TabsList className="grid w-full grid-cols-5 bg-white/5">
+              <TabsList className="grid w-full grid-cols-6 bg-white/5">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="freshdesk">Freshdesk</TabsTrigger>
                 <TabsTrigger value="dispatch">Dispatch</TabsTrigger>
                 <TabsTrigger value="additional">Add'l Work</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
+                <TabsTrigger value="timelog">Time</TabsTrigger>
               </TabsList>
               <TabsContent value={filter} className="mt-3 space-y-2">
                 {filtered.length === 0 ? (
