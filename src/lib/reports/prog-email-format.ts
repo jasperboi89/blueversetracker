@@ -1,6 +1,7 @@
 import { ticketsStore, STATUS_LABEL, type Ticket } from "../tickets-store";
 import { dispatchStore, DISPATCH_STATUS_LABEL, type DispatchSession } from "../dispatch-store";
 import { additionalWorkStore, type AdditionalWork } from "../additional-work-store";
+import { htmlToPlainText } from "../rich-text";
 import { isInWindow, isInWindowEither, type ShiftWindow } from "./shift-window";
 import { nightPlanHistory } from "./night-plan-history";
 import { nightPlanStore, isActive as isNPActive } from "../night-plan-store";
@@ -39,6 +40,12 @@ const stamp = (ms: number) =>
     hour12: true,
   }).format(new Date(ms));
 
+function cleanText(value: string | null | undefined): string {
+  if (!value) return "";
+  const text = /<\/?[a-z][\s\S]*>/i.test(value) ? htmlToPlainText(value) : value;
+  return text.replace(/\u00a0/g, " ").trim();
+}
+
 function ticketCompleted(t: Ticket, w: ShiftWindow): boolean {
   return t.status === "completed" && isInWindow(t.completedAt, w);
 }
@@ -73,9 +80,7 @@ function workActive(a: AdditionalWork, w: ShiftWindow): boolean {
 
 function ticketSummary(t: Ticket): string {
   const session = ticketsStore.getSession(t.id);
-  const issue = session.issueText.trim();
-  const changes = session.changesText.trim();
-  const result = session.resultNotes.trim();
+  const issue = cleanText(session.issueText);
   const parts: string[] = [];
   if (issue) parts.push(issue);
   else if (t.details.subject) parts.push(t.details.subject);
@@ -84,39 +89,48 @@ function ticketSummary(t: Ticket): string {
 function ticketProgrammingNotes(t: Ticket): string {
   const s = ticketsStore.getSession(t.id);
   const lines: string[] = [];
-  if (s.changesText.trim()) lines.push(`Changes: ${s.changesText.trim()}`);
-  if (s.failureReason.trim()) lines.push(`Failure Reason: ${s.failureReason.trim()}`);
-  if (s.waitingReason.trim()) lines.push(`Waiting Reason: ${s.waitingReason.trim()}`);
-  if (s.resultNotes.trim()) lines.push(`Notes: ${s.resultNotes.trim()}`);
+  const changes = cleanText(s.changesText);
+  const failure = cleanText(s.failureReason);
+  const waiting = cleanText(s.waitingReason);
+  const result = cleanText(s.resultNotes);
+  if (changes) lines.push(`Changes: ${changes}`);
+  if (failure) lines.push(`Failure Reason: ${failure}`);
+  if (waiting) lines.push(`Waiting Reason: ${waiting}`);
+  if (result) lines.push(`Notes: ${result}`);
   return lines.join("\n");
 }
 
 function dispatchSummary(s: DispatchSession): string {
-  const reasons = s.reasons.map((r) => r.text).filter(Boolean);
+  const reasons = s.reasons.map((r) => cleanText(r.text)).filter(Boolean);
   if (reasons.length) return reasons.join(" / ");
-  return s.summaryNotes.split("\n")[0] || "(no summary)";
+  return cleanText(s.summaryNotes).split("\n")[0] || "(no summary)";
 }
 function dispatchFinalStatus(s: DispatchSession): string {
   return s.status ? DISPATCH_STATUS_LABEL[s.status] : "(no final status)";
 }
 function dispatchNotes(s: DispatchSession): string {
   const lines: string[] = [];
-  if (s.statusReason.trim()) lines.push(s.statusReason.trim());
-  if (s.summaryNotes.trim() && reasonsOrSummaryLong(s)) lines.push(s.summaryNotes.trim());
+  const statusReason = cleanText(s.statusReason);
+  const summaryNotes = cleanText(s.summaryNotes);
+  if (statusReason) lines.push(statusReason);
+  if (summaryNotes && reasonsOrSummaryLong(s)) lines.push(summaryNotes);
   return lines.join("\n");
 }
 function reasonsOrSummaryLong(s: DispatchSession): boolean {
-  return s.summaryNotes.trim().length > 0;
+  return cleanText(s.summaryNotes).length > 0;
 }
 
 function workSummary(a: AdditionalWork): string {
-  return a.completionSummary?.trim() || a.whatNeedsDone.trim() || "(no summary)";
+  return cleanText(a.completionSummary) || cleanText(a.whatNeedsDone) || "(no summary)";
 }
 function workNotes(a: AdditionalWork): string {
   const lines: string[] = [];
-  if (a.notes.trim()) lines.push(a.notes.trim());
-  if (a.programmingStatusNotes.trim()) lines.push(`Programming Status Notes: ${a.programmingStatusNotes.trim()}`);
-  if (a.completionFinalNotes?.trim()) lines.push(a.completionFinalNotes.trim());
+  const notes = cleanText(a.notes);
+  const programmingNotes = cleanText(a.programmingStatusNotes);
+  const finalNotes = cleanText(a.completionFinalNotes);
+  if (notes) lines.push(notes);
+  if (programmingNotes) lines.push(`Programming Status Notes: ${programmingNotes}`);
+  if (finalNotes) lines.push(finalNotes);
   return lines.join("\n");
 }
 
