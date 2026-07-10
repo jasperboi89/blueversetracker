@@ -226,23 +226,17 @@ export function buildEmail(opts: BuildOptions): BuildResult {
   if (!isHidden("worked_freshdesk")) {
     const worked = tickets.filter((t) => ticketCompleted(t, window) || ticketWorked(t, window));
     if (worked.length) {
-      lines.push(SECTION_KEYS.worked_freshdesk);
-      lines.push("");
+      pushSection(lines, SECTION_KEYS.worked_freshdesk);
       worked.forEach((t, i) => {
         const ws = ticketWarnings(t);
         if (ws.length) warnings.push({ ref: `Ticket #${t.number}`, reason: ws.join(", ") });
-        if (i > 0) { lines.push("----------------------------------------"); lines.push(""); }
-        lines.push(`${i + 1}. Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`);
-        lines.push(`Summary: ${ticketSummary(t)}`);
-        lines.push(`Status: ${STATUS_LABEL[t.status]}`);
+        if (i > 0) pushDivider(lines);
         const notes = ticketProgrammingNotes(t);
-        if (notes) {
-          lines.push("Programming Notes:");
-          notes.split("\n").forEach((l) => lines.push(`  ${l}`));
-        } else {
-          lines.push("Programming Notes: (none documented)");
-        }
-        lines.push("");
+        pushEntry(lines, i + 1, `Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`, [
+          ["Summary", ticketSummary(t)],
+          ["Status", STATUS_LABEL[t.status]],
+          ["Programming Notes", notes || "(none documented)"],
+        ]);
       });
     }
   }
@@ -251,23 +245,17 @@ export function buildEmail(opts: BuildOptions): BuildResult {
   if (!isHidden("dispatch")) {
     const cdItems = sessions.filter((s) => sessionCompleted(s, window) || sessionWorked(s, window));
     if (cdItems.length) {
-      lines.push(SECTION_KEYS.dispatch);
-      lines.push("");
+      pushSection(lines, SECTION_KEYS.dispatch);
       cdItems.forEach((s, i) => {
         const ws = sessionWarnings(s);
         if (ws.length) warnings.push({ ref: `Account ${s.accountNumber} (dispatch)`, reason: ws.join(", ") });
-        if (i > 0) { lines.push("----------------------------------------"); lines.push(""); }
-        lines.push(`${i + 1}. Account ${s.accountNumber} / ${s.accountName}`);
-        lines.push(`Summary: ${dispatchSummary(s)}`);
-        lines.push(`Final Status: ${dispatchFinalStatus(s)}`);
+        if (i > 0) pushDivider(lines);
         const n = dispatchNotes(s);
-        if (n) {
-          lines.push("Notes:");
-          n.split("\n").forEach((l) => lines.push(`  ${l}`));
-        } else {
-          lines.push("Notes: (none documented)");
-        }
-        lines.push("");
+        pushEntry(lines, i + 1, `Account ${s.accountNumber} / ${s.accountName}`, [
+          ["Summary", dispatchSummary(s)],
+          ["Final Status", dispatchFinalStatus(s)],
+          ["Notes", n || "(none documented)"],
+        ]);
       });
     }
   }
@@ -278,38 +266,27 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     // Include manually selected Night Plan items here (placed under Additional Work, unlabeled)
     const nightPlanAttention = collectAttentionNightPlan(attentionIds);
     if (awItems.length || nightPlanAttention.length) {
-      lines.push(SECTION_KEYS.additional);
-      lines.push("");
+      pushSection(lines, SECTION_KEYS.additional);
       let awIdx = 0;
       awItems.forEach((a) => {
         const ws = workWarnings(a);
         if (ws.length) warnings.push({ ref: `Work "${a.title}"`, reason: ws.join(", ") });
         const acct = a.accountNumber ? ` - Account ${a.accountNumber} / ${a.accountName}` : "";
         awIdx += 1;
-        if (awIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-        lines.push(`${awIdx}. ${a.title}${acct}`);
-        lines.push(`Summary: ${workSummary(a)}`);
+        if (awIdx > 1) pushDivider(lines);
         const n = workNotes(a);
-        if (n) {
-          lines.push("Notes:");
-          n.split("\n").forEach((l) => lines.push(`  ${l}`));
-        } else {
-          lines.push("Notes: (none documented)");
-        }
-        lines.push("");
+        pushEntry(lines, awIdx, `${a.title}${acct}`, [
+          ["Summary", workSummary(a)],
+          ["Notes", n || "(none documented)"],
+        ]);
       });
       nightPlanAttention.forEach((np) => {
         awIdx += 1;
-        if (awIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-        lines.push(`${awIdx}. ${np.task}`);
-        lines.push(`Summary: ${np.task}`);
-        if (np.notes) {
-          lines.push("Notes:");
-          np.notes.split("\n").forEach((l) => lines.push(`  ${l}`));
-        } else {
-          lines.push("Notes: (none documented)");
-        }
-        lines.push("");
+        if (awIdx > 1) pushDivider(lines);
+        pushEntry(lines, awIdx, np.task, [
+          ["Summary", np.task],
+          ["Notes", cleanText(np.notes) || "(none documented)"],
+        ]);
       });
     }
   }
@@ -320,39 +297,38 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     const waitingSessions = sessions.filter((s) => sessionActiveWaiting(s, window));
     const waitingWorks = works.filter((a) => workActive(a, window));
     if (waitingTickets.length || waitingSessions.length || waitingWorks.length) {
-      lines.push(SECTION_KEYS.waiting);
-      lines.push("");
+      pushSection(lines, SECTION_KEYS.waiting);
       let wIdx = 0;
       waitingTickets.forEach((t) => {
         wIdx += 1;
-        if (wIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-        lines.push(`${wIdx}. Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`);
-        lines.push(`Current status: ${STATUS_LABEL[t.status]}`);
+        if (wIdx > 1) pushDivider(lines);
         const s = ticketsStore.getSession(t.id);
         const waitingOn = t.status === "waiting-cs" ? "Customer Service" : t.status === "waiting-prog" ? "Programming" : "—";
-        lines.push(`Waiting on: ${waitingOn}`);
-        const n = s.waitingReason.trim() || s.changesText.trim() || s.resultNotes.trim();
-        lines.push(`Notes: ${n || "(none documented)"}`);
-        lines.push("");
+        const n = cleanText(s.waitingReason) || cleanText(s.changesText) || cleanText(s.resultNotes);
+        pushEntry(lines, wIdx, `Ticket #${t.number} - Account ${t.accountNumber} / ${t.accountName}`, [
+          ["Current Status", STATUS_LABEL[t.status]],
+          ["Waiting On", waitingOn],
+          ["Notes", n || "(none documented)"],
+        ]);
       });
       waitingSessions.forEach((s) => {
         wIdx += 1;
-        if (wIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-        lines.push(`${wIdx}. Dispatch — Account ${s.accountNumber} / ${s.accountName}`);
-        lines.push(`Current status: ${dispatchFinalStatus(s)}`);
+        if (wIdx > 1) pushDivider(lines);
         const waitingOn = s.status === "waiting-cs" ? "Customer Service Review" : s.status === "waiting-prog" ? "Programming Review" : "Still working";
-        lines.push(`Waiting on: ${waitingOn}`);
-        lines.push(`Notes: ${s.statusReason.trim() || "(none documented)"}`);
-        lines.push("");
+        pushEntry(lines, wIdx, `Dispatch — Account ${s.accountNumber} / ${s.accountName}`, [
+          ["Current Status", dispatchFinalStatus(s)],
+          ["Waiting On", waitingOn],
+          ["Notes", cleanText(s.statusReason) || "(none documented)"],
+        ]);
       });
       waitingWorks.forEach((a) => {
         const acct = a.accountNumber ? ` - Account ${a.accountNumber} / ${a.accountName}` : "";
         wIdx += 1;
-        if (wIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-        lines.push(`${wIdx}. Work: ${a.title}${acct}`);
-        lines.push(`Current status: Currently Working On`);
-        lines.push(`Notes: ${a.programmingStatusNotes.trim() || a.notes.trim() || "(none documented)"}`);
-        lines.push("");
+        if (wIdx > 1) pushDivider(lines);
+        pushEntry(lines, wIdx, `Work: ${a.title}${acct}`, [
+          ["Current Status", "Currently Working On"],
+          ["Notes", cleanText(a.programmingStatusNotes) || cleanText(a.notes) || "(none documented)"],
+        ]);
       });
     }
   }
@@ -362,42 +338,41 @@ export function buildEmail(opts: BuildOptions): BuildResult {
     const items = attentionIds.map(parseAttentionId).filter(Boolean) as AttentionId[];
     const nonNP = items.filter((i) => i.kind !== "night-plan");
     if (nonNP.length) {
-      lines.push(SECTION_KEYS.attention);
-      lines.push("");
+      pushSection(lines, SECTION_KEYS.attention);
       let atIdx = 0;
       nonNP.forEach((ref) => {
         if (ref.kind === "freshdesk") {
           const t = tickets.find((x) => x.id === ref.id);
           if (!t) return;
           atIdx += 1;
-          if (atIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-          lines.push(`${atIdx}. Account ${t.accountNumber} / ${t.accountName} — Ticket #${t.number}`);
-          lines.push(`Reason: Flagged for follow-up`);
-          lines.push(`Current status: ${STATUS_LABEL[t.status]}`);
+          if (atIdx > 1) pushDivider(lines);
           const s = ticketsStore.getSession(t.id);
-          lines.push(`Notes: ${s.waitingReason.trim() || s.resultNotes.trim() || "(none documented)"}`);
-          lines.push("");
+          pushEntry(lines, atIdx, `Account ${t.accountNumber} / ${t.accountName} — Ticket #${t.number}`, [
+            ["Reason", "Flagged for follow-up"],
+            ["Current Status", STATUS_LABEL[t.status]],
+            ["Notes", cleanText(s.waitingReason) || cleanText(s.resultNotes) || "(none documented)"],
+          ]);
         } else if (ref.kind === "dispatch") {
           const s = sessions.find((x) => x.id === ref.id);
           if (!s) return;
           atIdx += 1;
-          if (atIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-          lines.push(`${atIdx}. Account ${s.accountNumber} / ${s.accountName} — Dispatch`);
-          lines.push(`Reason: Flagged for follow-up`);
-          lines.push(`Current status: ${dispatchFinalStatus(s)}`);
-          lines.push(`Notes: ${s.statusReason.trim() || "(none documented)"}`);
-          lines.push("");
+          if (atIdx > 1) pushDivider(lines);
+          pushEntry(lines, atIdx, `Account ${s.accountNumber} / ${s.accountName} — Dispatch`, [
+            ["Reason", "Flagged for follow-up"],
+            ["Current Status", dispatchFinalStatus(s)],
+            ["Notes", cleanText(s.statusReason) || "(none documented)"],
+          ]);
         } else if (ref.kind === "additional") {
           const a = works.find((x) => x.id === ref.id);
           if (!a) return;
           const acct = a.accountNumber ? `Account ${a.accountNumber} / ${a.accountName}` : "No account linked";
           atIdx += 1;
-          if (atIdx > 1) { lines.push("----------------------------------------"); lines.push(""); }
-          lines.push(`${atIdx}. ${acct} — ${a.title}`);
-          lines.push(`Reason: Flagged for follow-up`);
-          lines.push(`Current status: ${a.status === "completed" ? "Completed" : "Currently Working On"}`);
-          lines.push(`Notes: ${a.programmingStatusNotes.trim() || a.notes.trim() || "(none documented)"}`);
-          lines.push("");
+          if (atIdx > 1) pushDivider(lines);
+          pushEntry(lines, atIdx, `${acct} — ${a.title}`, [
+            ["Reason", "Flagged for follow-up"],
+            ["Current Status", a.status === "completed" ? "Completed" : "Currently Working On"],
+            ["Notes", cleanText(a.programmingStatusNotes) || cleanText(a.notes) || "(none documented)"],
+          ]);
         }
       });
     }
