@@ -8,6 +8,11 @@ import {
   type SearchDebug,
   type AccountCoverageReport,
 } from "@/lib/api/freshdesk-search.functions";
+import {
+  freshdeskIndexStatus,
+  freshdeskSyncIndexBatch,
+  type FreshdeskIndexStatus,
+} from "@/lib/api/freshdesk-index.functions";
 
 type SyncReport = {
   found: boolean;
@@ -36,6 +41,10 @@ export function SearchDebugPanel({ lastDebug }: { lastDebug: SearchDebug | null 
         {lastDebug ? <DebugView debug={lastDebug} /> : <Muted>No search run yet.</Muted>}
       </Section>
 
+      <Section title="Intelligence index (all ticket content)">
+        <IndexManager />
+      </Section>
+
       <Section title="Account coverage test (All Tickets / All Time)">
         <AccountCoverageTester />
       </Section>
@@ -51,7 +60,11 @@ function DebugView({ debug }: { debug: SearchDebug }) {
   return (
     <ul className="space-y-1 text-xs text-muted-foreground">
       <Row label="Mode">{debug.mode}</Row>
-      <Row label="Data source">{debug.dataSource} (live Freshdesk)</Row>
+      <Row label="Data source">
+        {debug.dataSource === "freshdesk-index"
+          ? "persistent Freshdesk intelligence index"
+          : "live Freshdesk API"}
+      </Row>
       <Row label="Date range">{debug.dateRangeLabel}</Row>
       <Row label="Freshdesk query">
         <code className="break-all text-foreground/90">{debug.freshdeskQuery || "—"}</code>
@@ -74,6 +87,14 @@ function DebugView({ debug }: { debug: SearchDebug }) {
         {debug.conversationsPulled} across {debug.conversationPages} pages
       </Row>
       <Row label="Pagination truncated">{debug.paginationTruncated ? "yes" : "no"}</Row>
+      {debug.indexDocumentCount !== undefined && (
+        <Row label="Indexed tickets">{debug.indexDocumentCount}</Row>
+      )}
+      {debug.indexCompletedAt !== undefined && (
+        <Row label="Index last completed">
+          {debug.indexCompletedAt ? new Date(debug.indexCompletedAt).toLocaleString() : "not yet"}
+        </Row>
+      )}
       <Row label="Result counts">
         Strong {debug.groupCounts.strong} · Possible {debug.groupCounts.possible} · Mentions{" "}
         {debug.groupCounts.relatedMentions}
@@ -127,6 +148,86 @@ function DebugView({ debug }: { debug: SearchDebug }) {
         </li>
       )}
     </ul>
+  );
+}
+
+function IndexManager() {
+  const [status, setStatus] = useState<FreshdeskIndexStatus | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const refreshStatus = async () => {
+    const next = await freshdeskIndexStatus();
+    setStatus(next);
+    return next;
+  };
+
+  const sync = async (rebuild: boolean) => {
+    setLoading(true);
+    setError(null);
+    setProgress(rebuild ? "Starting a clean all-ticket index…" : "Checking for ticket updates…");
+    try {
+      let first = true;
+      for (let batch = 0; batch < 3000; batch += 1) {
+        const result = await freshdeskSyncIndexBatch({ data: { rebuild: rebuild && first } });
+        first = false;
+        if (!result.ok) throw new Error(result.error);
+        setProgress(
+          `Indexed ${result.ticketsIndexed} ticket(s) and ${result.conversationsIndexed} conversation item(s)…`,
+        );
+        if (result.completed) break;
+      }
+      const next = await refreshStatus();
+      setProgress(
+        next.completed
+          ? `Index ready. ${next.documentCount} tickets are searchable.`
+          : `Sync paused at page ${next.nextPage}. Run refresh again to continue.`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Index sync failed.");
+      await refreshStatus().catch(() => undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" onClick={() => refreshStatus()} disabled={loading}>
+          Check status
+        </Button>
+        <Button size="sm" onClick={() => sync(false)} disabled={loading}>
+          {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+          Build / refresh index
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => sync(true)} disabled={loading}>
+          Rebuild from scratch
+        </Button>
+      </div>
+      {progress && <div className="text-cyan-200">{progress}</div>}
+      {error && <div className="text-rose-300">{error}</div>}
+      {status && (
+        <ul className="space-y-1">
+          <Row label="Index available">{status.available ? "yes" : "no"}</Row>
+          <Row label="Searchable tickets">{status.documentCount}</Row>
+          <Row label="Full sync complete">{status.completed ? "yes" : "no"}</Row>
+          <Row label="Current page">{status.nextPage}</Row>
+          <Row label="Last completed">
+            {status.completedAt ? new Date(status.completedAt).toLocaleString() : "not yet"}
+          </Row>
+          {(status.lastError || status.error) && (
+            <li className="text-amber-300">Last warning: {status.lastError ?? status.error}</li>
+          )}
+        </ul>
+      )}
+      <div>
+        The first build walks every available Freshdesk ticket and stores its subject, description,
+        custom fields, requester details, replies, and private/public notes for fast read-only
+        search.
+      </div>
+    </div>
   );
 }
 
