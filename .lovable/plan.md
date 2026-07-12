@@ -1,60 +1,38 @@
-I’ll rework the Programming Status Email so it reads like a structured report instead of a compressed paragraph.
+## Problem
 
-## What will change
+When you enter a ticket number that isn't already tracked and click **Pull Ticket from Freshdesk**, it always fails with the same generic "Ticket not found in Freshdesk. Check the number or connect Freshdesk in Settings." toast — even when the real cause is different (Freshdesk isn't connected, wrong API key, wrong ticket #, network error).
 
-1. **Fix the on-screen generated email preview**
-   - Stop rendering the plain-text email inside a rich text editor that collapses line breaks.
-   - Show/edit it in a newline-preserving editor with larger readable text.
-   - Remove the tiny monospace styling that makes the email feel cramped.
+The root cause: this project's server function `freshdeskPullTicket` needs two server-side secrets, `FRESHDESK_DOMAIN` and `FRESHDESK_API_KEY`. Neither is set in this project's env right now (only commented-out placeholders exist in `.env.example`). Without them, the server returns `"Freshdesk is not connected. Add your domain and API key in Settings."`, but the client-side `pullFromFreshdesk` shim swallows the message and the lookup card shows the wrong error, so it looks like every pull just fails.
 
-2. **Make the plain-text email much more separated**
-   - Add strong visual section dividers for:
-     - Freshdesk Tickets Worked
-     - Contact Dispatch Testing
-     - Additional Work
-     - Items Still In Progress / Waiting
-     - Items Needing Attention
-   - Put blank space before and after each section.
-   - Number every entry inside each section.
-   - Separate each ticket/work item with a clear divider and extra spacing.
-   - Put fields on their own lines, for example:
+The Settings → Freshdesk Integration panel stores the domain + a display-only masked key in localStorage — it does NOT actually write the secrets used by the server. The tooltip already tells you to ask Lovable in chat to save them, but nothing on the failure path surfaces that.
 
-```text
-FRESHDESK TICKETS WORKED
-============================================================
+## What to change
 
-1. Ticket #369427 - Account 48043 / Dr. Movassaghi's Office
+Scope: UI + error surfacing only. No changes to Freshdesk API logic or data model.
 
-   Summary:
-   When the office checks in...
+1. **`src/lib/tickets-store.ts` — return the real error from `pullFromFreshdesk`**
+   Change the return type to `{ ticket: Ticket | null; error?: string; notConnected?: boolean }` so callers can distinguish "not connected" from "not found" from a transport error. Detect the "Freshdesk is not connected" message from `readCreds` and set `notConnected: true`. Update the other two callers (`AssignedInboxRow`, `CommandPalette`) minimally to unwrap `.ticket`.
 
-   Status:
-   Completed Programming
+2. **`src/components/freshdesk/TicketLookupCard.tsx` — show the real reason**
+   - Show the actual server error text in the failure toast (e.g. "Freshdesk 401: invalid API key", "Ticket not found in Freshdesk", "Could not reach Freshdesk").
+   - When `notConnected` is true, show a clearer toast: "Freshdesk isn't connected yet. Add credentials in Settings → Freshdesk Integration, or ask Lovable in chat to save `FRESHDESK_DOMAIN` and `FRESHDESK_API_KEY`."
+   - Keep the "Create Ticket Work Manually" fallback so you can still proceed offline.
 
-   Programming Notes:
-   Changes: ...
-   Notes: ...
+3. **`src/routes/_authenticated/settings.tsx` — make the missing-secrets state obvious**
+   In the Freshdesk Integration card, when `freshdeskTestConnection()` returns the "not connected" error, replace the generic status row with an explicit callout that says the secrets aren't set and gives the exact chat prompt to save them. No new UI framework, just a styled note using existing components.
 
-------------------------------------------------------------
+## Out of scope
 
-2. Ticket #369462 - Account 5698 / Norco Medical - Missoula
-...
-```
+- Wiring a UI form that writes `FRESHDESK_DOMAIN`/`FRESHDESK_API_KEY` directly to project secrets (that requires the secrets tool and is a separate ask).
+- Any change to the Freshdesk fetch/normalize/search logic.
+- Changing how already-tracked tickets open.
 
-3. **Make the rich “Copy Email with Snips” version more readable**
-   - Keep Freshdesk, Contact Dispatch, and Additional Work as distinct HTML sections.
-   - Render each ticket/work item as a larger, spaced card with a bold numbered header.
-   - Increase font size and line height.
-   - Keep snips inline within the correct ticket/work item, but give them spacing so they don’t crowd the text.
+## Files to edit
 
-4. **Keep scope limited**
-   - No changes to what items are included.
-   - No changes to ticket/dispatch/additional-work data logic.
-   - No backend changes.
-   - No changes to the dispatch summary feature unless it shares the same copy helper directly.
+- `src/lib/tickets-store.ts`
+- `src/components/freshdesk/TicketLookupCard.tsx`
+- `src/components/assigned-inbox/AssignedInboxRow.tsx` (unwrap new return shape)
+- `src/components/command/CommandPalette.tsx` (unwrap new return shape)
+- `src/routes/_authenticated/settings.tsx`
 
-## Files expected to change
-
-- `src/lib/reports/prog-email-format.ts`
-- `src/lib/reports/prog-email-rich.ts`
-- `src/routes/_authenticated/reports.tsx`
+After the change, if Freshdesk secrets truly aren't set for this project, the toast will tell you so — and once we add `FRESHDESK_DOMAIN` / `FRESHDESK_API_KEY` via the secrets flow, Pull will work.
