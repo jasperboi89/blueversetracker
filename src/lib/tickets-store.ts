@@ -554,16 +554,32 @@ export const ticketsStore = {
       return { ok: false, error: e instanceof Error ? e.message : "Sync failed." };
     }
   },
-  /** Back-compat shim — returns the existing record or null if Freshdesk isn't connected. */
-  async pullFromFreshdesk(number: string): Promise<Ticket | null> {
+  /**
+   * Pull a ticket from Freshdesk. Returns the existing tracked record when
+   * present, otherwise fetches from Freshdesk. Surfaces the real failure
+   * reason to the caller so the UI can show a useful message.
+   */
+  async pullFromFreshdesk(
+    number: string,
+  ): Promise<{
+    ticket: Ticket | null;
+    error?: string;
+    notFound?: boolean;
+    notConnected?: boolean;
+  }> {
     ensureLoaded();
     const existing = state.tickets.find((t) => t.number === number);
-    if (existing) return existing;
+    if (existing) return { ticket: existing };
     try {
       const mod = await import("./api/freshdesk.functions");
       const res = await mod.freshdeskPullTicket({ data: { number } });
-      if (!res.ok) return null;
-      return this.createFromFreshdesk({
+      if (!res.ok) {
+        const error = res.error ?? "Could not pull ticket from Freshdesk.";
+        const notConnected = /not connected/i.test(error);
+        const notFound = "notFound" in res ? !!res.notFound : false;
+        return { ticket: null, error, notFound, notConnected };
+      }
+      const created = this.createFromFreshdesk({
         number: res.ticket.number,
         subject: res.ticket.subject,
         description: res.ticket.description,
@@ -595,8 +611,12 @@ export const ticketsStore = {
           source: "freshdesk",
         })),
       });
-    } catch {
-      return null;
+      return { ticket: created };
+    } catch (e) {
+      return {
+        ticket: null,
+        error: e instanceof Error ? e.message : "Could not reach Freshdesk.",
+      };
     }
   },
   /**
