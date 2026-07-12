@@ -99,13 +99,22 @@ export function TicketLookupCard({
                 toast.loading("Pulling ticket from Freshdesk…", { id: "fd-pull" });
                 ticketsStore.pullFromFreshdesk(num).then((t) => {
                   toast.dismiss("fd-pull");
-                  if (!t) {
-                    toast.error("Ticket not found in Freshdesk. Check the number or connect Freshdesk in Settings.");
+                  if (!t.ticket) {
+                    if (t.notConnected) {
+                      toast.error(
+                        "Freshdesk isn't connected. Add FRESHDESK_DOMAIN and FRESHDESK_API_KEY in Settings → Freshdesk Integration.",
+                        { duration: 8000 },
+                      );
+                    } else {
+                      toast.error(t.error ?? "Could not pull ticket from Freshdesk.", {
+                        duration: 8000,
+                      });
+                    }
                     return;
                   }
-                  toast.success(`Pulled ticket #${t.number} from Freshdesk`);
+                  toast.success(`Pulled ticket #${t.ticket.number} from Freshdesk`);
                   setQ("");
-                  openPreview(t);
+                  openPreview(t.ticket);
                 });
               }}
             >

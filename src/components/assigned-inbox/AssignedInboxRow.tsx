@@ -29,12 +29,14 @@ export function AssignedInboxRow({
   const track = async () => {
     setTracking(true);
     try {
-      const t = await ticketsStore.pullFromFreshdesk(row.number);
-      if (t) {
+      const res = await ticketsStore.pullFromFreshdesk(row.number);
+      if (res.ticket) {
         toast.success(`Tracking FD #${row.number}`);
         assignedInboxStore.dismiss(row.number);
+      } else if (res.notConnected) {
+        toast.error("Freshdesk isn't connected. Add credentials in Settings.");
       } else {
-        toast.error("Could not pull ticket from Freshdesk.");
+        toast.error(res.error ?? "Could not pull ticket from Freshdesk.");
       }
     } finally {
       setTracking(false);

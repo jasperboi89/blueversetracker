@@ -117,15 +117,19 @@ export function CommandPalette() {
   async function pullTicket() {
     if (pulling) return;
     setPulling(true);
-    const t = await ticketsStore.pullFromFreshdesk(digits);
+    const res = await ticketsStore.pullFromFreshdesk(digits);
     setPulling(false);
-    if (!t) {
-      toast.error(`Ticket #${digits} not found in Freshdesk.`);
+    if (!res.ticket) {
+      if (res.notConnected) {
+        toast.error("Freshdesk isn't connected. Add credentials in Settings.");
+      } else {
+        toast.error(res.error ?? `Ticket #${digits} not found in Freshdesk.`);
+      }
       return;
     }
-    toast.success(`Pulled ticket #${t.number}.`);
+    toast.success(`Pulled ticket #${res.ticket.number}.`);
     close();
-    navigate({ to: "/freshdesk-tickets/$ticketId/work", params: { ticketId: t.id } });
+    navigate({ to: "/freshdesk-tickets/$ticketId/work", params: { ticketId: res.ticket.id } });
   }
 
   async function signOut() {
