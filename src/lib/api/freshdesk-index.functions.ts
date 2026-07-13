@@ -288,9 +288,10 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
     }
 
     const pageTickets = listed.data;
-    const tickets = pageTickets.slice(offset, offset + 10);
+    const tickets = pageTickets.slice(offset, offset + 5);
     const rows: Record<string, unknown>[] = [];
     const conversationErrors: string[] = [];
+    let rateLimitRetryAfterMs = 0;
     let conversationCount = 0;
 
     // Hydrate sequentially. Four parallel conversation downloads followed by
@@ -300,6 +301,12 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
       const conversations = await fetchAllConversations(String(dto.id));
       if (!conversations.ok && conversations.error) {
         conversationErrors.push(`#${dto.id}: ${conversations.error}`);
+        if (conversations.status === 429) {
+          rateLimitRetryAfterMs = Math.max(
+            rateLimitRetryAfterMs,
+            conversations.retryAfterMs ?? 60_000,
+          );
+        }
       }
       conversationCount += conversations.conversations.length;
       const conversationText = conversations.conversations
@@ -328,7 +335,7 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
       });
       // Leave a small amount of quota for normal ticket lookups while a full
       // index build is running.
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 1_200));
     }
 
     // Do not advance the cursor with partially hydrated tickets. A temporary
@@ -340,7 +347,12 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
         .from("freshdesk_search_sync_state")
         .update({ last_error: error, updated_at: new Date().toISOString() })
         .eq("id", "primary");
-      return { ok: false as const, error };
+      return {
+        ok: false as const,
+        error,
+        rateLimited: rateLimitRetryAfterMs > 0,
+        retryAfterMs: rateLimitRetryAfterMs || undefined,
+      };
     }
 
     if (rows.length) {
