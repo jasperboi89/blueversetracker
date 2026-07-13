@@ -29,9 +29,24 @@ export async function fdFetch<T>(
   if ("error" in creds && creds.error) return { status: 0, error: creds.error };
   const { host, authHeader } = creds as { host: string; authHeader: string };
   try {
-    const res = await fetch(`https://${host}${path}`, {
-      headers: { Authorization: authHeader, "Content-Type": "application/json" },
-    });
+    let res: Response | null = null;
+    // Freshdesk rate limits are account/plan dependent. Initial index builds
+    // can legitimately hit 429 even at modest concurrency, so honor
+    // Retry-After and retry the same read instead of dropping ticket content.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      res = await fetch(`https://${host}${path}`, {
+        headers: { Authorization: authHeader, "Content-Type": "application/json" },
+      });
+      if (res.status !== 429 || attempt === 4) break;
+      const retryAfter = Number.parseFloat(res.headers.get("retry-after") ?? "");
+      const retryMs = Number.isFinite(retryAfter)
+        ? Math.min(Math.max(retryAfter * 1000, 1_000), 30_000)
+        : Math.min(2_000 * 2 ** attempt, 30_000);
+      await new Promise((resolve) =>
+        setTimeout(resolve, retryMs + Math.floor(Math.random() * 500)),
+      );
+    }
+    if (!res) return { status: 0, error: "Could not reach Freshdesk." };
     if (res.status === 404) return { status: 404, error: "Ticket not found in Freshdesk." };
     if (res.status === 401 || res.status === 403) {
       return {
