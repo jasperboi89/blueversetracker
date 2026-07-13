@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wrench, Loader2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,6 +163,12 @@ function IndexManager() {
     return next;
   };
 
+  useEffect(() => {
+    void refreshStatus().catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : "Could not check index status.");
+    });
+  }, []);
+
   const sync = async (rebuild: boolean) => {
     setLoading(true);
     setError(null);
@@ -221,6 +227,12 @@ function IndexManager() {
             <li className="text-amber-300">Last warning: {status.lastError ?? status.error}</li>
           )}
         </ul>
+      )}
+      {status && (!status.available || status.documentCount === 0) && (
+        <div className="rounded border border-amber-400/30 bg-amber-400/10 p-2 text-amber-200">
+          Full conversation search is not active. Apply the Supabase migrations, then click Build /
+          refresh index. Until this is ready, an empty search result is not authoritative.
+        </div>
       )}
       <div>
         The first build walks every available Freshdesk ticket and stores its subject, description,
