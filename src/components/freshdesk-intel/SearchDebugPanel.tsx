@@ -178,14 +178,27 @@ function IndexManager() {
       for (let batch = 0; batch < 3000; batch += 1) {
         const result = await freshdeskSyncIndexBatch({ data: { rebuild: rebuild && first } });
         first = false;
-        if (!result.ok) throw new Error(result.error);
+        if (!result.ok) {
+          if (result.rateLimited) {
+            const cooldownMs = Math.min(
+              Math.max(result.retryAfterMs ?? 60_000, 30_000) + 5_000,
+              125_000,
+            );
+            setProgress(
+              `Freshdesk quota reached. Cooling down for ${Math.ceil(cooldownMs / 1000)} seconds, then resuming automatically…`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, cooldownMs));
+            continue;
+          }
+          throw new Error(result.error);
+        }
         setProgress(
           `Indexed ${result.ticketsIndexed} ticket(s) and ${result.conversationsIndexed} conversation item(s)…`,
         );
         if (result.completed) break;
         // Server batches are intentionally paced so the initial build does
         // not consume the entire Freshdesk API quota in a burst.
-        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        await new Promise((resolve) => setTimeout(resolve, 4_000));
       }
       const next = await refreshStatus();
       setProgress(
