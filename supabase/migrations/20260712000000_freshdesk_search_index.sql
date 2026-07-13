@@ -19,35 +19,39 @@ CREATE TABLE public.freshdesk_search_documents (
   freshdesk_created_at timestamptz,
   freshdesk_updated_at timestamptz NOT NULL,
   indexed_at timestamptz NOT NULL DEFAULT now(),
-  searchable_text text GENERATED ALWAYS AS (
-    concat_ws(E'\n',
-      ticket_id::text,
-      subject,
-      description_text,
-      conversation_text,
-      requester_name,
-      company_name,
-      account_number,
-      array_to_string(tags, ' '),
-      custom_fields::text
-    )
-  ) STORED,
-  search_vector tsvector GENERATED ALWAYS AS (
-    to_tsvector('simple',
-      concat_ws(E'\n',
-        ticket_id::text,
-        subject,
-        description_text,
-        conversation_text,
-        requester_name,
-        company_name,
-        account_number,
-        array_to_string(tags, ' '),
-        custom_fields::text
-      )
-    )
-  ) STORED
+  -- Do not use generated expressions here. PostgreSQL marks helpers such as
+  -- concat_ws as STABLE rather than IMMUTABLE, so Supabase/Postgres can reject
+  -- the migration with "generation expression is not immutable".
+  searchable_text text NOT NULL DEFAULT '',
+  search_vector tsvector NOT NULL DEFAULT ''::tsvector
 );
+
+CREATE OR REPLACE FUNCTION public.refresh_freshdesk_search_document()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  NEW.searchable_text := concat_ws(E'\n',
+    NEW.ticket_id::text,
+    NEW.subject,
+    NEW.description_text,
+    NEW.conversation_text,
+    NEW.requester_name,
+    NEW.company_name,
+    NEW.account_number,
+    array_to_string(NEW.tags, ' '),
+    NEW.custom_fields::text
+  );
+  NEW.search_vector := to_tsvector('simple'::regconfig, NEW.searchable_text);
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER refresh_freshdesk_search_document_trigger
+BEFORE INSERT OR UPDATE
+ON public.freshdesk_search_documents
+FOR EACH ROW EXECUTE FUNCTION public.refresh_freshdesk_search_document();
 
 CREATE INDEX freshdesk_search_documents_vector_idx
   ON public.freshdesk_search_documents USING gin (search_vector);
