@@ -183,6 +183,9 @@ function IndexManager() {
           `Indexed ${result.ticketsIndexed} ticket(s) and ${result.conversationsIndexed} conversation item(s)…`,
         );
         if (result.completed) break;
+        // Server batches are intentionally paced so the initial build does
+        // not consume the entire Freshdesk API quota in a burst.
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
       }
       const next = await refreshStatus();
       setProgress(
