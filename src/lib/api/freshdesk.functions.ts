@@ -24,7 +24,7 @@ function readCreds() {
 
 export async function fdFetch<T>(
   path: string,
-): Promise<{ data?: T; status: number; error?: string }> {
+): Promise<{ data?: T; status: number; error?: string; retryAfterMs?: number }> {
   const creds = readCreds();
   if ("error" in creds && creds.error) return { status: 0, error: creds.error };
   const { host, authHeader } = creds as { host: string; authHeader: string };
@@ -33,20 +33,30 @@ export async function fdFetch<T>(
     // Freshdesk rate limits are account/plan dependent. Initial index builds
     // can legitimately hit 429 even at modest concurrency, so honor
     // Retry-After and retry the same read instead of dropping ticket content.
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       res = await fetch(`https://${host}${path}`, {
         headers: { Authorization: authHeader, "Content-Type": "application/json" },
       });
-      if (res.status !== 429 || attempt === 4) break;
+      if (res.status !== 429 || attempt === 2) break;
       const retryAfter = Number.parseFloat(res.headers.get("retry-after") ?? "");
       const retryMs = Number.isFinite(retryAfter)
-        ? Math.min(Math.max(retryAfter * 1000, 1_000), 30_000)
-        : Math.min(2_000 * 2 ** attempt, 30_000);
+        ? Math.min(Math.max(retryAfter * 1000, 1_000), 15_000)
+        : Math.min(2_000 * 2 ** attempt, 15_000);
       await new Promise((resolve) =>
         setTimeout(resolve, retryMs + Math.floor(Math.random() * 500)),
       );
     }
     if (!res) return { status: 0, error: "Could not reach Freshdesk." };
+    if (res.status === 429) {
+      const retryAfter = Number.parseFloat(res.headers.get("retry-after") ?? "");
+      return {
+        status: 429,
+        error: "Freshdesk API quota reached (429).",
+        retryAfterMs: Number.isFinite(retryAfter)
+          ? Math.min(Math.max(retryAfter * 1000, 5_000), 120_000)
+          : 60_000,
+      };
+    }
     if (res.status === 404) return { status: 404, error: "Ticket not found in Freshdesk." };
     if (res.status === 401 || res.status === 403) {
       return {
@@ -230,6 +240,8 @@ export async function fetchAllConversations(ticketNumber: string): Promise<{
   conversations: FreshdeskConversationDTO[];
   error?: string;
   pages: number;
+  status?: number;
+  retryAfterMs?: number;
 }> {
   const all: FreshdeskConversationDTO[] = [];
   let page = 1;
@@ -238,7 +250,16 @@ export async function fetchAllConversations(ticketNumber: string): Promise<{
       `/api/v2/tickets/${encodeURIComponent(ticketNumber)}/conversations?page=${page}&per_page=30`,
     );
     if (res.error || !res.data) {
-      if (page === 1) return { ok: false, conversations: [], error: res.error, pages: 0 };
+      if (page === 1) {
+        return {
+          ok: false,
+          conversations: [],
+          error: res.error,
+          pages: 0,
+          status: res.status,
+          retryAfterMs: res.retryAfterMs,
+        };
+      }
       break;
     }
     all.push(...res.data);
