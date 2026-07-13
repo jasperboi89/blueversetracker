@@ -83,6 +83,114 @@ export type Database = {
         }
         Relationships: []
       }
+      freshdesk_search_documents: {
+        Row: {
+          account_number: string
+          agent_id: number | null
+          company_name: string
+          conversation_text: string
+          custom_fields: Json
+          description_text: string
+          freshdesk_created_at: string | null
+          freshdesk_updated_at: string
+          group_id: number | null
+          indexed_at: string
+          priority: number
+          requester_name: string
+          search_vector: unknown
+          searchable_text: string
+          status: number
+          subject: string
+          tags: string[]
+          ticket: Json
+          ticket_id: number
+        }
+        Insert: {
+          account_number?: string
+          agent_id?: number | null
+          company_name?: string
+          conversation_text?: string
+          custom_fields?: Json
+          description_text?: string
+          freshdesk_created_at?: string | null
+          freshdesk_updated_at: string
+          group_id?: number | null
+          indexed_at?: string
+          priority: number
+          requester_name?: string
+          search_vector?: unknown
+          searchable_text?: string
+          status: number
+          subject?: string
+          tags?: string[]
+          ticket: Json
+          ticket_id: number
+        }
+        Update: {
+          account_number?: string
+          agent_id?: number | null
+          company_name?: string
+          conversation_text?: string
+          custom_fields?: Json
+          description_text?: string
+          freshdesk_created_at?: string | null
+          freshdesk_updated_at?: string
+          group_id?: number | null
+          indexed_at?: string
+          priority?: number
+          requester_name?: string
+          search_vector?: unknown
+          searchable_text?: string
+          status?: number
+          subject?: string
+          tags?: string[]
+          ticket?: Json
+          ticket_id?: number
+        }
+        Relationships: []
+      }
+      freshdesk_search_sync_state: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          conversations_indexed: number
+          id: string
+          last_error: string | null
+          next_offset: number
+          next_page: number
+          started_at: string | null
+          sync_since: string | null
+          tickets_indexed: number
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          conversations_indexed?: number
+          id?: string
+          last_error?: string | null
+          next_offset?: number
+          next_page?: number
+          started_at?: string | null
+          sync_since?: string | null
+          tickets_indexed?: number
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          conversations_indexed?: number
+          id?: string
+          last_error?: string | null
+          next_offset?: number
+          next_page?: number
+          started_at?: string | null
+          sync_since?: string | null
+          tickets_indexed?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       qb_discoveries: {
         Row: {
           context: Json
@@ -232,6 +340,36 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      search_freshdesk_documents: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          account_number: string
+          agent_id: number | null
+          company_name: string
+          conversation_text: string
+          custom_fields: Json
+          description_text: string
+          freshdesk_created_at: string | null
+          freshdesk_updated_at: string
+          group_id: number | null
+          indexed_at: string
+          priority: number
+          requester_name: string
+          search_vector: unknown
+          searchable_text: string
+          status: number
+          subject: string
+          tags: string[]
+          ticket: Json
+          ticket_id: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "freshdesk_search_documents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
     }
     Enums: {
