@@ -293,44 +293,42 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
     const conversationErrors: string[] = [];
     let conversationCount = 0;
 
-    for (let i = 0; i < tickets.length; i += 4) {
-      const batch = tickets.slice(i, i + 4);
-      const hydrated = await Promise.all(
-        batch.map(async (dto) => ({
-          dto,
-          conversations: await fetchAllConversations(String(dto.id)),
-        })),
-      );
-      for (const { dto, conversations } of hydrated) {
-        if (!conversations.ok && conversations.error) {
-          conversationErrors.push(`#${dto.id}: ${conversations.error}`);
-        }
-        conversationCount += conversations.conversations.length;
-        const conversationText = conversations.conversations
-          .map((c) => (c.body_text ?? c.body ?? "").trim())
-          .filter(Boolean)
-          .join("\n---\n");
-        const normalized = normalizeTicket(dto, host);
-        rows.push({
-          ticket_id: dto.id,
-          ticket: normalized,
-          subject: normalized.subject,
-          description_text: normalized.description,
-          conversation_text: conversationText,
-          requester_name: normalized.requesterName ?? "",
-          company_name: normalized.companyName ?? normalized.accountName ?? "",
-          account_number: normalized.accountNumber ?? "",
-          status: dto.status,
-          priority: dto.priority,
-          group_id: dto.group_id ?? null,
-          agent_id: dto.responder_id ?? null,
-          tags: normalized.tags ?? [],
-          custom_fields: normalized.customFields ?? {},
-          freshdesk_created_at: dto.created_at,
-          freshdesk_updated_at: dto.updated_at,
-          indexed_at: new Date().toISOString(),
-        });
+    // Hydrate sequentially. Four parallel conversation downloads followed by
+    // an immediate next browser batch was enough to exhaust Freshdesk's
+    // per-minute quota on smaller plans.
+    for (const dto of tickets) {
+      const conversations = await fetchAllConversations(String(dto.id));
+      if (!conversations.ok && conversations.error) {
+        conversationErrors.push(`#${dto.id}: ${conversations.error}`);
       }
+      conversationCount += conversations.conversations.length;
+      const conversationText = conversations.conversations
+        .map((c) => (c.body_text ?? c.body ?? "").trim())
+        .filter(Boolean)
+        .join("\n---\n");
+      const normalized = normalizeTicket(dto, host);
+      rows.push({
+        ticket_id: dto.id,
+        ticket: normalized,
+        subject: normalized.subject,
+        description_text: normalized.description,
+        conversation_text: conversationText,
+        requester_name: normalized.requesterName ?? "",
+        company_name: normalized.companyName ?? normalized.accountName ?? "",
+        account_number: normalized.accountNumber ?? "",
+        status: dto.status,
+        priority: dto.priority,
+        group_id: dto.group_id ?? null,
+        agent_id: dto.responder_id ?? null,
+        tags: normalized.tags ?? [],
+        custom_fields: normalized.customFields ?? {},
+        freshdesk_created_at: dto.created_at,
+        freshdesk_updated_at: dto.updated_at,
+        indexed_at: new Date().toISOString(),
+      });
+      // Leave a small amount of quota for normal ticket lookups while a full
+      // index build is running.
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     // Do not advance the cursor with partially hydrated tickets. A temporary
