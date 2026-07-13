@@ -41,11 +41,11 @@ export function SearchDebugPanel({ lastDebug }: { lastDebug: SearchDebug | null 
         {lastDebug ? <DebugView debug={lastDebug} /> : <Muted>No search run yet.</Muted>}
       </Section>
 
-      <Section title="Intelligence index (all ticket content)">
+      <Section title="Intelligence index (last 6 months)">
         <IndexManager />
       </Section>
 
-      <Section title="Account coverage test (All Tickets / All Time)">
+      <Section title="Account coverage test">
         <AccountCoverageTester />
       </Section>
 
@@ -251,9 +251,9 @@ function IndexManager() {
         </div>
       )}
       <div>
-        The first build walks every available Freshdesk ticket and stores its subject, description,
-        custom fields, requester details, replies, and private/public notes for fast read-only
-        search.
+        The first build walks tickets updated within the last six months and stores their subject,
+        description, custom fields, requester details, replies, and private/public notes for fast
+        read-only search. Older indexed tickets are removed automatically.
       </div>
     </div>
   );
@@ -300,9 +300,9 @@ function AccountCoverageTester() {
       {report && (
         <ul className="space-y-1 text-xs text-muted-foreground">
           <Row label="Scope">
-            <span className={report.scope === "all-time" ? "text-emerald-300" : "text-amber-300"}>
-              {report.scope === "all-time"
-                ? "All available tickets scanned"
+            <span className={report.scope === "six-months" ? "text-emerald-300" : "text-amber-300"}>
+              {report.scope === "six-months"
+                ? "Full six-month window scanned"
                 : "Limited subset (pagination truncated)"}
             </span>
           </Row>
