@@ -33,7 +33,7 @@ function FreshdeskIntelligencePage() {
   const isAdmin = useIsAdmin();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<IntelFilters>({
-    dateRange: { kind: "all" },
+    dateRange: { kind: "preset", days: 180 },
     includeClosed: true,
   });
   const [loading, setLoading] = useState(false);
