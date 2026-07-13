@@ -15,6 +15,11 @@ import type {
   FreshdeskConversationDTO,
   NormalizedTicket,
 } from "./freshdesk.types";
+import {
+  getFreshdeskIndexStatus,
+  searchFreshdeskIndex,
+  type FreshdeskIndexHit,
+} from "./freshdesk-index.functions";
 
 /* -------------------------- types -------------------------- */
 
@@ -46,6 +51,7 @@ export type IntelFilters = z.infer<typeof FiltersSchema>;
 export interface IntelCandidate {
   ticket: NormalizedTicket;
   excerpt: string;
+  conversationText?: string;
 }
 
 export interface IntelRanked {
@@ -71,7 +77,7 @@ export interface IntelResult {
 
 export interface SearchDebug {
   mode: "account-exact" | "ticket-number" | "email" | "keyword" | "filter-only";
-  dataSource: "freshdesk-api";
+  dataSource: "freshdesk-api" | "freshdesk-index";
   freshdeskQuery: string;
   dateRangeLabel: string;
   scanned: number;
@@ -88,6 +94,8 @@ export interface SearchDebug {
   notes: string[];
   skippedFields?: { name: string; reason: string }[];
   apiErrors?: string[];
+  indexDocumentCount?: number;
+  indexCompletedAt?: number | null;
 }
 
 export type SearchResponse =
@@ -216,10 +224,16 @@ function classifyAccountMatch(
     { label: "company name", value: t.companyName },
     { label: "account name", value: t.accountName },
     { label: "requester", value: t.requesterName },
+    { label: "ticket conversation", value: c.conversationText },
   ];
   for (const b of textBuckets) {
     if (b.value && textMentionsAccount(b.value, m)) {
       return { group: "related-mention", reason: `Number appears in ${b.label}` };
+    }
+  }
+  for (const [key, value] of Object.entries(t.customFields ?? {})) {
+    if (textMentionsAccount(value, m)) {
+      return { group: "related-mention", reason: `Number appears in custom field ${key}` };
     }
   }
   for (const tag of t.tags ?? []) {
@@ -298,9 +312,9 @@ async function detectAccountField(): Promise<string | null> {
 export const freshdeskDetectAccountField = createServerFn({ method: "GET" })
   .middleware([requireActiveAuthorizedUser])
   .handler(async () => {
-  const d = await detectAccountFieldFull();
-  return { name: d.name, skipped: d.skipped };
-});
+    const d = await detectAccountFieldFull();
+    return { name: d.name, skipped: d.skipped };
+  });
 
 /* -------------------------- date range -------------------------- */
 
@@ -319,6 +333,44 @@ function resolveDateRange(dr: DateRange | undefined): {
   const to = dr.to?.trim() || undefined;
   const label = `Custom${from ? ` from ${from}` : ""}${to ? ` to ${to}` : ""}`.trim();
   return { from, to, label, active: !!(from || to) };
+}
+
+function indexedHitPassesFilters(
+  hit: FreshdeskIndexHit,
+  filters: IntelFilters,
+  range: { from?: string; to?: string },
+): boolean {
+  if (filters.statuses?.length) {
+    if (!filters.statuses.includes(hit.status)) return false;
+  } else if (!filters.includeClosed && (hit.status === 4 || hit.status === 5)) {
+    return false;
+  }
+  if (filters.priorities?.length && !filters.priorities.includes(hit.priority)) return false;
+  if (filters.groupId && hit.groupId !== filters.groupId) return false;
+  if (filters.agentId && hit.agentId !== filters.agentId) return false;
+  const updated = hit.ticket.updatedAt;
+  if (range.from && updated < new Date(`${range.from}T00:00:00Z`).getTime()) return false;
+  if (range.to && updated > new Date(`${range.to}T23:59:59.999Z`).getTime()) return false;
+  return true;
+}
+
+function evidenceExcerpt(text: string, query: string, maxLength: number): string {
+  if (!text) return "";
+  const index = text.toLocaleLowerCase().indexOf(query.trim().toLocaleLowerCase());
+  if (index < 0) return truncate(text, maxLength);
+  const before = Math.floor(maxLength * 0.35);
+  const start = Math.max(0, index - before);
+  const end = Math.min(text.length, start + maxLength);
+  return `${start > 0 ? "…" : ""}${text.slice(start, end)}${end < text.length ? "…" : ""}`;
+}
+
+function candidateFromIndex(hit: FreshdeskIndexHit, query: string): IntelCandidate {
+  const evidence = [hit.ticket.description, hit.conversationText].filter(Boolean).join("\n---\n");
+  return {
+    ticket: { ...hit.ticket, searchableText: undefined },
+    excerpt: evidenceExcerpt(evidence, query, 600),
+    conversationText: hit.conversationText,
+  };
 }
 
 /* -------------------------- Freshdesk query -------------------------- */
@@ -400,14 +452,14 @@ interface AiCandidateInput {
   notesText: string;
 }
 
-function buildCandidateBlock(input: AiCandidateInput): string {
+function buildCandidateBlock(input: AiCandidateInput, query: string): string {
   const t = input.candidate.ticket;
   return [
     `[${input.index}] #${t.number} — ${t.subject}`,
     `status=${t.status} priority=${t.priority ?? "?"} group=${t.groupName ?? "?"} agent=${t.agentName ?? "?"} updated=${new Date(t.updatedAt).toISOString()}`,
     `account=${t.accountNumber ?? "?"} (${t.accountName ?? t.companyName ?? "?"})`,
     `desc: ${truncate(t.description, 600)}`,
-    input.notesText ? `notes: ${truncate(input.notesText, 1200)}` : "",
+    input.notesText ? `notes: ${evidenceExcerpt(input.notesText, query, 1800)}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -436,7 +488,7 @@ async function aiRankCandidates(
     `USER QUERY: ${query}`,
     "",
     "CANDIDATES:",
-    ...inputs.map((c) => `---\n${buildCandidateBlock(c)}`),
+    ...inputs.map((c) => `---\n${buildCandidateBlock(c, query)}`),
     "",
     'Return JSON: { "results": [ { "ticketNumber": "...", "matchReason": "...", "issue": "...", "latestUpdate": "...", "suggestedAction": "...", "owner": "...", "signal": "needs-review", "confidence": 0.5, "snippet": "..." } ] }',
   ].join("\n");
@@ -548,10 +600,12 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         .join(" "),
     });
     const { host } = creds as { host: string };
-    const filters = data.filters ?? {};
+    const filters: IntelFilters = { ...(data.filters ?? {}) };
     const q = data.query.trim();
     const range = resolveDateRange(filters.dateRange);
-    const acct = filters.accountNumber?.trim();
+    const typedAccount = q.match(/^(?:(?:account|acct)\s*#?\s*:?[\s]*)?(\d{3,8})$/i);
+    const acct = filters.accountNumber?.trim() || typedAccount?.[1];
+    if (acct && !filters.accountNumber) filters.accountNumber = acct;
     const detection = await detectAccountFieldFull();
     const accountField = detection.name;
     const debugNotes: string[] = [];
@@ -570,7 +624,7 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
     const filtersForDebug = JSON.stringify(filtersForDebugObj);
 
     /* ---- Ticket-number shortcut ---- */
-    const ticketNumMatch = !acct && q.match(/^#?(\d{4,8})$/);
+    const ticketNumMatch = !acct && q.match(/^(?:#|ticket\s*#?\s*)(\d{4,8})$/i);
     if (ticketNumMatch) {
       const t = await fdFetch<FreshdeskTicketDTO>(
         `/api/v2/tickets/${ticketNumMatch[1]}?include=requester,company,stats`,
@@ -672,6 +726,114 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       if (!matcher) {
         return { ok: false, error: "Invalid account number." };
       }
+
+      // The persistent index contains subject, description, custom fields and
+      // every conversation. Prefer it whenever an initial sync has populated
+      // documents; live Freshdesk filtering remains a safe deployment fallback.
+      const [indexStatus, indexed] = await Promise.all([
+        getFreshdeskIndexStatus(),
+        searchFreshdeskIndex(acct, 200),
+      ]);
+      if (indexed.available && indexStatus.available && indexStatus.documentCount > 0) {
+        const filteredHits = indexed.hits.filter((hit) =>
+          indexedHitPassesFilters(hit, filters, range),
+        );
+        const exact: IntelResult[] = [];
+        const related: IntelResult[] = [];
+        let noAccountEvidence = 0;
+        for (const hit of filteredHits) {
+          const candidate = candidateFromIndex(hit, acct);
+          const cls = classifyAccountMatch(candidate, matcher);
+          if (cls.group === "strong") {
+            exact.push({ candidate, group: "strong", inclusionReason: cls.reason });
+          } else if (cls.group === "related-mention") {
+            related.push({
+              candidate,
+              group: "related-mention",
+              inclusionReason: cls.reason,
+            });
+          } else {
+            noAccountEvidence += 1;
+          }
+        }
+
+        const forAi = [...exact, ...related].slice(0, MAX_CANDIDATES_FOR_AI);
+        const ai = await aiRankCandidates(
+          q || `Account ${acct}`,
+          forAi.map((result, index) => ({
+            index: index + 1,
+            candidate: result.candidate,
+            notesText: result.candidate.conversationText ?? "",
+          })),
+        );
+        const rankedByNum = new Map(ai.ranked.map((ranked) => [ranked.ticketNumber, ranked]));
+        const attach = (results: IntelResult[]) =>
+          results.map((result) => ({
+            ...result,
+            ranked: rankedByNum.get(result.candidate.ticket.number),
+          }));
+        const strongOut = attach(exact);
+        const mentionsOut = attach(related);
+        const indexStillBuilding = !indexStatus.completed;
+        const notes = [
+          `Searched ${indexStatus.documentCount} fully hydrated ticket document(s), including stored conversation text.`,
+        ];
+        if (indexStillBuilding) {
+          notes.push(
+            "The initial intelligence-index sync is still running, so older tickets may not be indexed yet.",
+          );
+        }
+        if (noAccountEvidence) {
+          exclusions.push({
+            reason: "text-index hit without account evidence",
+            count: noAccountEvidence,
+          });
+        }
+        return {
+          ok: true,
+          strong: strongOut,
+          possible: [],
+          relatedMentions: mentionsOut,
+          notice:
+            strongOut.length + mentionsOut.length === 0
+              ? `No indexed ticket content matched account ${acct}${range.active ? ` in ${range.label}` : ""}.`
+              : indexStillBuilding
+                ? "Results are available, but the initial all-ticket index is still building."
+                : undefined,
+          aiNotice: ai.error,
+          debug: {
+            mode: "account-exact",
+            dataSource: "freshdesk-index",
+            freshdeskQuery: `INDEX account/content search: ${acct}`,
+            dateRangeLabel: range.label,
+            scanned: filteredHits.length,
+            excludedBeforeAi: noAccountEvidence,
+            exclusions,
+            sentToAi: forAi.length,
+            conversationsPulled: 0,
+            conversationPages: 0,
+            filters: filtersForDebug,
+            groupCounts: {
+              strong: strongOut.length,
+              possible: 0,
+              relatedMentions: mentionsOut.length,
+            },
+            inclusionReasons: [...strongOut, ...mentionsOut].map((result) => ({
+              ticketNumber: result.candidate.ticket.number,
+              group: result.group,
+              reason: result.inclusionReason,
+            })),
+            accountFieldDetected: accountField,
+            paginationTruncated: indexed.hits.length >= 200,
+            notes,
+            skippedFields: detection.skipped,
+            apiErrors: [],
+            indexDocumentCount: indexStatus.documentCount,
+            indexCompletedAt: indexStatus.completedAt,
+          },
+        };
+      }
+      if (indexed.error) apiErrors.push(`index: ${indexed.error}`);
 
       const strongMap = new Map<string, IntelResult>();
       const mentionMap = new Map<string, IntelResult>();
@@ -891,6 +1053,113 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
             r.truncated && !range.active
               ? ["Result list was truncated; pick a date range to narrow."]
               : [],
+        },
+      };
+    }
+
+    const [indexStatus, indexed] = await Promise.all([
+      getFreshdeskIndexStatus(),
+      searchFreshdeskIndex(q, 200),
+    ]);
+    if (indexed.available && indexStatus.available && indexStatus.documentCount > 0) {
+      const hits = indexed.hits
+        .filter((hit) => indexedHitPassesFilters(hit, filters, range))
+        .slice(0, MAX_CANDIDATES_FOR_AI);
+      const candidates = hits.map((hit) => candidateFromIndex(hit, q));
+      const ai = await aiRankCandidates(
+        q,
+        candidates.map((candidate, index) => ({
+          index: index + 1,
+          candidate,
+          notesText: candidate.conversationText ?? "",
+        })),
+      );
+      const rankedByNum = new Map(ai.ranked.map((ranked) => [ranked.ticketNumber, ranked]));
+      const strong: IntelResult[] = [];
+      const possible: IntelResult[] = [];
+      const literal = q.toLocaleLowerCase();
+      for (const candidate of candidates) {
+        const ranked = rankedByNum.get(candidate.ticket.number);
+        const evidence = [
+          candidate.ticket.subject,
+          candidate.ticket.description,
+          candidate.ticket.requesterName,
+          candidate.ticket.companyName,
+          candidate.ticket.accountName,
+          candidate.conversationText,
+        ]
+          .filter(Boolean)
+          .join("\n")
+          .toLocaleLowerCase();
+        const literalMatch = evidence.includes(literal);
+        const confidence = typeof ranked?.confidence === "number" ? ranked.confidence : 0;
+        const group: "strong" | "possible" =
+          literalMatch || confidence >= 0.75 ? "strong" : "possible";
+        const result: IntelResult = {
+          candidate,
+          ranked,
+          group,
+          inclusionReason: literalMatch
+            ? "Exact text appears in indexed ticket content"
+            : ranked
+              ? `AI confidence ${confidence.toFixed(2)} — ${ranked.matchReason || "match"}`
+              : "Keyword or name tokens appear in indexed ticket content",
+        };
+        if (group === "strong") strong.push(result);
+        else possible.push(result);
+      }
+      const indexStillBuilding = !indexStatus.completed;
+      return {
+        ok: true,
+        strong,
+        possible,
+        relatedMentions: [],
+        notice:
+          strong.length + possible.length === 0
+            ? `No indexed ticket content matched “${q}”.`
+            : indexStillBuilding
+              ? "Results are available, but the initial all-ticket index is still building."
+              : undefined,
+        aiNotice: ai.error,
+        debug: {
+          mode: "keyword",
+          dataSource: "freshdesk-index",
+          freshdeskQuery: `INDEX full-content search: ${q}`,
+          dateRangeLabel: range.label,
+          scanned: indexed.hits.length,
+          excludedBeforeAi: Math.max(0, indexed.hits.length - candidates.length),
+          exclusions:
+            indexed.hits.length > candidates.length
+              ? [
+                  {
+                    reason: "ranked below the top AI candidate limit",
+                    count: indexed.hits.length - candidates.length,
+                  },
+                ]
+              : [],
+          sentToAi: candidates.length,
+          conversationsPulled: 0,
+          conversationPages: 0,
+          filters: filtersForDebug,
+          groupCounts: { strong: strong.length, possible: possible.length, relatedMentions: 0 },
+          inclusionReasons: [...strong, ...possible].map((result) => ({
+            ticketNumber: result.candidate.ticket.number,
+            group: result.group,
+            reason: result.inclusionReason,
+          })),
+          accountFieldDetected: accountField,
+          paginationTruncated: indexed.hits.length >= 200,
+          notes: [
+            `Searched ${indexStatus.documentCount} indexed ticket document(s), including descriptions and complete conversation text.`,
+            ...(indexStillBuilding
+              ? [
+                  "The initial intelligence-index sync is still running; older tickets may not be indexed yet.",
+                ]
+              : []),
+          ],
+          apiErrors: [],
+          indexDocumentCount: indexStatus.documentCount,
+          indexCompletedAt: indexStatus.completedAt,
         },
       };
     }

@@ -32,7 +32,10 @@ export const Route = createFileRoute("/_authenticated/freshdesk-intelligence")({
 function FreshdeskIntelligencePage() {
   const isAdmin = useIsAdmin();
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<IntelFilters>({ dateRange: { kind: "all" } });
+  const [filters, setFilters] = useState<IntelFilters>({
+    dateRange: { kind: "all" },
+    includeClosed: true,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [strong, setStrong] = useState<IntelResult[]>([]);
