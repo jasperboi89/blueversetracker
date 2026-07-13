@@ -439,6 +439,40 @@ async function runFreshdeskSearch(
   return { out, pagesFetched, truncated, firstError };
 }
 
+/**
+ * Freshdesk's search endpoint requires a non-empty query. When every status is
+ * included and the date range is All Time, buildFreshdeskQuery intentionally
+ * returns an empty string. Use the regular ticket-list endpoint in that case
+ * so the live fallback never reports "0 scanned" without making a request.
+ */
+async function runFreshdeskList(host: string, maxPages: number): Promise<RunSearchResult> {
+  const out: IntelCandidate[] = [];
+  let firstError: string | undefined;
+  let pagesFetched = 0;
+  let truncated = false;
+  for (let page = 1; page <= maxPages; page += 1) {
+    const res = await fdFetch<FreshdeskTicketDTO[]>(
+      "/api/v2/tickets?updated_since=2000-01-01T00%3A00%3A00Z" +
+        "&include=description,requester&order_by=updated_at&order_type=desc" +
+        `&per_page=100&page=${page}`,
+    );
+    pagesFetched = page;
+    if (res.error) {
+      if (page === 1) firstError = res.error;
+      break;
+    }
+    const results = res.data ?? [];
+    if (!results.length) break;
+    for (const dto of results) {
+      const ticket = await enrichTicket(dto, host, []);
+      out.push({ ticket, excerpt: (dto.description_text ?? "").slice(0, 400) });
+    }
+    if (results.length < 100) break;
+    if (page === maxPages) truncated = true;
+  }
+  return { out, pagesFetched, truncated, firstError };
+}
+
 /* -------------------------- AI ranking (internal) -------------------------- */
 
 function truncate(s: string, n: number) {
@@ -834,6 +868,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         };
       }
       if (indexed.error) apiErrors.push(`index: ${indexed.error}`);
+      if (indexStatus.error && indexStatus.error !== indexed.error) {
+        apiErrors.push(`index status: ${indexStatus.error}`);
+      }
 
       const strongMap = new Map<string, IntelResult>();
       const mentionMap = new Map<string, IntelResult>();
@@ -891,9 +928,16 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
         range,
         includeAccountClause: false,
       });
-      if (broadQs) {
-        queriesUsed.push(broadQs);
-        const r = await runFreshdeskSearch(broadQs, host, MAX_PAGES_ACCOUNT_MENTION);
+      {
+        const usingListFallback = !broadQs;
+        queriesUsed.push(
+          usingListFallback
+            ? "GET /tickets?updated_since=2000-01-01 (bounded live fallback)"
+            : broadQs,
+        );
+        const r = usingListFallback
+          ? await runFreshdeskList(host, MAX_PAGES_ACCOUNT_MENTION)
+          : await runFreshdeskSearch(broadQs, host, MAX_PAGES_ACCOUNT_MENTION);
         scanned += r.out.length;
         if (r.truncated) paginationTruncated = true;
         if (r.firstError) {
@@ -927,8 +971,13 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
           });
         }
         debugNotes.push(
-          `Mention scan returned ${r.out.length} ticket(s) across ${r.pagesFetched} page(s)${r.truncated ? " (truncated)" : ""}.`,
+          `${usingListFallback ? "Live ticket-list fallback" : "Mention scan"} returned ${r.out.length} ticket(s) across ${r.pagesFetched} page(s)${r.truncated ? " (truncated)" : ""}.`,
         );
+        if (usingListFallback) {
+          debugNotes.push(
+            "The full-content index is unavailable or empty. This bounded fallback can inspect ticket headers, descriptions and custom fields, but it cannot prove that an account is absent from older conversations.",
+          );
+        }
         if (r.truncated && !range.active) {
           debugNotes.push(
             "Mention scan was capped because no date range was selected. Pick a date range for fuller mention coverage.",
@@ -992,7 +1041,9 @@ export const freshdeskSearch = createServerFn({ method: "POST" })
       if (!strongOut.length) {
         notice = mentionsOut.length
           ? `No exact account match found for ${acct}. Showing related mentions only.`
-          : `No tickets found for account ${acct}${range.active ? ` in ${range.label}` : ""}.`;
+          : indexStatus.available && indexStatus.documentCount > 0
+            ? `No tickets found for account ${acct}${range.active ? ` in ${range.label}` : ""}.`
+            : `The full-content index is not ready, so the app cannot safely confirm that account ${acct} has no matches. Open Search Debug and build the Intelligence index.`;
       }
       if (!strongOut.length && !mentionsOut.length && firstError) {
         return { ok: false, error: firstError, debug };
