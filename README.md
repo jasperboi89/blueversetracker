@@ -18,6 +18,6 @@ temporarily rate-limits or rejects a conversation request, the cursor stays on t
 refresh again after the API recovers. Later refreshes are incremental and only revisit tickets
 updated since the previous run.
 
-Search defaults to **All Time** and includes closed tickets. Account searches distinguish exact
+Search defaults to **Last 6 months** and includes closed tickets. Account searches distinguish exact
 account metadata from numbers merely mentioned in a description or conversation. Name and
 natural-language searches combine full-text retrieval with AI ranking and evidence snippets.

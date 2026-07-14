@@ -27,7 +27,7 @@ const DateRangeSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("all") }),
   z.object({
     kind: z.literal("preset"),
-    days: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+    days: z.union([z.literal(7), z.literal(30), z.literal(90), z.literal(180)]),
   }),
   z.object({
     kind: z.literal("custom"),
@@ -324,14 +324,19 @@ function resolveDateRange(dr: DateRange | undefined): {
   label: string;
   active: boolean;
 } {
-  if (!dr || dr.kind === "all") return { label: "All Time", active: false };
+  const sixMonthFloor = isoDaysAgo(180);
+  if (!dr || dr.kind === "all") {
+    return { from: sixMonthFloor, label: "Last 6 months", active: true };
+  }
   if (dr.kind === "preset") {
     return { from: isoDaysAgo(dr.days), label: `Last ${dr.days} days`, active: true };
   }
   // custom
-  const from = dr.from?.trim() || undefined;
+  const requestedFrom = dr.from?.trim() || undefined;
+  const from = !requestedFrom || requestedFrom < sixMonthFloor ? sixMonthFloor : requestedFrom;
   const to = dr.to?.trim() || undefined;
-  const label = `Custom${from ? ` from ${from}` : ""}${to ? ` to ${to}` : ""}`.trim();
+  const label =
+    `Custom within last 6 months${from ? ` from ${from}` : ""}${to ? ` to ${to}` : ""}`.trim();
   return { from, to, label, active: !!(from || to) };
 }
 
@@ -1439,7 +1444,7 @@ export interface AccountCoverageReport {
   newest: number | null;
   mentionsScanned: number;
   mentionsPagesTruncated: boolean;
-  scope: "all-time" | "limited";
+  scope: "six-months" | "limited";
   errors: string[];
   notes: string[];
 }
@@ -1476,7 +1481,7 @@ export const freshdeskAccountCoverage = createServerFn({ method: "POST" })
       let newest: number | null = null;
 
       if (accountField) {
-        const qs = `${accountField}:'${acct.replace(/'/g, "")}' AND (status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7)`;
+        const qs = `${accountField}:'${acct.replace(/'/g, "")}' AND (status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7) AND updated_at:>'${isoDaysAgo(180)}'`;
         exactQuery = qs;
         const r = await runFreshdeskSearch(qs, host, MAX_PAGES_ACCOUNT_EXACT);
         exactTotal = r.out.length;
@@ -1488,7 +1493,9 @@ export const freshdeskAccountCoverage = createServerFn({ method: "POST" })
           if (oldest === null || u < oldest) oldest = u;
           if (newest === null || u > newest) newest = u;
         }
-        notes.push(`Strict scan via ${accountField}='${acct}' across all statuses, all time.`);
+        notes.push(
+          `Strict scan via ${accountField}='${acct}' across all statuses for the last six months.`,
+        );
       } else {
         notes.push(
           "No account custom field detected; strict scan not possible. Falling back to mention scan only.",
@@ -1496,11 +1503,12 @@ export const freshdeskAccountCoverage = createServerFn({ method: "POST" })
       }
 
       // Mention scan: broad recent
-      const broad = `(status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7)`;
+      const broad = `(status:2 OR status:3 OR status:4 OR status:5 OR status:6 OR status:7) AND updated_at:>'${isoDaysAgo(180)}'`;
       const r2 = await runFreshdeskSearch(broad, host, MAX_PAGES_ACCOUNT_MENTION);
       if (r2.firstError) errors.push(r2.firstError);
 
-      const scope: "all-time" | "limited" = exactTruncated || r2.truncated ? "limited" : "all-time";
+      const scope: "six-months" | "limited" =
+        exactTruncated || r2.truncated ? "limited" : "six-months";
       if (scope === "limited") {
         notes.push(
           "Result set was truncated by Freshdesk pagination; coverage is partial. Narrow with filters to confirm.",

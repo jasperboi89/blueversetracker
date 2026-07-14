@@ -41,11 +41,11 @@ export function SearchDebugPanel({ lastDebug }: { lastDebug: SearchDebug | null 
         {lastDebug ? <DebugView debug={lastDebug} /> : <Muted>No search run yet.</Muted>}
       </Section>
 
-      <Section title="Intelligence index (all ticket content)">
+      <Section title="Intelligence index (last 6 months)">
         <IndexManager />
       </Section>
 
-      <Section title="Account coverage test (All Tickets / All Time)">
+      <Section title="Account coverage test">
         <AccountCoverageTester />
       </Section>
 
@@ -178,11 +178,27 @@ function IndexManager() {
       for (let batch = 0; batch < 3000; batch += 1) {
         const result = await freshdeskSyncIndexBatch({ data: { rebuild: rebuild && first } });
         first = false;
-        if (!result.ok) throw new Error(result.error);
+        if (!result.ok) {
+          if (result.rateLimited) {
+            const cooldownMs = Math.min(
+              Math.max(result.retryAfterMs ?? 60_000, 30_000) + 5_000,
+              125_000,
+            );
+            setProgress(
+              `Freshdesk quota reached. Cooling down for ${Math.ceil(cooldownMs / 1000)} seconds, then resuming automatically…`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, cooldownMs));
+            continue;
+          }
+          throw new Error(result.error);
+        }
         setProgress(
           `Indexed ${result.ticketsIndexed} ticket(s) and ${result.conversationsIndexed} conversation item(s)…`,
         );
         if (result.completed) break;
+        // Server batches are intentionally paced so the initial build does
+        // not consume the entire Freshdesk API quota in a burst.
+        await new Promise((resolve) => setTimeout(resolve, 4_000));
       }
       const next = await refreshStatus();
       setProgress(
@@ -235,9 +251,9 @@ function IndexManager() {
         </div>
       )}
       <div>
-        The first build walks every available Freshdesk ticket and stores its subject, description,
-        custom fields, requester details, replies, and private/public notes for fast read-only
-        search.
+        The first build walks tickets updated within the last six months and stores their subject,
+        description, custom fields, requester details, replies, and private/public notes for fast
+        read-only search. Older indexed tickets are removed automatically.
       </div>
     </div>
   );
@@ -284,9 +300,9 @@ function AccountCoverageTester() {
       {report && (
         <ul className="space-y-1 text-xs text-muted-foreground">
           <Row label="Scope">
-            <span className={report.scope === "all-time" ? "text-emerald-300" : "text-amber-300"}>
-              {report.scope === "all-time"
-                ? "All available tickets scanned"
+            <span className={report.scope === "six-months" ? "text-emerald-300" : "text-amber-300"}>
+              {report.scope === "six-months"
+                ? "Full six-month window scanned"
                 : "Limited subset (pagination truncated)"}
             </span>
           </Row>

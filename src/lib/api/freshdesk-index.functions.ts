@@ -34,6 +34,17 @@ interface SyncStateRow {
   updated_at: string;
 }
 
+const INDEX_LOOKBACK_DAYS = 180;
+
+function indexFloorIso(): string {
+  return new Date(Date.now() - INDEX_LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function laterIso(a: string | null | undefined, b: string): string {
+  if (!a) return b;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
 export interface FreshdeskIndexHit {
   ticket: NormalizedTicket;
   conversationText: string;
@@ -215,6 +226,15 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
     if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
     const { host } = creds as { host: string };
     const db = await adminClient();
+    const indexFloor = indexFloorIso();
+
+    // Keep the persistent index strictly inside the requested six-month
+    // window, including as that window advances after the initial build.
+    const { error: pruneError } = await db
+      .from("freshdesk_search_documents")
+      .delete()
+      .lt("freshdesk_updated_at", indexFloor);
+    if (pruneError) return { ok: false as const, error: pruneError.message };
 
     if (data.rebuild) {
       const { error: deleteError } = await db
@@ -230,7 +250,7 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
         tickets_indexed: 0,
         conversations_indexed: 0,
         started_at: new Date().toISOString(),
-        sync_since: "2000-01-01T00:00:00Z",
+        sync_since: indexFloor,
         completed_at: null,
         last_error: null,
         updated_at: new Date().toISOString(),
@@ -245,6 +265,35 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
     if (stateError) return { ok: false as const, error: stateError.message };
 
     let state = rawState as SyncStateRow | null;
+
+    // Existing partial all-time builds must restart at the six-month floor.
+    // Documents inside the new window are retained and safely upserted.
+    if (
+      state?.sync_since &&
+      new Date(state.sync_since).getTime() < new Date(indexFloor).getTime()
+    ) {
+      const now = new Date().toISOString();
+      const { data: reset, error } = await db
+        .from("freshdesk_search_sync_state")
+        .upsert({
+          id: "primary",
+          next_page: 1,
+          next_offset: 0,
+          completed: false,
+          tickets_indexed: 0,
+          conversations_indexed: 0,
+          started_at: now,
+          sync_since: indexFloor,
+          completed_at: null,
+          last_error: null,
+          updated_at: now,
+        })
+        .select("*")
+        .single();
+      if (error) return { ok: false as const, error: error.message };
+      state = reset as SyncStateRow;
+    }
+
     if (!state || state.completed) {
       const now = new Date().toISOString();
       const next = {
@@ -257,7 +306,7 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
         started_at: now,
         // Re-scan from the previous run's start time so tickets changed while
         // that run was in progress cannot fall through the cursor gap.
-        sync_since: state?.started_at ?? state?.completed_at ?? "2000-01-01T00:00:00Z",
+        sync_since: laterIso(state?.started_at ?? state?.completed_at, indexFloor),
         completed_at: state?.completed_at ?? null,
         last_error: null,
         updated_at: now,
@@ -273,7 +322,7 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
 
     const page = state.next_page;
     const offset = state.next_offset ?? 0;
-    const since = state.sync_since ?? "2000-01-01T00:00:00Z";
+    const since = laterIso(state.sync_since, indexFloor);
     const path =
       `/api/v2/tickets?updated_since=${encodeURIComponent(since)}` +
       `&include=description,requester&order_by=updated_at&order_type=asc&per_page=100&page=${page}`;
@@ -288,49 +337,54 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
     }
 
     const pageTickets = listed.data;
-    const tickets = pageTickets.slice(offset, offset + 10);
+    const tickets = pageTickets.slice(offset, offset + 5);
     const rows: Record<string, unknown>[] = [];
     const conversationErrors: string[] = [];
+    let rateLimitRetryAfterMs = 0;
     let conversationCount = 0;
 
-    for (let i = 0; i < tickets.length; i += 4) {
-      const batch = tickets.slice(i, i + 4);
-      const hydrated = await Promise.all(
-        batch.map(async (dto) => ({
-          dto,
-          conversations: await fetchAllConversations(String(dto.id)),
-        })),
-      );
-      for (const { dto, conversations } of hydrated) {
-        if (!conversations.ok && conversations.error) {
-          conversationErrors.push(`#${dto.id}: ${conversations.error}`);
+    // Hydrate sequentially. Four parallel conversation downloads followed by
+    // an immediate next browser batch was enough to exhaust Freshdesk's
+    // per-minute quota on smaller plans.
+    for (const dto of tickets) {
+      const conversations = await fetchAllConversations(String(dto.id));
+      if (!conversations.ok && conversations.error) {
+        conversationErrors.push(`#${dto.id}: ${conversations.error}`);
+        if (conversations.status === 429) {
+          rateLimitRetryAfterMs = Math.max(
+            rateLimitRetryAfterMs,
+            conversations.retryAfterMs ?? 60_000,
+          );
         }
-        conversationCount += conversations.conversations.length;
-        const conversationText = conversations.conversations
-          .map((c) => (c.body_text ?? c.body ?? "").trim())
-          .filter(Boolean)
-          .join("\n---\n");
-        const normalized = normalizeTicket(dto, host);
-        rows.push({
-          ticket_id: dto.id,
-          ticket: normalized,
-          subject: normalized.subject,
-          description_text: normalized.description,
-          conversation_text: conversationText,
-          requester_name: normalized.requesterName ?? "",
-          company_name: normalized.companyName ?? normalized.accountName ?? "",
-          account_number: normalized.accountNumber ?? "",
-          status: dto.status,
-          priority: dto.priority,
-          group_id: dto.group_id ?? null,
-          agent_id: dto.responder_id ?? null,
-          tags: normalized.tags ?? [],
-          custom_fields: normalized.customFields ?? {},
-          freshdesk_created_at: dto.created_at,
-          freshdesk_updated_at: dto.updated_at,
-          indexed_at: new Date().toISOString(),
-        });
       }
+      conversationCount += conversations.conversations.length;
+      const conversationText = conversations.conversations
+        .map((c) => (c.body_text ?? c.body ?? "").trim())
+        .filter(Boolean)
+        .join("\n---\n");
+      const normalized = normalizeTicket(dto, host);
+      rows.push({
+        ticket_id: dto.id,
+        ticket: normalized,
+        subject: normalized.subject,
+        description_text: normalized.description,
+        conversation_text: conversationText,
+        requester_name: normalized.requesterName ?? "",
+        company_name: normalized.companyName ?? normalized.accountName ?? "",
+        account_number: normalized.accountNumber ?? "",
+        status: dto.status,
+        priority: dto.priority,
+        group_id: dto.group_id ?? null,
+        agent_id: dto.responder_id ?? null,
+        tags: normalized.tags ?? [],
+        custom_fields: normalized.customFields ?? {},
+        freshdesk_created_at: dto.created_at,
+        freshdesk_updated_at: dto.updated_at,
+        indexed_at: new Date().toISOString(),
+      });
+      // Leave a small amount of quota for normal ticket lookups while a full
+      // index build is running.
+      await new Promise((resolve) => setTimeout(resolve, 1_200));
     }
 
     // Do not advance the cursor with partially hydrated tickets. A temporary
@@ -342,7 +396,12 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
         .from("freshdesk_search_sync_state")
         .update({ last_error: error, updated_at: new Date().toISOString() })
         .eq("id", "primary");
-      return { ok: false as const, error };
+      return {
+        ok: false as const,
+        error,
+        rateLimited: rateLimitRetryAfterMs > 0,
+        retryAfterMs: rateLimitRetryAfterMs || undefined,
+      };
     }
 
     if (rows.length) {

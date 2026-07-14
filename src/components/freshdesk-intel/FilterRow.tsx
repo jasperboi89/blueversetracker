@@ -22,10 +22,10 @@ const PRIORITIES: { value: number; label: string }[] = [
   { value: 4, label: "Urgent" },
 ];
 
-type DatePresetKey = "all" | "7" | "30" | "90" | "custom";
+type DatePresetKey = "7" | "30" | "90" | "180" | "custom";
 
 function dateRangeToKey(dr: DateRange | undefined): DatePresetKey {
-  if (!dr || dr.kind === "all") return "all";
+  if (!dr || dr.kind === "all") return "180";
   if (dr.kind === "preset") return String(dr.days) as DatePresetKey;
   return "custom";
 }
@@ -49,9 +49,12 @@ export function FilterRow({
   const customTo = value.dateRange?.kind === "custom" ? (value.dateRange.to ?? "") : "";
 
   const setDate = (key: DatePresetKey) => {
-    if (key === "all") onChange({ ...value, dateRange: { kind: "all" } });
-    else if (key === "custom") onChange({ ...value, dateRange: { kind: "custom" } });
-    else onChange({ ...value, dateRange: { kind: "preset", days: Number(key) as 7 | 30 | 90 } });
+    if (key === "custom") onChange({ ...value, dateRange: { kind: "custom" } });
+    else
+      onChange({
+        ...value,
+        dateRange: { kind: "preset", days: Number(key) as 7 | 30 | 90 | 180 },
+      });
   };
 
   return (
@@ -70,10 +73,10 @@ export function FilterRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Time</SelectItem>
             <SelectItem value="7">Last 7 days</SelectItem>
             <SelectItem value="30">Last 30 days</SelectItem>
             <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="180">Last 6 months</SelectItem>
             <SelectItem value="custom">Custom…</SelectItem>
           </SelectContent>
         </Select>
@@ -84,6 +87,7 @@ export function FilterRow({
             <Input
               className="h-8 w-36"
               type="date"
+              min={new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
               value={customFrom}
               onChange={(e) =>
                 onChange({
