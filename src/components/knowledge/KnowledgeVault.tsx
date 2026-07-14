@@ -242,10 +242,32 @@ export function KnowledgeVault() {
           .toLocaleLowerCase();
         return searchable.includes(needle);
       })
-      .sort(
-        (a, b) => Number(b.isPinned) - Number(a.isPinned) || b.updatedAt.localeCompare(a.updatedAt),
-      );
-  }, [folderById, notes, query, view]);
+      .sort((a, b) => {
+        const pinDelta = Number(b.isPinned) - Number(a.isPinned);
+        if (pinDelta !== 0) return pinDelta;
+        switch (sortMode) {
+          case "created":
+            return b.createdAt.localeCompare(a.createdAt);
+          case "title":
+            return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+          case "type":
+            return (
+              a.noteType.localeCompare(b.noteType) || b.updatedAt.localeCompare(a.updatedAt)
+            );
+          case "folder": {
+            const af = folderById.get(a.folderId ?? "")?.name ?? "\uffff";
+            const bf = folderById.get(b.folderId ?? "")?.name ?? "\uffff";
+            return (
+              af.localeCompare(bf, undefined, { sensitivity: "base" }) ||
+              b.updatedAt.localeCompare(a.updatedAt)
+            );
+          }
+          case "updated":
+          default:
+            return b.updatedAt.localeCompare(a.updatedAt);
+        }
+      });
+  }, [folderById, notes, query, view, sortMode]);
 
   const changeDraft = (changes: Partial<KnowledgeNote>) => {
     setDraft((current) => {
