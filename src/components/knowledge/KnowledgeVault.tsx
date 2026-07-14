@@ -1109,36 +1109,111 @@ function NoteCard({
   folder,
   selected,
   onClick,
+  checked,
+  onToggleChecked,
+  isRenaming,
+  onStartRename,
+  onFinishRename,
+  folders,
+  onPatch,
+  onDelete,
+  showFolderChip,
 }: {
   note: KnowledgeNote;
   folder?: KnowledgeFolder;
   selected: boolean;
   onClick: () => void;
+  checked: boolean;
+  onToggleChecked: () => void;
+  isRenaming: boolean;
+  onStartRename: () => void;
+  onFinishRename: (nextTitle: string) => void;
+  folders: KnowledgeFolder[];
+  onPatch: (
+    changes: Partial<
+      Pick<KnowledgeNote, "folderId" | "noteType" | "isPinned" | "isFavorite" | "isArchived">
+    >,
+  ) => void;
+  onDelete: () => void;
+  showFolderChip: boolean;
 }) {
   const config = typeConfig(note.noteType);
   const Icon = config.icon;
   const preview = htmlToPlainText(note.contentHtml) || "Empty note — open it and start writing.";
+  const [renameValue, setRenameValue] = useState(note.title);
+  useEffect(() => {
+    if (isRenaming) setRenameValue(note.title);
+  }, [isRenaming, note.title]);
+  const stop = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        "relative w-full overflow-hidden rounded-xl border p-3 text-left transition",
+        "group relative w-full cursor-pointer overflow-hidden rounded-xl border p-3 text-left transition",
         selected
           ? "border-cyan-300/25 bg-cyan-300/[0.07] shadow-[0_0_22px_oklch(0.75_0.18_225_/_0.1)]"
           : "border-white/[0.07] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.045]",
+        checked && "ring-1 ring-cyan-300/40",
       )}
     >
       {selected && (
         <span className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-cyan-300 shadow-[0_0_8px_var(--cyan-glow)]" />
       )}
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5">
-          <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />
+        <div
+          className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5"
+          onClick={stop}
+          onKeyDown={stop}
+        >
+          <div
+            className={cn(
+              "transition-opacity",
+              checked ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            <Checkbox
+              checked={checked}
+              onCheckedChange={() => onToggleChecked()}
+              aria-label="Select note"
+            />
+          </div>
+          <Icon
+            className={cn(
+              "col-start-1 row-start-1 h-3.5 w-3.5 transition-opacity",
+              checked ? "opacity-0" : "opacity-100 group-hover:opacity-0",
+            )}
+            style={{ color: config.color, gridColumn: 1, gridRow: 1 }}
+          />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <div className="truncate text-sm font-medium text-foreground">{note.title}</div>
+            {isRenaming ? (
+              <Input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onClick={stop}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") onFinishRename(renameValue);
+                  else if (e.key === "Escape") onFinishRename(note.title);
+                }}
+                onBlur={() => onFinishRename(renameValue)}
+                className="h-6 min-w-0 flex-1 border-cyan-300/30 bg-black/20 px-1.5 text-sm"
+              />
+            ) : (
+              <div className="truncate text-sm font-medium text-foreground">{note.title}</div>
+            )}
             {note.isPinned && <Pin className="h-3 w-3 shrink-0 text-cyan-200" />}
             {note.isFavorite && <Heart className="h-3 w-3 shrink-0 fill-pink-300 text-pink-300" />}
           </div>
@@ -1146,16 +1221,134 @@ function NoteCard({
             {preview}
           </div>
         </div>
+        <div
+          className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+          onClick={stop}
+          onKeyDown={stop}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartRename();
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={stop}
+                title="More actions"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onStartRename()}>
+                <Pencil className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPatch({ isPinned: !note.isPinned })}>
+                {note.isPinned ? (
+                  <>
+                    <PinOff className="mr-2 h-4 w-4" /> Unpin
+                  </>
+                ) : (
+                  <>
+                    <Pin className="mr-2 h-4 w-4" /> Pin
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPatch({ isFavorite: !note.isFavorite })}>
+                <Heart
+                  className={cn("mr-2 h-4 w-4", note.isFavorite && "fill-pink-300 text-pink-300")}
+                />
+                {note.isFavorite ? "Remove favorite" : "Favorite"}
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FolderInput className="mr-2 h-4 w-4" /> Move to folder
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => onPatch({ folderId: null })}>
+                    {note.folderId === null ? (
+                      <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                    ) : (
+                      <span className="mr-2 inline-block h-4 w-4" />
+                    )}
+                    Unfiled
+                  </DropdownMenuItem>
+                  {folders.length > 0 && <DropdownMenuSeparator />}
+                  {folders.map((f) => (
+                    <DropdownMenuItem key={f.id} onClick={() => onPatch({ folderId: f.id })}>
+                      {note.folderId === f.id ? (
+                        <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                      ) : (
+                        <span
+                          className="mr-2 inline-block h-3 w-3 rounded-full"
+                          style={{ background: f.color }}
+                        />
+                      )}
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FileText className="mr-2 h-4 w-4" /> Change type
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {NOTE_TYPES.map((t) => (
+                    <DropdownMenuItem
+                      key={t.value}
+                      onClick={() => onPatch({ noteType: t.value })}
+                    >
+                      {note.noteType === t.value ? (
+                        <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                      ) : (
+                        <t.icon className="mr-2 h-4 w-4" style={{ color: t.color }} />
+                      )}
+                      {t.singular}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onPatch({ isArchived: !note.isArchived })}>
+                <Archive className="mr-2 h-4 w-4" />
+                {note.isArchived ? "Restore from archive" : "Move to archive"}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-rose-300" onClick={() => onDelete()}>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete permanently
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">
-        <span className="truncate" style={{ color: folder?.color }}>
-          {folder?.name ?? config.singular}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-muted-foreground/60">{config.singular}</span>
+          {showFolderChip && folder && (
+            <span
+              className="truncate rounded-full border px-1.5 py-[1px]"
+              style={{ color: folder.color, borderColor: `${folder.color}55` }}
+            >
+              {folder.name}
+            </span>
+          )}
         </span>
         <span className="shrink-0">
           {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
