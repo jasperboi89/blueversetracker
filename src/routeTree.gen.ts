@@ -17,6 +17,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
+import { Route as AuthenticatedKnowledgeVaultRouteImport } from './routes/_authenticated/knowledge-vault'
 import { Route as AuthenticatedFreshdeskTicketsRouteImport } from './routes/_authenticated/freshdesk-tickets'
 import { Route as AuthenticatedFreshdeskIntelligenceRouteImport } from './routes/_authenticated/freshdesk-intelligence'
 import { Route as AuthenticatedContactDispatchRouteImport } from './routes/_authenticated/contact-dispatch'
@@ -76,6 +77,12 @@ const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedKnowledgeVaultRoute =
+  AuthenticatedKnowledgeVaultRouteImport.update({
+    id: '/knowledge-vault',
+    path: '/knowledge-vault',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFreshdeskTicketsRoute =
   AuthenticatedFreshdeskTicketsRouteImport.update({
     id: '/freshdesk-tickets',
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
   '/freshdesk-intelligence': typeof AuthenticatedFreshdeskIntelligenceRoute
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
+  '/knowledge-vault': typeof AuthenticatedKnowledgeVaultRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -231,6 +239,7 @@ export interface FileRoutesByTo {
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
   '/freshdesk-intelligence': typeof AuthenticatedFreshdeskIntelligenceRoute
   '/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
+  '/knowledge-vault': typeof AuthenticatedKnowledgeVaultRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
@@ -261,6 +270,7 @@ export interface FileRoutesById {
   '/_authenticated/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
   '/_authenticated/freshdesk-intelligence': typeof AuthenticatedFreshdeskIntelligenceRoute
   '/_authenticated/freshdesk-tickets': typeof AuthenticatedFreshdeskTicketsRouteWithChildren
+  '/_authenticated/knowledge-vault': typeof AuthenticatedKnowledgeVaultRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/contact-dispatch'
     | '/freshdesk-intelligence'
     | '/freshdesk-tickets'
+    | '/knowledge-vault'
     | '/reports'
     | '/settings'
     | '/.lovable/oauth/consent'
@@ -318,6 +329,7 @@ export interface FileRouteTypes {
     | '/contact-dispatch'
     | '/freshdesk-intelligence'
     | '/freshdesk-tickets'
+    | '/knowledge-vault'
     | '/reports'
     | '/settings'
     | '/'
@@ -347,6 +359,7 @@ export interface FileRouteTypes {
     | '/_authenticated/contact-dispatch'
     | '/_authenticated/freshdesk-intelligence'
     | '/_authenticated/freshdesk-tickets'
+    | '/_authenticated/knowledge-vault'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
     | '/_authenticated/'
@@ -428,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/knowledge-vault': {
+      id: '/_authenticated/knowledge-vault'
+      path: '/knowledge-vault'
+      fullPath: '/knowledge-vault'
+      preLoaderRoute: typeof AuthenticatedKnowledgeVaultRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/freshdesk-tickets': {
@@ -641,6 +661,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedContactDispatchRoute: typeof AuthenticatedContactDispatchRouteWithChildren
   AuthenticatedFreshdeskIntelligenceRoute: typeof AuthenticatedFreshdeskIntelligenceRoute
   AuthenticatedFreshdeskTicketsRoute: typeof AuthenticatedFreshdeskTicketsRouteWithChildren
+  AuthenticatedKnowledgeVaultRoute: typeof AuthenticatedKnowledgeVaultRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -660,6 +681,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedFreshdeskIntelligenceRoute,
   AuthenticatedFreshdeskTicketsRoute:
     AuthenticatedFreshdeskTicketsRouteWithChildren,
+  AuthenticatedKnowledgeVaultRoute: AuthenticatedKnowledgeVaultRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
