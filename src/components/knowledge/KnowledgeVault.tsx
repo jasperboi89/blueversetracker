@@ -752,12 +752,83 @@ export function KnowledgeVault() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          <div className="flex items-center justify-between gap-2 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             <span>
               {filteredNotes.length} note{filteredNotes.length === 1 ? "" : "s"}
             </span>
-            <span>Recently updated</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 tracking-[0.16em] text-muted-foreground hover:bg-white/5 hover:text-foreground">
+                  <ArrowUpDown className="h-3 w-3" />
+                  <span className="normal-case tracking-normal">{SORT_LABELS[sortMode]}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
+                  <DropdownMenuItem key={mode} onClick={() => setSortMode(mode)}>
+                    {sortMode === mode ? (
+                      <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                    ) : (
+                      <span className="mr-2 inline-block h-4 w-4" />
+                    )}
+                    {SORT_LABELS[mode]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+          {selectedIds.size > 0 && (
+            <div className="mx-3 mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-cyan-300/25 bg-cyan-300/[0.06] px-2 py-1.5 text-[11px]">
+              <span className="mr-1 font-medium text-cyan-100">{selectedIds.size} selected</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]">
+                    <FolderInput className="mr-1 h-3 w-3" /> Move
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => void bulkApply({ move: null })}>
+                    Unfiled
+                  </DropdownMenuItem>
+                  {folders.length > 0 && <DropdownMenuSeparator />}
+                  {folders.map((f) => (
+                    <DropdownMenuItem key={f.id} onClick={() => void bulkApply({ move: f.id })}>
+                      <span
+                        className="mr-2 inline-block h-2 w-2 rounded-full"
+                        style={{ background: f.color }}
+                      />
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => void bulkApply(view === "archived" ? "restore" : "archive")}
+              >
+                <Archive className="mr-1 h-3 w-3" />
+                {view === "archived" ? "Restore" : "Archive"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] text-rose-300 hover:text-rose-200"
+                onClick={() => void bulkApply("delete")}
+              >
+                <Trash2 className="mr-1 h-3 w-3" /> Delete
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 px-2 text-[11px]"
+                onClick={clearSelection}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
           <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
             <div className="space-y-2">
               {filteredNotes.map((note) => (
@@ -766,6 +837,21 @@ export function KnowledgeVault() {
                   note={note}
                   folder={folderById.get(note.folderId ?? "")}
                   selected={note.id === selectedId}
+                  checked={selectedIds.has(note.id)}
+                  onToggleChecked={() => toggleSelected(note.id)}
+                  isRenaming={renamingId === note.id}
+                  onStartRename={() => setRenamingId(note.id)}
+                  onFinishRename={(nextTitle) => {
+                    setRenamingId(null);
+                    const trimmed = nextTitle.trim();
+                    if (trimmed && trimmed !== note.title) {
+                      void patchNoteById(note.id, { title: trimmed });
+                    }
+                  }}
+                  folders={folders}
+                  onPatch={(changes) => void patchNoteById(note.id, changes)}
+                  onDelete={() => void deleteNoteById(note.id)}
+                  showFolderChip={!view.startsWith("folder:")}
                   onClick={() => selectNote(note.id)}
                 />
               ))}
