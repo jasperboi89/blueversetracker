@@ -175,6 +175,9 @@ export function KnowledgeVault() {
   const [folderDescription, setFolderDescription] = useState("");
   const [folderColor, setFolderColor] = useState(FOLDER_COLORS[0]);
   const [folderSaving, setFolderSaving] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("updated");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [renamingId, setRenamingId] = useState<string | null>(null);
 
   useEffect(() => {
     draftRef.current = draft;
