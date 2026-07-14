@@ -1171,13 +1171,20 @@ function NoteCard({
       )}
       <div className="flex items-start gap-2">
         <div
-          className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5"
+          className="relative mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5"
           onClick={stop}
           onKeyDown={stop}
         >
+          <Icon
+            className={cn(
+              "h-3.5 w-3.5 transition-opacity",
+              checked ? "opacity-0" : "opacity-100 group-hover:opacity-0",
+            )}
+            style={{ color: config.color }}
+          />
           <div
             className={cn(
-              "transition-opacity",
+              "absolute inset-0 grid place-items-center transition-opacity",
               checked ? "opacity-100" : "opacity-0 group-hover:opacity-100",
             )}
           >
@@ -1187,13 +1194,6 @@ function NoteCard({
               aria-label="Select note"
             />
           </div>
-          <Icon
-            className={cn(
-              "col-start-1 row-start-1 h-3.5 w-3.5 transition-opacity",
-              checked ? "opacity-0" : "opacity-100 group-hover:opacity-0",
-            )}
-            style={{ color: config.color, gridColumn: 1, gridRow: 1 }}
-          />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
