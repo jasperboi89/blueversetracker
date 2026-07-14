@@ -125,6 +125,16 @@ const FOLDER_COLORS = ["#22d3ee", "#818cf8", "#c084fc", "#f472b6", "#fbbf24", "#
 type VaultView =
   "all" | "pinned" | "favorites" | "archived" | `type:${KnowledgeNoteType}` | `folder:${string}`;
 
+type SortMode = "updated" | "created" | "title" | "type" | "folder";
+
+const SORT_LABELS: Record<SortMode, string> = {
+  updated: "Recently updated",
+  created: "Recently created",
+  title: "Title A–Z",
+  type: "Type",
+  folder: "Folder",
+};
+
 function typeConfig(type: KnowledgeNoteType) {
   return NOTE_TYPES.find((item) => item.value === type) ?? NOTE_TYPES[0];
 }
