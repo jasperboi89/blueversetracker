@@ -358,6 +358,104 @@ export function KnowledgeVault() {
     }
   };
 
+  const patchNoteById = async (
+    id: string,
+    changes: Partial<Pick<KnowledgeNote, "folderId" | "title" | "noteType" | "isPinned" | "isFavorite" | "isArchived">>,
+  ) => {
+    const target = notes.find((n) => n.id === id);
+    if (!target) return;
+    const merged = { ...target, ...changes };
+    try {
+      const saved = await updateKnowledgeNote({
+        data: {
+          id,
+          folderId: merged.folderId,
+          title: merged.title.trim() || "Untitled note",
+          noteType: merged.noteType,
+          isPinned: merged.isPinned,
+          isFavorite: merged.isFavorite,
+          isArchived: merged.isArchived,
+        },
+      });
+      setNotes((current) => current.map((n) => (n.id === saved.id ? saved : n)));
+      if (draftRef.current?.id === saved.id) {
+        setDraft(saved);
+        draftRef.current = saved;
+        setDirty(false);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update note.");
+    }
+  };
+
+  const deleteNoteById = async (id: string) => {
+    const target = notes.find((n) => n.id === id);
+    if (!target) return;
+    if (!window.confirm(`Delete “${target.title}”? This cannot be undone.`)) return;
+    try {
+      await deleteKnowledgeNote({ data: { id } });
+      const remaining = notes.filter((n) => n.id !== id);
+      setNotes(remaining);
+      if (selectedId === id) {
+        setSelectedId(remaining.find((n) => !n.isArchived)?.id ?? remaining[0]?.id ?? null);
+      }
+      setSelectedIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast.success("Note deleted.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete note.");
+    }
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkApply = async (
+    action: "archive" | "restore" | "delete" | { move: string | null },
+  ) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (action === "delete" && !window.confirm(`Delete ${ids.length} note(s)? This cannot be undone.`)) return;
+    try {
+      if (action === "delete") {
+        await Promise.all(ids.map((id) => deleteKnowledgeNote({ data: { id } })));
+        setNotes((current) => current.filter((n) => !selectedIds.has(n.id)));
+        toast.success(`${ids.length} note(s) deleted.`);
+      } else {
+        const changes =
+          action === "archive"
+            ? { isArchived: true }
+            : action === "restore"
+              ? { isArchived: false }
+              : { folderId: action.move };
+        await Promise.all(
+          ids.map((id) =>
+            updateKnowledgeNote({ data: { id, ...changes } }).then((saved) => saved),
+          ),
+        );
+        setNotes((current) =>
+          current.map((n) => (selectedIds.has(n.id) ? { ...n, ...changes } : n)),
+        );
+        toast.success(`${ids.length} note(s) updated.`);
+      }
+      clearSelection();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bulk action failed.");
+    }
+  };
+
   const openFolderDialog = (folder?: KnowledgeFolder) => {
     setEditingFolder(folder ?? null);
     setFolderName(folder?.name ?? "");
