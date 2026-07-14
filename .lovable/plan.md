@@ -1,38 +1,49 @@
-## Problem
+## Goal
 
-When you enter a ticket number that isn't already tracked and click **Pull Ticket from Freshdesk**, it always fails with the same generic "Ticket not found in Freshdesk. Check the number or connect Freshdesk in Settings." toast — even when the real cause is different (Freshdesk isn't connected, wrong API key, wrong ticket #, network error).
+Make notes in the Knowledge Vault easier to edit, remove, and organize directly from the middle note list — without having to open each note first.
 
-The root cause: this project's server function `freshdeskPullTicket` needs two server-side secrets, `FRESHDESK_DOMAIN` and `FRESHDESK_API_KEY`. Neither is set in this project's env right now (only commented-out placeholders exist in `.env.example`). Without them, the server returns `"Freshdesk is not connected. Add your domain and API key in Settings."`, but the client-side `pullFromFreshdesk` shim swallows the message and the lookup card shows the wrong error, so it looks like every pull just fails.
+## Changes (frontend only, `src/components/knowledge/KnowledgeVault.tsx`)
 
-The Settings → Freshdesk Integration panel stores the domain + a display-only masked key in localStorage — it does NOT actually write the secrets used by the server. The tooltip already tells you to ask Lovable in chat to save them, but nothing on the failure path surfaces that.
+### 1. Per-note quick actions on each `NoteCard`
 
-## What to change
+Add a hover-revealed action menu (three-dot `MoreHorizontal`, like folders already have) to every card in the note list. Menu items:
 
-Scope: UI + error surfacing only. No changes to Freshdesk API logic or data model.
+- Rename — inline-edit the title on the card
+- Pin / Unpin
+- Favorite / Unfavorite
+- Move to folder → submenu listing folders + "Unfiled"
+- Change type → submenu of the 5 note types
+- Archive / Restore
+- Delete permanently (rose, with confirm)
 
-1. **`src/lib/tickets-store.ts` — return the real error from `pullFromFreshdesk`**
-   Change the return type to `{ ticket: Ticket | null; error?: string; notConnected?: boolean }` so callers can distinguish "not connected" from "not found" from a transport error. Detect the "Freshdesk is not connected" message from `readCreds` and set `notConnected: true`. Update the other two callers (`AssignedInboxRow`, `CommandPalette`) minimally to unwrap `.ticket`.
+Also add a small pencil quick-button next to the menu for one-click rename.
 
-2. **`src/components/freshdesk/TicketLookupCard.tsx` — show the real reason**
-   - Show the actual server error text in the failure toast (e.g. "Freshdesk 401: invalid API key", "Ticket not found in Freshdesk", "Could not reach Freshdesk").
-   - When `notConnected` is true, show a clearer toast: "Freshdesk isn't connected yet. Add credentials in Settings → Freshdesk Integration, or ask Lovable in chat to save `FRESHDESK_DOMAIN` and `FRESHDESK_API_KEY`."
-   - Keep the "Create Ticket Work Manually" fallback so you can still proceed offline.
+Wire actions through the existing `updateKnowledgeNote` / `deleteKnowledgeNote` server functions — no backend changes. Clicking an action must not trigger card selection (stop propagation).
 
-3. **`src/routes/_authenticated/settings.tsx` — make the missing-secrets state obvious**
-   In the Freshdesk Integration card, when `freshdeskTestConnection()` returns the "not connected" error, replace the generic status row with an explicit callout that says the secrets aren't set and gives the exact chat prompt to save them. No new UI framework, just a styled note using existing components.
+### 2. Sort control above the list
+
+Add a compact sort dropdown next to the "N notes" header:
+
+- Recently updated (current default)
+- Recently created
+- Title A–Z
+- Type
+- Folder
+
+Pinned notes stay on top in every sort. Store selection in local component state.
+
+### 3. Bulk selection (light)
+
+Add a small checkbox that appears on card hover. When any card is checked, a slim action bar appears at the top of the list with: Move to folder, Archive, Delete, Clear selection. Uses the same server functions in a loop.
+
+### 4. Small polish
+
+- Show folder chip on each card when the current view is not already scoped to that folder.
+- Show note-type label under the title for quicker scanning.
+- Keep the existing right-pane editor and autosave behavior unchanged.
 
 ## Out of scope
 
-- Wiring a UI form that writes `FRESHDESK_DOMAIN`/`FRESHDESK_API_KEY` directly to project secrets (that requires the secrets tool and is a separate ask).
-- Any change to the Freshdesk fetch/normalize/search logic.
-- Changing how already-tracked tickets open.
-
-## Files to edit
-
-- `src/lib/tickets-store.ts`
-- `src/components/freshdesk/TicketLookupCard.tsx`
-- `src/components/assigned-inbox/AssignedInboxRow.tsx` (unwrap new return shape)
-- `src/components/command/CommandPalette.tsx` (unwrap new return shape)
-- `src/routes/_authenticated/settings.tsx`
-
-After the change, if Freshdesk secrets truly aren't set for this project, the toast will tell you so — and once we add `FRESHDESK_DOMAIN` / `FRESHDESK_API_KEY` via the secrets flow, Pull will work.
+- No schema or server-function changes (edit + delete already exist server-side).
+- No changes to folder sidebar behavior beyond what's above.
+- No changes to other "notes" areas (ticket Hub notes, dispatch summaries).

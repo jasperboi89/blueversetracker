@@ -24,6 +24,12 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import {
+  ArrowUpDown,
+  Check,
+  FolderInput,
+  PinOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -43,6 +49,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -113,6 +125,16 @@ const FOLDER_COLORS = ["#22d3ee", "#818cf8", "#c084fc", "#f472b6", "#fbbf24", "#
 type VaultView =
   "all" | "pinned" | "favorites" | "archived" | `type:${KnowledgeNoteType}` | `folder:${string}`;
 
+type SortMode = "updated" | "created" | "title" | "type" | "folder";
+
+const SORT_LABELS: Record<SortMode, string> = {
+  updated: "Recently updated",
+  created: "Recently created",
+  title: "Title A–Z",
+  type: "Type",
+  folder: "Folder",
+};
+
 function typeConfig(type: KnowledgeNoteType) {
   return NOTE_TYPES.find((item) => item.value === type) ?? NOTE_TYPES[0];
 }
@@ -153,6 +175,9 @@ export function KnowledgeVault() {
   const [folderDescription, setFolderDescription] = useState("");
   const [folderColor, setFolderColor] = useState(FOLDER_COLORS[0]);
   const [folderSaving, setFolderSaving] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("updated");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [renamingId, setRenamingId] = useState<string | null>(null);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -217,10 +242,32 @@ export function KnowledgeVault() {
           .toLocaleLowerCase();
         return searchable.includes(needle);
       })
-      .sort(
-        (a, b) => Number(b.isPinned) - Number(a.isPinned) || b.updatedAt.localeCompare(a.updatedAt),
-      );
-  }, [folderById, notes, query, view]);
+      .sort((a, b) => {
+        const pinDelta = Number(b.isPinned) - Number(a.isPinned);
+        if (pinDelta !== 0) return pinDelta;
+        switch (sortMode) {
+          case "created":
+            return b.createdAt.localeCompare(a.createdAt);
+          case "title":
+            return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+          case "type":
+            return (
+              a.noteType.localeCompare(b.noteType) || b.updatedAt.localeCompare(a.updatedAt)
+            );
+          case "folder": {
+            const af = folderById.get(a.folderId ?? "")?.name ?? "\uffff";
+            const bf = folderById.get(b.folderId ?? "")?.name ?? "\uffff";
+            return (
+              af.localeCompare(bf, undefined, { sensitivity: "base" }) ||
+              b.updatedAt.localeCompare(a.updatedAt)
+            );
+          }
+          case "updated":
+          default:
+            return b.updatedAt.localeCompare(a.updatedAt);
+        }
+      });
+  }, [folderById, notes, query, view, sortMode]);
 
   const changeDraft = (changes: Partial<KnowledgeNote>) => {
     setDraft((current) => {
@@ -308,6 +355,104 @@ export function KnowledgeVault() {
       toast.success("Note deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete note.");
+    }
+  };
+
+  const patchNoteById = async (
+    id: string,
+    changes: Partial<Pick<KnowledgeNote, "folderId" | "title" | "noteType" | "isPinned" | "isFavorite" | "isArchived">>,
+  ) => {
+    const target = notes.find((n) => n.id === id);
+    if (!target) return;
+    const merged = { ...target, ...changes };
+    try {
+      const saved = await updateKnowledgeNote({
+        data: {
+          id,
+          folderId: merged.folderId,
+          title: merged.title.trim() || "Untitled note",
+          noteType: merged.noteType,
+          isPinned: merged.isPinned,
+          isFavorite: merged.isFavorite,
+          isArchived: merged.isArchived,
+        },
+      });
+      setNotes((current) => current.map((n) => (n.id === saved.id ? saved : n)));
+      if (draftRef.current?.id === saved.id) {
+        setDraft(saved);
+        draftRef.current = saved;
+        setDirty(false);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update note.");
+    }
+  };
+
+  const deleteNoteById = async (id: string) => {
+    const target = notes.find((n) => n.id === id);
+    if (!target) return;
+    if (!window.confirm(`Delete “${target.title}”? This cannot be undone.`)) return;
+    try {
+      await deleteKnowledgeNote({ data: { id } });
+      const remaining = notes.filter((n) => n.id !== id);
+      setNotes(remaining);
+      if (selectedId === id) {
+        setSelectedId(remaining.find((n) => !n.isArchived)?.id ?? remaining[0]?.id ?? null);
+      }
+      setSelectedIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast.success("Note deleted.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete note.");
+    }
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkApply = async (
+    action: "archive" | "restore" | "delete" | { move: string | null },
+  ) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (action === "delete" && !window.confirm(`Delete ${ids.length} note(s)? This cannot be undone.`)) return;
+    try {
+      if (action === "delete") {
+        await Promise.all(ids.map((id) => deleteKnowledgeNote({ data: { id } })));
+        setNotes((current) => current.filter((n) => !selectedIds.has(n.id)));
+        toast.success(`${ids.length} note(s) deleted.`);
+      } else {
+        const changes =
+          action === "archive"
+            ? { isArchived: true }
+            : action === "restore"
+              ? { isArchived: false }
+              : { folderId: action.move };
+        await Promise.all(
+          ids.map((id) =>
+            updateKnowledgeNote({ data: { id, ...changes } }).then((saved) => saved),
+          ),
+        );
+        setNotes((current) =>
+          current.map((n) => (selectedIds.has(n.id) ? { ...n, ...changes } : n)),
+        );
+        toast.success(`${ids.length} note(s) updated.`);
+      }
+      clearSelection();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bulk action failed.");
     }
   };
 
@@ -607,12 +752,83 @@ export function KnowledgeVault() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          <div className="flex items-center justify-between gap-2 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             <span>
               {filteredNotes.length} note{filteredNotes.length === 1 ? "" : "s"}
             </span>
-            <span>Recently updated</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 tracking-[0.16em] text-muted-foreground hover:bg-white/5 hover:text-foreground">
+                  <ArrowUpDown className="h-3 w-3" />
+                  <span className="normal-case tracking-normal">{SORT_LABELS[sortMode]}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
+                  <DropdownMenuItem key={mode} onClick={() => setSortMode(mode)}>
+                    {sortMode === mode ? (
+                      <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                    ) : (
+                      <span className="mr-2 inline-block h-4 w-4" />
+                    )}
+                    {SORT_LABELS[mode]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+          {selectedIds.size > 0 && (
+            <div className="mx-3 mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-cyan-300/25 bg-cyan-300/[0.06] px-2 py-1.5 text-[11px]">
+              <span className="mr-1 font-medium text-cyan-100">{selectedIds.size} selected</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]">
+                    <FolderInput className="mr-1 h-3 w-3" /> Move
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => void bulkApply({ move: null })}>
+                    Unfiled
+                  </DropdownMenuItem>
+                  {folders.length > 0 && <DropdownMenuSeparator />}
+                  {folders.map((f) => (
+                    <DropdownMenuItem key={f.id} onClick={() => void bulkApply({ move: f.id })}>
+                      <span
+                        className="mr-2 inline-block h-2 w-2 rounded-full"
+                        style={{ background: f.color }}
+                      />
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => void bulkApply(view === "archived" ? "restore" : "archive")}
+              >
+                <Archive className="mr-1 h-3 w-3" />
+                {view === "archived" ? "Restore" : "Archive"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] text-rose-300 hover:text-rose-200"
+                onClick={() => void bulkApply("delete")}
+              >
+                <Trash2 className="mr-1 h-3 w-3" /> Delete
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 px-2 text-[11px]"
+                onClick={clearSelection}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
           <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
             <div className="space-y-2">
               {filteredNotes.map((note) => (
@@ -621,6 +837,21 @@ export function KnowledgeVault() {
                   note={note}
                   folder={folderById.get(note.folderId ?? "")}
                   selected={note.id === selectedId}
+                  checked={selectedIds.has(note.id)}
+                  onToggleChecked={() => toggleSelected(note.id)}
+                  isRenaming={renamingId === note.id}
+                  onStartRename={() => setRenamingId(note.id)}
+                  onFinishRename={(nextTitle) => {
+                    setRenamingId(null);
+                    const trimmed = nextTitle.trim();
+                    if (trimmed && trimmed !== note.title) {
+                      void patchNoteById(note.id, { title: trimmed });
+                    }
+                  }}
+                  folders={folders}
+                  onPatch={(changes) => void patchNoteById(note.id, changes)}
+                  onDelete={() => void deleteNoteById(note.id)}
+                  showFolderChip={!view.startsWith("folder:")}
                   onClick={() => selectNote(note.id)}
                 />
               ))}
@@ -878,36 +1109,111 @@ function NoteCard({
   folder,
   selected,
   onClick,
+  checked,
+  onToggleChecked,
+  isRenaming,
+  onStartRename,
+  onFinishRename,
+  folders,
+  onPatch,
+  onDelete,
+  showFolderChip,
 }: {
   note: KnowledgeNote;
   folder?: KnowledgeFolder;
   selected: boolean;
   onClick: () => void;
+  checked: boolean;
+  onToggleChecked: () => void;
+  isRenaming: boolean;
+  onStartRename: () => void;
+  onFinishRename: (nextTitle: string) => void;
+  folders: KnowledgeFolder[];
+  onPatch: (
+    changes: Partial<
+      Pick<KnowledgeNote, "folderId" | "noteType" | "isPinned" | "isFavorite" | "isArchived">
+    >,
+  ) => void;
+  onDelete: () => void;
+  showFolderChip: boolean;
 }) {
   const config = typeConfig(note.noteType);
   const Icon = config.icon;
   const preview = htmlToPlainText(note.contentHtml) || "Empty note — open it and start writing.";
+  const [renameValue, setRenameValue] = useState(note.title);
+  useEffect(() => {
+    if (isRenaming) setRenameValue(note.title);
+  }, [isRenaming, note.title]);
+  const stop = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        "relative w-full overflow-hidden rounded-xl border p-3 text-left transition",
+        "group relative w-full cursor-pointer overflow-hidden rounded-xl border p-3 text-left transition",
         selected
           ? "border-cyan-300/25 bg-cyan-300/[0.07] shadow-[0_0_22px_oklch(0.75_0.18_225_/_0.1)]"
           : "border-white/[0.07] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.045]",
+        checked && "ring-1 ring-cyan-300/40",
       )}
     >
       {selected && (
         <span className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-cyan-300 shadow-[0_0_8px_var(--cyan-glow)]" />
       )}
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5">
-          <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />
+        <div
+          className="relative mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5"
+          onClick={stop}
+          onKeyDown={stop}
+        >
+          <Icon
+            className={cn(
+              "h-3.5 w-3.5 transition-opacity",
+              checked ? "opacity-0" : "opacity-100 group-hover:opacity-0",
+            )}
+            style={{ color: config.color }}
+          />
+          <div
+            className={cn(
+              "absolute inset-0 grid place-items-center transition-opacity",
+              checked ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+          >
+            <Checkbox
+              checked={checked}
+              onCheckedChange={() => onToggleChecked()}
+              aria-label="Select note"
+            />
+          </div>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <div className="truncate text-sm font-medium text-foreground">{note.title}</div>
+            {isRenaming ? (
+              <Input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onClick={stop}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") onFinishRename(renameValue);
+                  else if (e.key === "Escape") onFinishRename(note.title);
+                }}
+                onBlur={() => onFinishRename(renameValue)}
+                className="h-6 min-w-0 flex-1 border-cyan-300/30 bg-black/20 px-1.5 text-sm"
+              />
+            ) : (
+              <div className="truncate text-sm font-medium text-foreground">{note.title}</div>
+            )}
             {note.isPinned && <Pin className="h-3 w-3 shrink-0 text-cyan-200" />}
             {note.isFavorite && <Heart className="h-3 w-3 shrink-0 fill-pink-300 text-pink-300" />}
           </div>
@@ -915,16 +1221,134 @@ function NoteCard({
             {preview}
           </div>
         </div>
+        <div
+          className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+          onClick={stop}
+          onKeyDown={stop}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartRename();
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={stop}
+                title="More actions"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onStartRename()}>
+                <Pencil className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPatch({ isPinned: !note.isPinned })}>
+                {note.isPinned ? (
+                  <>
+                    <PinOff className="mr-2 h-4 w-4" /> Unpin
+                  </>
+                ) : (
+                  <>
+                    <Pin className="mr-2 h-4 w-4" /> Pin
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPatch({ isFavorite: !note.isFavorite })}>
+                <Heart
+                  className={cn("mr-2 h-4 w-4", note.isFavorite && "fill-pink-300 text-pink-300")}
+                />
+                {note.isFavorite ? "Remove favorite" : "Favorite"}
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FolderInput className="mr-2 h-4 w-4" /> Move to folder
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={() => onPatch({ folderId: null })}>
+                    {note.folderId === null ? (
+                      <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                    ) : (
+                      <span className="mr-2 inline-block h-4 w-4" />
+                    )}
+                    Unfiled
+                  </DropdownMenuItem>
+                  {folders.length > 0 && <DropdownMenuSeparator />}
+                  {folders.map((f) => (
+                    <DropdownMenuItem key={f.id} onClick={() => onPatch({ folderId: f.id })}>
+                      {note.folderId === f.id ? (
+                        <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                      ) : (
+                        <span
+                          className="mr-2 inline-block h-3 w-3 rounded-full"
+                          style={{ background: f.color }}
+                        />
+                      )}
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FileText className="mr-2 h-4 w-4" /> Change type
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {NOTE_TYPES.map((t) => (
+                    <DropdownMenuItem
+                      key={t.value}
+                      onClick={() => onPatch({ noteType: t.value })}
+                    >
+                      {note.noteType === t.value ? (
+                        <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                      ) : (
+                        <t.icon className="mr-2 h-4 w-4" style={{ color: t.color }} />
+                      )}
+                      {t.singular}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onPatch({ isArchived: !note.isArchived })}>
+                <Archive className="mr-2 h-4 w-4" />
+                {note.isArchived ? "Restore from archive" : "Move to archive"}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-rose-300" onClick={() => onDelete()}>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete permanently
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">
-        <span className="truncate" style={{ color: folder?.color }}>
-          {folder?.name ?? config.singular}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-muted-foreground/60">{config.singular}</span>
+          {showFolderChip && folder && (
+            <span
+              className="truncate rounded-full border px-1.5 py-[1px]"
+              style={{ color: folder.color, borderColor: `${folder.color}55` }}
+            >
+              {folder.name}
+            </span>
+          )}
         </span>
         <span className="shrink-0">
           {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
