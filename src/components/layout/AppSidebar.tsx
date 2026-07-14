@@ -11,6 +11,7 @@ import {
   Sparkles,
   CheckCircle2,
   Inbox,
+  LibraryBig,
 } from "lucide-react";
 import {
   Sidebar,
@@ -35,6 +36,7 @@ const baseItems = [
   { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: Ticket, accent: "var(--cyan-glow)" },
   { title: "Assigned to Me", url: "/assigned-to-me", icon: Inbox, accent: "var(--cyan-glow)" },
   { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles, accent: "var(--violet-glow)" },
+  { title: "Knowledge Vault", url: "/knowledge-vault", icon: LibraryBig, accent: "oklch(0.8 0.16 190)" },
   { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing, accent: "var(--violet-glow)" },
   { title: "Additional Work", url: "/additional-work", icon: ClipboardList, accent: "var(--gold-glow)" },
   { title: "Accounts", url: "/accounts", icon: Building2, accent: "var(--electric)" },
