@@ -5,6 +5,8 @@ import {
   Archive,
   BookOpen,
   Boxes,
+  Download,
+  File as FileIcon,
   FileText,
   Folder,
   FolderOpen,
@@ -14,6 +16,7 @@ import {
   ListChecks,
   Loader2,
   MoreHorizontal,
+  Paperclip,
   Pencil,
   Pin,
   Plus,
@@ -22,6 +25,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import {
@@ -73,6 +77,7 @@ import {
   listKnowledgeVault,
   updateKnowledgeFolder,
   updateKnowledgeNote,
+  type KnowledgeAttachment,
   type KnowledgeFolder,
   type KnowledgeNote,
   type KnowledgeNoteType,
@@ -151,8 +156,42 @@ function noteFieldsEqual(a: KnowledgeNote | null, b: KnowledgeNote | null) {
     a.isPinned === b.isPinned &&
     a.isFavorite === b.isFavorite &&
     a.isArchived === b.isArchived &&
-    a.tags.join("\u0000") === b.tags.join("\u0000")
+    a.tags.join("\u0000") === b.tags.join("\u0000") &&
+    (a.attachments ?? []).map((x) => x.id).join("\u0000") ===
+      (b.attachments ?? []).map((x) => x.id).join("\u0000")
   );
+}
+
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const MAX_ATTACHMENTS_PER_NOTE = 30;
+
+function readFileAsAttachment(file: File): Promise<KnowledgeAttachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read file."));
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      resolve({
+        id:
+          (typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`),
+        name: file.name || "attachment",
+        mimeType: file.type || "application/octet-stream",
+        isImage: (file.type || "").startsWith("image/"),
+        dataUrl,
+        sizeBytes: file.size,
+        createdAt: new Date().toISOString(),
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function KnowledgeVault() {
