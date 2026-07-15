@@ -134,7 +134,7 @@ function WorkspacePage() {
       kind: "ticket",
       id: ticketId,
       label: `Ticket #${ticket.number}`,
-      to: "/_authenticated/freshdesk-tickets/$ticketId/work",
+      to: "/freshdesk-tickets/$ticketId/work",
       params: { ticketId },
       accountNumber: ticket.accountNumber || "",
       accountName: ticket.accountName,
