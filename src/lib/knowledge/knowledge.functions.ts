@@ -12,6 +12,17 @@ export const KNOWLEDGE_NOTE_TYPES = [
 
 export type KnowledgeNoteType = (typeof KNOWLEDGE_NOTE_TYPES)[number];
 
+export interface KnowledgeAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  isImage: boolean;
+  dataUrl: string;
+  sizeBytes: number;
+  createdAt: string;
+  label?: string;
+}
+
 export interface KnowledgeFolder {
   id: string;
   name: string;
@@ -34,6 +45,7 @@ export interface KnowledgeNote {
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
+  attachments: KnowledgeAttachment[];
 }
 
 const IdSchema = z.string().uuid();
@@ -43,6 +55,18 @@ const TagsSchema = z
   .array(z.string().trim().min(1).max(40))
   .max(12)
   .transform((tags) => Array.from(new Set(tags.map((tag) => tag.toLocaleLowerCase()))));
+
+const AttachmentSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().trim().min(1).max(200),
+  mimeType: z.string().trim().min(1).max(150),
+  isImage: z.boolean(),
+  dataUrl: z.string().min(1).max(7_500_000),
+  sizeBytes: z.number().int().min(0).max(10_000_000),
+  createdAt: z.string().min(1).max(64),
+  label: z.string().trim().max(200).optional(),
+});
+const AttachmentsSchema = z.array(AttachmentSchema).max(30);
 
 function mapFolder(row: {
   id: string;
@@ -76,6 +100,7 @@ function mapNote(row: {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  attachments?: KnowledgeAttachment[] | null;
 }): KnowledgeNote {
   return {
     id: row.id,
@@ -89,6 +114,7 @@ function mapNote(row: {
     isArchived: row.is_archived,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    attachments: Array.isArray(row.attachments) ? (row.attachments as KnowledgeAttachment[]) : [],
   };
 }
 
@@ -106,7 +132,7 @@ export const listKnowledgeVault = createServerFn({ method: "GET" })
       supabase
         .from("knowledge_notes")
         .select(
-          "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at",
+          "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments",
         )
         .eq("user_id", userId)
         .order("is_pinned", { ascending: false })
@@ -211,7 +237,7 @@ export const createKnowledgeNote = createServerFn({ method: "POST" })
         title: data.title,
       })
       .select(
-        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at",
+        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments",
       )
       .single();
     if (error) throw new Error(error.message);
@@ -228,6 +254,7 @@ const UpdateNoteSchema = z.object({
   isPinned: z.boolean().optional(),
   isFavorite: z.boolean().optional(),
   isArchived: z.boolean().optional(),
+  attachments: AttachmentsSchema.optional(),
 });
 
 export const updateKnowledgeNote = createServerFn({ method: "POST" })
@@ -244,6 +271,7 @@ export const updateKnowledgeNote = createServerFn({ method: "POST" })
       ...(changes.isPinned !== undefined ? { is_pinned: changes.isPinned } : {}),
       ...(changes.isFavorite !== undefined ? { is_favorite: changes.isFavorite } : {}),
       ...(changes.isArchived !== undefined ? { is_archived: changes.isArchived } : {}),
+      ...(changes.attachments !== undefined ? { attachments: changes.attachments } : {}),
     };
     const { data: row, error } = await context.supabase
       .from("knowledge_notes")
@@ -251,7 +279,7 @@ export const updateKnowledgeNote = createServerFn({ method: "POST" })
       .eq("id", id)
       .eq("user_id", context.userId)
       .select(
-        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at",
+        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments",
       )
       .single();
     if (error) throw new Error(error.message);
