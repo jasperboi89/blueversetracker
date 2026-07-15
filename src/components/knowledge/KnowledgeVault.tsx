@@ -5,6 +5,8 @@ import {
   Archive,
   BookOpen,
   Boxes,
+  Download,
+  File as FileIcon,
   FileText,
   Folder,
   FolderOpen,
@@ -14,6 +16,7 @@ import {
   ListChecks,
   Loader2,
   MoreHorizontal,
+  Paperclip,
   Pencil,
   Pin,
   Plus,
@@ -22,6 +25,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import {
@@ -73,6 +77,7 @@ import {
   listKnowledgeVault,
   updateKnowledgeFolder,
   updateKnowledgeNote,
+  type KnowledgeAttachment,
   type KnowledgeFolder,
   type KnowledgeNote,
   type KnowledgeNoteType,
@@ -151,8 +156,42 @@ function noteFieldsEqual(a: KnowledgeNote | null, b: KnowledgeNote | null) {
     a.isPinned === b.isPinned &&
     a.isFavorite === b.isFavorite &&
     a.isArchived === b.isArchived &&
-    a.tags.join("\u0000") === b.tags.join("\u0000")
+    a.tags.join("\u0000") === b.tags.join("\u0000") &&
+    (a.attachments ?? []).map((x) => x.id).join("\u0000") ===
+      (b.attachments ?? []).map((x) => x.id).join("\u0000")
   );
+}
+
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const MAX_ATTACHMENTS_PER_NOTE = 30;
+
+function readFileAsAttachment(file: File): Promise<KnowledgeAttachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read file."));
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      resolve({
+        id:
+          (typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`),
+        name: file.name || "attachment",
+        mimeType: file.type || "application/octet-stream",
+        isImage: (file.type || "").startsWith("image/"),
+        dataUrl,
+        sizeBytes: file.size,
+        createdAt: new Date().toISOString(),
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function KnowledgeVault() {
@@ -180,6 +219,7 @@ export function KnowledgeVault() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [attachmentPreview, setAttachmentPreview] = useState<KnowledgeAttachment | null>(null);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -295,6 +335,7 @@ export function KnowledgeVault() {
           isPinned: snapshot.isPinned,
           isFavorite: snapshot.isFavorite,
           isArchived: snapshot.isArchived,
+          attachments: snapshot.attachments ?? [],
         },
       });
       setNotes((current) => current.map((note) => (note.id === saved.id ? saved : note)));
@@ -529,6 +570,84 @@ export function KnowledgeVault() {
     changeDraft({ tags: [...draft.tags, tag] });
     setTagInput("");
   };
+
+  const addAttachments = useCallback(
+    async (files: File[] | FileList | null | undefined) => {
+      if (!files) return;
+      const list = Array.from(files);
+      if (list.length === 0) return;
+      const current = draftRef.current;
+      if (!current) return;
+      const existing = current.attachments ?? [];
+      const room = MAX_ATTACHMENTS_PER_NOTE - existing.length;
+      if (room <= 0) {
+        toast.error(`Note is at the ${MAX_ATTACHMENTS_PER_NOTE} attachment limit.`);
+        return;
+      }
+      const accepted: File[] = [];
+      for (const f of list.slice(0, room)) {
+        if (f.size > MAX_ATTACHMENT_BYTES) {
+          toast.error(`“${f.name}” is over 5 MB and was skipped.`);
+          continue;
+        }
+        accepted.push(f);
+      }
+      if (accepted.length === 0) return;
+      try {
+        const items = await Promise.all(accepted.map(readFileAsAttachment));
+        changeDraft({ attachments: [...existing, ...items] });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not attach files.");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const removeAttachment = (attachmentId: string) => {
+    const current = draftRef.current;
+    if (!current) return;
+    changeDraft({
+      attachments: (current.attachments ?? []).filter((a) => a.id !== attachmentId),
+    });
+  };
+
+  const renameAttachment = (attachmentId: string, nextName: string) => {
+    const current = draftRef.current;
+    if (!current) return;
+    const trimmed = nextName.trim();
+    if (!trimmed) return;
+    changeDraft({
+      attachments: (current.attachments ?? []).map((a) =>
+        a.id === attachmentId ? { ...a, name: trimmed.slice(0, 200) } : a,
+      ),
+    });
+  };
+
+  // Global paste-image capture while a note is open (and no modal input is focused elsewhere).
+  useEffect(() => {
+    if (!draft) return;
+    const handler = (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      const target = event.target as HTMLElement | null;
+      // Ignore paste inside plain text inputs (title, tag input) so it behaves normally there.
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      const files: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length > 0) {
+        event.preventDefault();
+        void addAttachments(files);
+      }
+    };
+    window.addEventListener("paste", handler);
+    return () => window.removeEventListener("paste", handler);
+  }, [draft, addAttachments]);
 
   if (loading) {
     return (
@@ -1011,6 +1130,13 @@ export function KnowledgeVault() {
                     editorClassName="text-[15px] leading-7"
                     className="border-white/10 bg-black/10"
                   />
+                  <AttachmentsPanel
+                    attachments={draft.attachments ?? []}
+                    onAdd={(files) => void addAttachments(files)}
+                    onRemove={removeAttachment}
+                    onRename={renameAttachment}
+                    onPreview={setAttachmentPreview}
+                  />
                 </div>
               </ScrollArea>
               <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
@@ -1097,6 +1223,13 @@ export function KnowledgeVault() {
                     editorClassName="text-[15px] leading-7"
                     className="border-white/10 bg-black/10"
                   />
+                  <AttachmentsPanel
+                    attachments={draft.attachments ?? []}
+                    onAdd={(files) => void addAttachments(files)}
+                    onRemove={removeAttachment}
+                    onRename={renameAttachment}
+                    onPreview={setAttachmentPreview}
+                  />
                 </div>
               </ScrollArea>
               <div className="flex items-center justify-between border-t border-white/10 px-5 py-2 text-[11px] text-muted-foreground">
@@ -1120,6 +1253,49 @@ export function KnowledgeVault() {
           <DialogFooter className="border-t border-white/10 px-5 py-3">
             <Button variant="ghost" onClick={() => setExpanded(false)}>
               Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!attachmentPreview} onOpenChange={(v) => !v && setAttachmentPreview(null)}>
+        <DialogContent className="max-w-4xl border-cyan-300/15 bg-background/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{attachmentPreview?.name}</DialogTitle>
+            <DialogDescription className="text-xs">
+              {attachmentPreview
+                ? `${attachmentPreview.mimeType} · ${formatBytes(attachmentPreview.sizeBytes)}`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {attachmentPreview && (
+            <div className="grid max-h-[70vh] place-items-center overflow-auto rounded-lg border border-white/10 bg-black/20 p-3">
+              {attachmentPreview.isImage ? (
+                <img
+                  src={attachmentPreview.dataUrl}
+                  alt={attachmentPreview.name}
+                  className="max-h-[65vh] rounded object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-3 p-8 text-center text-sm text-muted-foreground">
+                  <FileIcon className="h-10 w-10 text-cyan-200/80" />
+                  <div className="max-w-md break-all">{attachmentPreview.name}</div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {attachmentPreview && (
+              <a
+                href={attachmentPreview.dataUrl}
+                download={attachmentPreview.name}
+                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-3 py-1.5 text-sm text-cyan-100 hover:bg-cyan-300/15"
+              >
+                <Download className="h-4 w-4" /> Download
+              </a>
+            )}
+            <Button variant="ghost" onClick={() => setAttachmentPreview(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1510,5 +1686,162 @@ function FolderDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AttachmentsPanel({
+  attachments,
+  onAdd,
+  onRemove,
+  onRename,
+  onPreview,
+}: {
+  attachments: KnowledgeAttachment[];
+  onAdd: (files: FileList | File[] | null) => void;
+  onRemove: (id: string) => void;
+  onRename: (id: string, nextName: string) => void;
+  onPreview: (a: KnowledgeAttachment) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <Paperclip className="h-3.5 w-3.5" />
+          Attachments
+          <span className="font-mono text-[10px] text-muted-foreground/70">
+            {attachments.length}
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => inputRef.current?.click()}
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload
+        </Button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            onAdd(e.target.files);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+        />
+      </div>
+
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          onAdd(e.dataTransfer.files);
+        }}
+        className={cn(
+          "rounded-lg border border-dashed p-3 transition",
+          dragOver
+            ? "border-cyan-300/60 bg-cyan-300/[0.08]"
+            : "border-white/10 bg-white/[0.02]",
+        )}
+      >
+        {attachments.length === 0 ? (
+          <div className="py-4 text-center text-[11px] text-muted-foreground">
+            Drop files here, click <span className="text-foreground">Upload</span>, or paste an
+            image (Ctrl/⌘+V) to attach it to this note.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {attachments.map((a) => (
+              <div
+                key={a.id}
+                className="group relative overflow-hidden rounded-lg border border-white/10 bg-black/30"
+              >
+                <button
+                  type="button"
+                  onClick={() => onPreview(a)}
+                  className="block h-24 w-full"
+                  title={a.name}
+                >
+                  {a.isImage ? (
+                    <img
+                      src={a.dataUrl}
+                      alt={a.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center text-[10px] text-muted-foreground">
+                      <FileIcon className="h-6 w-6 text-cyan-200/80" />
+                      <span className="line-clamp-2 break-all">{a.name}</span>
+                    </div>
+                  )}
+                </button>
+                <div className="flex items-center justify-between gap-1 border-t border-white/10 bg-black/40 px-2 py-1 text-[10px] text-muted-foreground">
+                  {renamingId === a.id ? (
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={() => {
+                        onRename(a.id, renameValue);
+                        setRenamingId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          onRename(a.id, renameValue);
+                          setRenamingId(null);
+                        } else if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      className="min-w-0 flex-1 rounded bg-black/40 px-1 text-[10px] text-foreground outline-none ring-1 ring-cyan-300/30"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenamingId(a.id);
+                        setRenameValue(a.name);
+                      }}
+                      className="truncate text-left hover:text-foreground"
+                      title={`${a.name} · ${formatBytes(a.sizeBytes)}`}
+                    >
+                      {a.name}
+                    </button>
+                  )}
+                  <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+                    <a
+                      href={a.dataUrl}
+                      download={a.name}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded p-0.5 hover:bg-white/10 hover:text-foreground"
+                      title="Download"
+                    >
+                      <Download className="h-3 w-3" />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(a.id)}
+                      className="rounded p-0.5 hover:bg-rose-500/20 hover:text-rose-200"
+                      title="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

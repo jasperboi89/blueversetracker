@@ -226,6 +226,7 @@ export type Database = {
       }
       knowledge_notes: {
         Row: {
+          attachments: Json
           content_html: string
           created_at: string
           folder_id: string | null
@@ -240,6 +241,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachments?: Json
           content_html?: string
           created_at?: string
           folder_id?: string | null
@@ -254,6 +256,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachments?: Json
           content_html?: string
           created_at?: string
           folder_id?: string | null
