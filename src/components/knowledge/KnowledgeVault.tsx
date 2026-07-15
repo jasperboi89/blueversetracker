@@ -1688,3 +1688,160 @@ function FolderDialog({
     </Dialog>
   );
 }
+
+function AttachmentsPanel({
+  attachments,
+  onAdd,
+  onRemove,
+  onRename,
+  onPreview,
+}: {
+  attachments: KnowledgeAttachment[];
+  onAdd: (files: FileList | File[] | null) => void;
+  onRemove: (id: string) => void;
+  onRename: (id: string, nextName: string) => void;
+  onPreview: (a: KnowledgeAttachment) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <Paperclip className="h-3.5 w-3.5" />
+          Attachments
+          <span className="font-mono text-[10px] text-muted-foreground/70">
+            {attachments.length}
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => inputRef.current?.click()}
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload
+        </Button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            onAdd(e.target.files);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+        />
+      </div>
+
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          onAdd(e.dataTransfer.files);
+        }}
+        className={cn(
+          "rounded-lg border border-dashed p-3 transition",
+          dragOver
+            ? "border-cyan-300/60 bg-cyan-300/[0.08]"
+            : "border-white/10 bg-white/[0.02]",
+        )}
+      >
+        {attachments.length === 0 ? (
+          <div className="py-4 text-center text-[11px] text-muted-foreground">
+            Drop files here, click <span className="text-foreground">Upload</span>, or paste an
+            image (Ctrl/⌘+V) to attach it to this note.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {attachments.map((a) => (
+              <div
+                key={a.id}
+                className="group relative overflow-hidden rounded-lg border border-white/10 bg-black/30"
+              >
+                <button
+                  type="button"
+                  onClick={() => onPreview(a)}
+                  className="block h-24 w-full"
+                  title={a.name}
+                >
+                  {a.isImage ? (
+                    <img
+                      src={a.dataUrl}
+                      alt={a.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center text-[10px] text-muted-foreground">
+                      <FileIcon className="h-6 w-6 text-cyan-200/80" />
+                      <span className="line-clamp-2 break-all">{a.name}</span>
+                    </div>
+                  )}
+                </button>
+                <div className="flex items-center justify-between gap-1 border-t border-white/10 bg-black/40 px-2 py-1 text-[10px] text-muted-foreground">
+                  {renamingId === a.id ? (
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={() => {
+                        onRename(a.id, renameValue);
+                        setRenamingId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          onRename(a.id, renameValue);
+                          setRenamingId(null);
+                        } else if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      className="min-w-0 flex-1 rounded bg-black/40 px-1 text-[10px] text-foreground outline-none ring-1 ring-cyan-300/30"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenamingId(a.id);
+                        setRenameValue(a.name);
+                      }}
+                      className="truncate text-left hover:text-foreground"
+                      title={`${a.name} · ${formatBytes(a.sizeBytes)}`}
+                    >
+                      {a.name}
+                    </button>
+                  )}
+                  <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+                    <a
+                      href={a.dataUrl}
+                      download={a.name}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded p-0.5 hover:bg-white/10 hover:text-foreground"
+                      title="Download"
+                    >
+                      <Download className="h-3 w-3" />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(a.id)}
+                      className="rounded p-0.5 hover:bg-rose-500/20 hover:text-rose-200"
+                      title="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
