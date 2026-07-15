@@ -1,22 +1,46 @@
-## Problem
 
-The Active Work dock pill (and the Insight toast "Open" action) link to a `to` value like `/_authenticated/contact-dispatch/$sessionId/work`. TanStack's `_authenticated` is a pathless layout — the real URL is `/contact-dispatch/$sessionId/work`. So clicking the dock or toast navigates to a path that doesn't exist and hits the 404 boundary.
+## Goal
 
-## Fix (frontend only)
+Let each Knowledge Vault note carry a set of attachments ("snips") — images pasted from clipboard, uploaded image files, or uploaded non-image files (PDF, docx, etc.) — shown as a gallery under the note, with click-to-preview and delete.
 
-1. Drop the `/_authenticated` prefix from the `to` value passed into `setActiveWork(...)` in all three work routes:
-   - `src/routes/_authenticated/contact-dispatch.$sessionId.work.tsx` → `to: "/contact-dispatch/$sessionId/work"`
-   - `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx` → `to: "/freshdesk-tickets/$ticketId/work"`
-   - `src/routes/_authenticated/additional-work.$workId.work.tsx` → `to: "/additional-work/$workId/work"`
+## Storage approach
 
-2. Defensive sanitizer for already-persisted bad values (the store is persisted in localStorage, so an old value like `/_authenticated/...` could still be in play until the user re-opens the work page). Add a tiny helper that strips a leading `/_authenticated` segment and use it at the two link sites:
-   - `src/components/workspace/ActiveWorkDock.tsx` — normalize `current.to` before passing to `<Link to>`.
-   - `src/components/workspace/InsightToaster.tsx` — normalize `ins.to` before `navigate({ to })`.
+Attachments live on the note row itself as a JSON array (no new tables, no Storage bucket required for v1). Each entry:
 
-No changes to the store shape, the work-log entries, business logic, styling, or any other files.
+```
+{ id, name, mimeType, isImage, dataUrl, sizeBytes, createdAt, label? }
+```
+
+`dataUrl` is a base64 data URL so paste + upload work identically and no bucket setup is needed. This mirrors the existing pattern in `AddWorkSnipModal.tsx` / `additional-work-store.ts` / dispatch `AddSnipModal.tsx`, so it stays consistent with the rest of the app. Cap per-file size at ~5 MB and total note payload under the existing 250k `contentHtml` budget by tracking attachments in a separate column.
+
+## Backend changes
+
+1. Migration: add `attachments jsonb not null default '[]'::jsonb` to `public.knowledge_notes`. No new grants/policies needed — inherits existing RLS.
+2. `src/lib/knowledge/knowledge.functions.ts`:
+   - Extend `KnowledgeNote` type + `mapNote` with `attachments`.
+   - Add `attachments` (validated Zod array, max ~20 items, each dataUrl length capped ~7 MB base64) to `UpdateNoteSchema`.
+   - Select `attachments` in `listKnowledgeVault`, `createKnowledgeNote`, `updateKnowledgeNote`.
+
+## UI changes (all in `src/components/knowledge/KnowledgeVault.tsx`)
+
+1. New "Attachments" section under the editor (and mirrored inside the expanded modal) with:
+   - Drop zone / "Upload" button (file input, multiple)
+   - Global paste listener while the note is focused — capture `image/*` clipboard items
+   - Grid of thumbnails: image tiles show the image; non-image tiles show file icon + name
+   - Click a tile → lightbox dialog (image full-size, or download link for non-images)
+   - Hover shows delete (X) and rename affordance
+2. Wire changes into the existing autosave debounce so attachments save via `updateKnowledgeNote`.
+3. Small helper to reject files >5 MB with a toast.
+
+## Out of scope
+
+- No Supabase Storage bucket (kept as data URLs for v1 parity with existing snip modals).
+- No drag-reorder, no cross-note copy, no OCR.
+- No changes to folders, search, or note types.
 
 ## Verification
 
-- Start a dispatch session → dock pill appears → click the label → lands on the work page (no 404).
-- Same for a ticket work page and an additional-work page.
-- Insight toast "Open" action navigates correctly.
+- Paste screenshot into a note → thumbnail appears, persists after reload.
+- Upload a PDF → file tile appears, click downloads it.
+- Delete an attachment → gone after autosave + reload.
+- Works identically in the expanded modal.
