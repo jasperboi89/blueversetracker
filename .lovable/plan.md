@@ -1,32 +1,22 @@
-## Goal
+## Problem
 
-Add a way to open the currently selected Knowledge Vault note in a large pop-up window for a roomier editing experience.
+The Active Work dock pill (and the Insight toast "Open" action) link to a `to` value like `/_authenticated/contact-dispatch/$sessionId/work`. TanStack's `_authenticated` is a pathless layout — the real URL is `/contact-dispatch/$sessionId/work`. So clicking the dock or toast navigates to a path that doesn't exist and hits the 404 boundary.
 
-## Change (frontend only, `src/components/knowledge/KnowledgeVault.tsx`)
+## Fix (frontend only)
 
-### Expand button on the note editor pane
+1. Drop the `/_authenticated` prefix from the `to` value passed into `setActiveWork(...)` in all three work routes:
+   - `src/routes/_authenticated/contact-dispatch.$sessionId.work.tsx` → `to: "/contact-dispatch/$sessionId/work"`
+   - `src/routes/_authenticated/freshdesk-tickets.$ticketId.work.tsx` → `to: "/freshdesk-tickets/$ticketId/work"`
+   - `src/routes/_authenticated/additional-work.$workId.work.tsx` → `to: "/additional-work/$workId/work"`
 
-- Add an "Expand" icon button (Lucide `Maximize2`) in the right-pane editor header, next to the existing title/actions.
-- Clicking it opens a shadcn `Dialog` sized large (`max-w-5xl`, ~85vh tall) containing:
-  - The note title as an editable input at the top.
-  - The full rich-text editor bound to the same note state, so edits sync live with the underlying note.
-  - Same autosave behavior as the inline editor (reuses existing update logic — no new server function).
-  - A "Done" / close button (Lucide `Minimize2` or `X`) that closes the dialog and returns focus to the inline editor.
-- ESC and clicking the backdrop also close the dialog.
-- While the dialog is open, the inline editor stays mounted but the dialog's editor is the active surface.
+2. Defensive sanitizer for already-persisted bad values (the store is persisted in localStorage, so an old value like `/_authenticated/...` could still be in play until the user re-opens the work page). Add a tiny helper that strips a leading `/_authenticated` segment and use it at the two link sites:
+   - `src/components/workspace/ActiveWorkDock.tsx` — normalize `current.to` before passing to `<Link to>`.
+   - `src/components/workspace/InsightToaster.tsx` — normalize `ins.to` before `navigate({ to })`.
 
-### Small polish
+No changes to the store shape, the work-log entries, business logic, styling, or any other files.
 
-- Dialog uses the app's glass-panel styling to match the rest of the vault.
-- Keyboard shortcut: pressing `F` (or a small "Expand" tooltip hint) when the editor is focused opens the pop-up. (Optional — can drop if not wanted.)
+## Verification
 
-## Out of scope
-
-- No backend, schema, or server-function changes.
-- No changes to the note list, sorting, bulk actions, or folder sidebar.
-- No multi-window / detached browser window (uses an in-app modal, not `window.open`).
-
-## Technical notes
-
-- Reuse the existing rich-text editor component already rendered in the right pane; render a second instance inside the `Dialog` bound to the same `contentHtml` state and autosave handler so both views stay in sync.
-- Track `isExpanded` in local component state in `KnowledgeVault.tsx`.
+- Start a dispatch session → dock pill appears → click the label → lands on the work page (no 404).
+- Same for a ticket work page and an additional-work page.
+- Insight toast "Open" action navigates correctly.

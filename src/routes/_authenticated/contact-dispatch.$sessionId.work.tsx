@@ -49,7 +49,7 @@ function Workspace() {
       kind: "dispatch",
       id: sessionId,
       label: `Dispatch ${session.accountNumber || session.accountName || ""}`.trim(),
-      to: "/_authenticated/contact-dispatch/$sessionId/work",
+      to: "/contact-dispatch/$sessionId/work",
       params: { sessionId },
       accountNumber: session.accountNumber || "",
       accountName: session.accountName,
