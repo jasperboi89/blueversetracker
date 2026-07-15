@@ -28,6 +28,7 @@ import {
   ArrowUpDown,
   Check,
   FolderInput,
+  Maximize2,
   PinOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -948,6 +949,15 @@ export function KnowledgeVault() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setExpanded(true)}
+                      title="Expand note to full-screen editor"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
                 <Input
