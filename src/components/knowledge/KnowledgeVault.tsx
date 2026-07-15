@@ -179,6 +179,7 @@ export function KnowledgeVault() {
   const [sortMode, setSortMode] = useState<SortMode>("updated");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     draftRef.current = draft;
