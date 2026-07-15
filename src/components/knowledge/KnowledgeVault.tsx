@@ -219,6 +219,7 @@ export function KnowledgeVault() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [attachmentPreview, setAttachmentPreview] = useState<KnowledgeAttachment | null>(null);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -569,6 +570,84 @@ export function KnowledgeVault() {
     changeDraft({ tags: [...draft.tags, tag] });
     setTagInput("");
   };
+
+  const addAttachments = useCallback(
+    async (files: File[] | FileList | null | undefined) => {
+      if (!files) return;
+      const list = Array.from(files);
+      if (list.length === 0) return;
+      const current = draftRef.current;
+      if (!current) return;
+      const existing = current.attachments ?? [];
+      const room = MAX_ATTACHMENTS_PER_NOTE - existing.length;
+      if (room <= 0) {
+        toast.error(`Note is at the ${MAX_ATTACHMENTS_PER_NOTE} attachment limit.`);
+        return;
+      }
+      const accepted: File[] = [];
+      for (const f of list.slice(0, room)) {
+        if (f.size > MAX_ATTACHMENT_BYTES) {
+          toast.error(`“${f.name}” is over 5 MB and was skipped.`);
+          continue;
+        }
+        accepted.push(f);
+      }
+      if (accepted.length === 0) return;
+      try {
+        const items = await Promise.all(accepted.map(readFileAsAttachment));
+        changeDraft({ attachments: [...existing, ...items] });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not attach files.");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const removeAttachment = (attachmentId: string) => {
+    const current = draftRef.current;
+    if (!current) return;
+    changeDraft({
+      attachments: (current.attachments ?? []).filter((a) => a.id !== attachmentId),
+    });
+  };
+
+  const renameAttachment = (attachmentId: string, nextName: string) => {
+    const current = draftRef.current;
+    if (!current) return;
+    const trimmed = nextName.trim();
+    if (!trimmed) return;
+    changeDraft({
+      attachments: (current.attachments ?? []).map((a) =>
+        a.id === attachmentId ? { ...a, name: trimmed.slice(0, 200) } : a,
+      ),
+    });
+  };
+
+  // Global paste-image capture while a note is open (and no modal input is focused elsewhere).
+  useEffect(() => {
+    if (!draft) return;
+    const handler = (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+      const target = event.target as HTMLElement | null;
+      // Ignore paste inside plain text inputs (title, tag input) so it behaves normally there.
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      const files: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length > 0) {
+        event.preventDefault();
+        void addAttachments(files);
+      }
+    };
+    window.addEventListener("paste", handler);
+    return () => window.removeEventListener("paste", handler);
+  }, [draft, addAttachments]);
 
   if (loading) {
     return (
