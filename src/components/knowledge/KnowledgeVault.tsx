@@ -1066,6 +1066,64 @@ export function KnowledgeVault() {
         saving={folderSaving}
         onSave={() => void saveFolder()}
       />
+
+      <Dialog open={expanded && !!draft} onOpenChange={setExpanded}>
+        <DialogContent className="max-w-5xl border-cyan-300/15 bg-background/95 p-0 shadow-[0_0_70px_oklch(0.7_0.2_270_/_0.18)] backdrop-blur-xl sm:max-w-5xl">
+          <DialogHeader className="border-b border-white/10 px-5 py-3">
+            <DialogTitle className="text-left">
+              <Input
+                value={draft?.title ?? ""}
+                onChange={(event) => changeDraft({ title: event.target.value })}
+                onBlur={() => {
+                  if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                }}
+                className="h-auto border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0"
+                placeholder="Untitled note"
+              />
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Expanded note editor
+            </DialogDescription>
+          </DialogHeader>
+          {draft ? (
+            <div className="flex h-[80vh] flex-col">
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="p-5">
+                  <RichTextEditor
+                    value={draft.contentHtml}
+                    onChange={(contentHtml) => changeDraft({ contentHtml })}
+                    placeholder="Start writing your note, training guide, prompt, or procedure…"
+                    minHeight="calc(80vh - 8rem)"
+                    editorClassName="text-[15px] leading-7"
+                    className="border-white/10 bg-black/10"
+                  />
+                </div>
+              </ScrollArea>
+              <div className="flex items-center justify-between border-t border-white/10 px-5 py-2 text-[11px] text-muted-foreground">
+                <span>
+                  {htmlToPlainText(draft.contentHtml).split(/\s+/).filter(Boolean).length} words
+                </span>
+                <span
+                  className={cn(saving && "text-cyan-200", dirty && !saving && "text-amber-200")}
+                >
+                  {saving
+                    ? "Saving to vault…"
+                    : dirty
+                      ? "Unsaved changes"
+                      : lastSaved
+                        ? `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
+                        : "Saved"}
+                </span>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter className="border-t border-white/10 px-5 py-3">
+            <Button variant="ghost" onClick={() => setExpanded(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
