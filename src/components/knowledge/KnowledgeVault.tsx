@@ -1130,6 +1130,13 @@ export function KnowledgeVault() {
                     editorClassName="text-[15px] leading-7"
                     className="border-white/10 bg-black/10"
                   />
+                  <AttachmentsPanel
+                    attachments={draft.attachments ?? []}
+                    onAdd={(files) => void addAttachments(files)}
+                    onRemove={removeAttachment}
+                    onRename={renameAttachment}
+                    onPreview={setAttachmentPreview}
+                  />
                 </div>
               </ScrollArea>
               <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
@@ -1216,6 +1223,13 @@ export function KnowledgeVault() {
                     editorClassName="text-[15px] leading-7"
                     className="border-white/10 bg-black/10"
                   />
+                  <AttachmentsPanel
+                    attachments={draft.attachments ?? []}
+                    onAdd={(files) => void addAttachments(files)}
+                    onRemove={removeAttachment}
+                    onRename={renameAttachment}
+                    onPreview={setAttachmentPreview}
+                  />
                 </div>
               </ScrollArea>
               <div className="flex items-center justify-between border-t border-white/10 px-5 py-2 text-[11px] text-muted-foreground">
@@ -1239,6 +1253,49 @@ export function KnowledgeVault() {
           <DialogFooter className="border-t border-white/10 px-5 py-3">
             <Button variant="ghost" onClick={() => setExpanded(false)}>
               Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!attachmentPreview} onOpenChange={(v) => !v && setAttachmentPreview(null)}>
+        <DialogContent className="max-w-4xl border-cyan-300/15 bg-background/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{attachmentPreview?.name}</DialogTitle>
+            <DialogDescription className="text-xs">
+              {attachmentPreview
+                ? `${attachmentPreview.mimeType} · ${formatBytes(attachmentPreview.sizeBytes)}`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {attachmentPreview && (
+            <div className="grid max-h-[70vh] place-items-center overflow-auto rounded-lg border border-white/10 bg-black/20 p-3">
+              {attachmentPreview.isImage ? (
+                <img
+                  src={attachmentPreview.dataUrl}
+                  alt={attachmentPreview.name}
+                  className="max-h-[65vh] rounded object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-3 p-8 text-center text-sm text-muted-foreground">
+                  <FileIcon className="h-10 w-10 text-cyan-200/80" />
+                  <div className="max-w-md break-all">{attachmentPreview.name}</div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {attachmentPreview && (
+              <a
+                href={attachmentPreview.dataUrl}
+                download={attachmentPreview.name}
+                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-300/25 bg-cyan-300/10 px-3 py-1.5 text-sm text-cyan-100 hover:bg-cyan-300/15"
+              >
+                <Download className="h-4 w-4" /> Download
+              </a>
+            )}
+            <Button variant="ghost" onClick={() => setAttachmentPreview(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
