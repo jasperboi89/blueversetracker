@@ -36,6 +36,8 @@ export function ActiveWorkDock() {
 
   if (!current) return null;
   const elapsed = elapsedMs(current, now.getTime() || Date.now());
+  // Defensive: strip a stale pathless-layout prefix from persisted values.
+  const toPath = current.to.replace(/^\/_authenticated/, "");
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[120] flex justify-center px-3 pb-3">
@@ -46,7 +48,7 @@ export function ActiveWorkDock() {
         </span>
         <Link
           // route id + params are stored generically; cast for the typed Link
-          to={current.to as never}
+          to={toPath as never}
           params={current.params as never}
           className="flex items-center gap-1 font-medium text-foreground hover:underline"
         >
