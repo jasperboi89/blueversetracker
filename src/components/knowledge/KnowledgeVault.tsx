@@ -334,6 +334,7 @@ export function KnowledgeVault() {
           isPinned: snapshot.isPinned,
           isFavorite: snapshot.isFavorite,
           isArchived: snapshot.isArchived,
+          attachments: snapshot.attachments ?? [],
         },
       });
       setNotes((current) => current.map((note) => (note.id === saved.id ? saved : note)));
