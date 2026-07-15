@@ -54,7 +54,7 @@ function WorkspacePage() {
       kind: "additional",
       id: workId,
       label: w.title || "Additional Work",
-      to: "/_authenticated/additional-work/$workId/work",
+      to: "/additional-work/$workId/work",
       params: { workId },
       accountNumber: w.accountNumber || "",
       accountName: w.accountName,
