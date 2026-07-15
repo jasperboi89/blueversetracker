@@ -100,7 +100,7 @@ function mapNote(row: {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
-  attachments?: KnowledgeAttachment[] | null;
+  attachments?: unknown;
 }): KnowledgeNote {
   return {
     id: row.id,
