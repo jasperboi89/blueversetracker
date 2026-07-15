@@ -37,7 +37,8 @@ export function InsightToaster() {
       lastAtRef.current[ins.severity] = now;
       fireToast(ins, () => {
         if (!ins.to) return;
-        navigate({ to: ins.to as never, params: (ins.params ?? {}) as never });
+        const to = ins.to.replace(/^\/_authenticated/, "");
+        navigate({ to: to as never, params: (ins.params ?? {}) as never });
       });
     }
   }, [insights, prefs.quietInsights, navigate]);
