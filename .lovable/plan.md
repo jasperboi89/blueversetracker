@@ -1,46 +1,20 @@
+## Fix: Knowledge Vault "column knowledge_notes.ai_content_html does not exist"
 
-## Goal
+The Knowledge Vault code reads three AI columns (`ai_content_html`, `ai_generated_at`, `ai_source_fingerprint`) from `knowledge_notes`, but the migration that adds them was never applied to your database — so every load fails with a Postgres "column does not exist" error and the vault refuses to render.
 
-Let each Knowledge Vault note carry a set of attachments ("snips") — images pasted from clipboard, uploaded image files, or uploaded non-image files (PDF, docx, etc.) — shown as a gallery under the note, with click-to-preview and delete.
+### Fix
 
-## Storage approach
+Re-run the missing migration against the database so the columns exist:
 
-Attachments live on the note row itself as a JSON array (no new tables, no Storage bucket required for v1). Each entry:
-
+```sql
+ALTER TABLE public.knowledge_notes
+  ADD COLUMN IF NOT EXISTS ai_content_html text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS ai_generated_at timestamptz,
+  ADD COLUMN IF NOT EXISTS ai_source_fingerprint text NOT NULL DEFAULT '';
 ```
-{ id, name, mimeType, isImage, dataUrl, sizeBytes, createdAt, label? }
-```
 
-`dataUrl` is a base64 data URL so paste + upload work identically and no bucket setup is needed. This mirrors the existing pattern in `AddWorkSnipModal.tsx` / `additional-work-store.ts` / dispatch `AddSnipModal.tsx`, so it stays consistent with the rest of the app. Cap per-file size at ~5 MB and total note payload under the existing 250k `contentHtml` budget by tracking attachments in a separate column.
+Uses `IF NOT EXISTS`, so it's safe if any column somehow already exists. No RLS, grant, or code changes needed — the app code already targets these columns.
 
-## Backend changes
+### Verification
 
-1. Migration: add `attachments jsonb not null default '[]'::jsonb` to `public.knowledge_notes`. No new grants/policies needed — inherits existing RLS.
-2. `src/lib/knowledge/knowledge.functions.ts`:
-   - Extend `KnowledgeNote` type + `mapNote` with `attachments`.
-   - Add `attachments` (validated Zod array, max ~20 items, each dataUrl length capped ~7 MB base64) to `UpdateNoteSchema`.
-   - Select `attachments` in `listKnowledgeVault`, `createKnowledgeNote`, `updateKnowledgeNote`.
-
-## UI changes (all in `src/components/knowledge/KnowledgeVault.tsx`)
-
-1. New "Attachments" section under the editor (and mirrored inside the expanded modal) with:
-   - Drop zone / "Upload" button (file input, multiple)
-   - Global paste listener while the note is focused — capture `image/*` clipboard items
-   - Grid of thumbnails: image tiles show the image; non-image tiles show file icon + name
-   - Click a tile → lightbox dialog (image full-size, or download link for non-images)
-   - Hover shows delete (X) and rename affordance
-2. Wire changes into the existing autosave debounce so attachments save via `updateKnowledgeNote`.
-3. Small helper to reject files >5 MB with a toast.
-
-## Out of scope
-
-- No Supabase Storage bucket (kept as data URLs for v1 parity with existing snip modals).
-- No drag-reorder, no cross-note copy, no OCR.
-- No changes to folders, search, or note types.
-
-## Verification
-
-- Paste screenshot into a note → thumbnail appears, persists after reload.
-- Upload a PDF → file tile appears, click downloads it.
-- Delete an attachment → gone after autosave + reload.
-- Works identically in the expanded modal.
+Reload `/knowledge-vault` — the error card is gone and notes list normally.
