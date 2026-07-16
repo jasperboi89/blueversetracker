@@ -5,6 +5,7 @@ import {
   Archive,
   BookOpen,
   Boxes,
+  Clock3,
   Download,
   File as FileIcon,
   FileText,
@@ -12,6 +13,7 @@ import {
   FolderOpen,
   GraduationCap,
   Heart,
+  Inbox,
   LibraryBig,
   ListChecks,
   Loader2,
@@ -129,7 +131,14 @@ const NOTE_TYPES: Array<{
 
 const FOLDER_COLORS = ["#22d3ee", "#818cf8", "#c084fc", "#f472b6", "#fbbf24", "#34d399"];
 type VaultView =
-  "all" | "pinned" | "favorites" | "archived" | `type:${KnowledgeNoteType}` | `folder:${string}`;
+  | "all"
+  | "recent"
+  | "unfiled"
+  | "pinned"
+  | "favorites"
+  | "archived"
+  | `type:${KnowledgeNoteType}`
+  | `folder:${string}`;
 
 type SortMode = "updated" | "created" | "title" | "type" | "folder";
 
@@ -260,6 +269,14 @@ export function KnowledgeVault() {
     [folders],
   );
   const activeNotes = useMemo(() => notes.filter((note) => !note.isArchived), [notes]);
+  const unfiledCount = activeNotes.filter((note) => note.folderId === null).length;
+  const recentCount = activeNotes.filter(
+    (note) => Date.now() - new Date(note.updatedAt).getTime() <= 7 * 24 * 60 * 60 * 1000,
+  ).length;
+  const organizationPercent =
+    activeNotes.length === 0
+      ? 100
+      : Math.round(((activeNotes.length - unfiledCount) / activeNotes.length) * 100);
 
   const filteredNotes = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -268,6 +285,12 @@ export function KnowledgeVault() {
         if (view === "archived") {
           if (!note.isArchived) return false;
         } else if (note.isArchived) return false;
+        if (
+          view === "recent" &&
+          Date.now() - new Date(note.updatedAt).getTime() > 7 * 24 * 60 * 60 * 1000
+        )
+          return false;
+        if (view === "unfiled" && note.folderId !== null) return false;
         if (view === "pinned" && !note.isPinned) return false;
         if (view === "favorites" && !note.isFavorite) return false;
         if (view.startsWith("type:") && note.noteType !== view.slice(5)) return false;
@@ -685,25 +708,25 @@ export function KnowledgeVault() {
         className="pointer-events-none absolute -left-40 -top-48 h-[34rem] w-[34rem] rounded-full opacity-20 blur-3xl"
         style={{ background: "radial-gradient(circle, var(--violet-glow), transparent 68%)" }}
       />
-      <header className="glass-panel relative overflow-hidden p-5">
+      <header className="glass-panel relative overflow-hidden p-4">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,oklch(0.72_0.2_285_/_0.14),transparent_38%)]" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div
-              className="grid h-12 w-12 place-items-center rounded-2xl border border-cyan-300/20"
+              className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-300/20"
               style={{
                 background:
                   "linear-gradient(135deg, oklch(0.7 0.2 225 / .28), oklch(0.65 0.22 295 / .34))",
                 boxShadow: "0 0 28px oklch(0.72 0.19 245 / .26)",
               }}
             >
-              <LibraryBig className="h-6 w-6 text-cyan-100" />
+              <LibraryBig className="h-5 w-5 text-cyan-100" />
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/70">
                 BlueVerse knowledge system
               </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              <h1 className="text-[1.35rem] font-semibold tracking-tight text-foreground">
                 Knowledge Vault
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -712,19 +735,34 @@ export function KnowledgeVault() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2 text-center">
+          <div className="flex flex-wrap items-stretch justify-end gap-2 text-center">
             <Stat value={activeNotes.length} label="Active notes" />
-            <Stat value={folders.length} label="Folders" />
-            <Stat value={activeNotes.filter((note) => note.isPinned).length} label="Pinned" />
+            <Stat value={recentCount} label="Fresh this week" />
+            <Stat value={unfiledCount} label="Needs filing" />
+            <div className="min-w-32 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.04] px-3 py-2 text-left">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                  Vault health
+                </span>
+                <span className="font-mono text-sm text-emerald-200">{organizationPercent}%</span>
+              </div>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-300 shadow-[0_0_10px_oklch(0.8_0.16_165_/_0.35)] transition-all"
+                  style={{ width: `${organizationPercent}%` }}
+                />
+              </div>
+              <div className="mt-1 text-[9px] text-muted-foreground">notes organized</div>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-13rem)] xl:grid-cols-[230px_330px_minmax(0,1fr)]">
+      <div className="relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-12rem)] xl:grid-cols-[244px_350px_minmax(0,1fr)]">
         <aside className="glass-panel flex min-h-0 flex-col overflow-hidden p-3">
           <div className="mb-2 flex items-center justify-between px-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Collections
+              Vault
             </span>
             <Button
               size="sm"
@@ -744,6 +782,20 @@ export function KnowledgeVault() {
                 count={activeNotes.length}
                 active={view === "all"}
                 onClick={() => setView("all")}
+              />
+              <VaultNavItem
+                icon={Clock3}
+                label="Recently updated"
+                count={recentCount}
+                active={view === "recent"}
+                onClick={() => setView("recent")}
+              />
+              <VaultNavItem
+                icon={Inbox}
+                label="Unfiled"
+                count={unfiledCount}
+                active={view === "unfiled"}
+                onClick={() => setView("unfiled")}
               />
               <VaultNavItem
                 icon={Pin}
@@ -776,7 +828,7 @@ export function KnowledgeVault() {
               ))}
 
               <div className="flex items-center justify-between pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-                <span>Folders</span>
+                <span>Collections</span>
                 <button
                   className="text-cyan-300 hover:text-cyan-100"
                   onClick={() => openFolderDialog()}
@@ -786,7 +838,7 @@ export function KnowledgeVault() {
               </div>
               {folders.length === 0 && (
                 <div className="rounded-lg border border-dashed border-white/10 p-3 text-center text-[11px] text-muted-foreground">
-                  Create a folder to organize your growing library.
+                  Create a collection to organize your growing library.
                 </div>
               )}
               {folders.map((folder) => (
@@ -1089,6 +1141,20 @@ export function KnowledgeVault() {
                   className="mt-3 h-auto border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
                   placeholder="Untitled note"
                 />
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+                  <span style={{ color: typeConfig(draft.noteType).color }}>
+                    {typeConfig(draft.noteType).singular}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock3 className="h-3 w-3" />
+                    Updated {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: true })}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Paperclip className="h-3 w-3" />
+                    {(draft.attachments ?? []).length} attachment
+                    {(draft.attachments ?? []).length === 1 ? "" : "s"}
+                  </span>
+                </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <Tag className="h-3.5 w-3.5 text-muted-foreground" />
                   {draft.tags.map((tag) => (
@@ -1411,6 +1477,10 @@ function NoteCard({
         checked && "ring-1 ring-cyan-300/40",
       )}
     >
+      <span
+        className="pointer-events-none absolute inset-x-0 top-0 h-px opacity-60"
+        style={{ background: `linear-gradient(90deg, ${config.color}, transparent 72%)` }}
+      />
       {selected && (
         <span className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-cyan-300 shadow-[0_0_8px_var(--cyan-glow)]" />
       )}
@@ -1577,6 +1647,24 @@ function NoteCard({
           </DropdownMenu>
         </div>
       </div>
+      {(note.tags.length > 0 || (note.attachments ?? []).length > 0) && (
+        <div className="mt-2 flex min-w-0 items-center gap-1 overflow-hidden text-[9px] text-muted-foreground/70">
+          {note.tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag}
+              className="max-w-24 truncate rounded-full border border-cyan-300/10 bg-cyan-300/[0.04] px-1.5 py-0.5 text-cyan-100/65"
+            >
+              #{tag}
+            </span>
+          ))}
+          {note.tags.length > 2 && <span>+{note.tags.length - 2}</span>}
+          {(note.attachments ?? []).length > 0 && (
+            <span className="ml-auto flex shrink-0 items-center gap-1">
+              <Paperclip className="h-2.5 w-2.5" /> {(note.attachments ?? []).length}
+            </span>
+          )}
+        </div>
+      )}
       <div className="mt-2 flex items-center justify-between gap-2 text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-muted-foreground/60">{config.singular}</span>
