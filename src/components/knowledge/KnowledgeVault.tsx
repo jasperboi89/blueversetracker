@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import DOMPurify from "dompurify";
 import { toast } from "sonner";
 import {
   Archive,
@@ -71,6 +72,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { htmlToPlainText } from "@/lib/rich-text";
+import { aiOrganizeKnowledgeNote } from "@/lib/ai/ai.functions";
+import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
 import {
   createKnowledgeFolder,
   createKnowledgeNote,
@@ -141,6 +144,7 @@ type VaultView =
   | `folder:${string}`;
 
 type SortMode = "updated" | "created" | "title" | "type" | "folder";
+type NoteViewMode = "original" | "organized" | "split";
 
 const SORT_LABELS: Record<SortMode, string> = {
   updated: "Recently updated",
@@ -149,6 +153,15 @@ const SORT_LABELS: Record<SortMode, string> = {
   type: "Type",
   folder: "Folder",
 };
+
+function contentFingerprint(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `v1-${(hash >>> 0).toString(16)}-${value.length}`;
+}
 
 function typeConfig(type: KnowledgeNoteType) {
   return NOTE_TYPES.find((item) => item.value === type) ?? NOTE_TYPES[0];
@@ -167,7 +180,10 @@ function noteFieldsEqual(a: KnowledgeNote | null, b: KnowledgeNote | null) {
     a.isArchived === b.isArchived &&
     a.tags.join("\u0000") === b.tags.join("\u0000") &&
     (a.attachments ?? []).map((x) => x.id).join("\u0000") ===
-      (b.attachments ?? []).map((x) => x.id).join("\u0000")
+      (b.attachments ?? []).map((x) => x.id).join("\u0000") &&
+    a.aiContentHtml === b.aiContentHtml &&
+    a.aiGeneratedAt === b.aiGeneratedAt &&
+    a.aiSourceFingerprint === b.aiSourceFingerprint
   );
 }
 
@@ -204,6 +220,7 @@ function formatBytes(bytes: number) {
 }
 
 export function KnowledgeVault() {
+  const aiSettings = useAISettings();
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [notes, setNotes] = useState<KnowledgeNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,6 +246,8 @@ export function KnowledgeVault() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState<KnowledgeAttachment | null>(null);
+  const [noteViewMode, setNoteViewMode] = useState<NoteViewMode>("original");
+  const [aiOrganizing, setAiOrganizing] = useState(false);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -260,6 +279,7 @@ export function KnowledgeVault() {
     setDirty(false);
     setLastSaved(null);
     setTagInput("");
+    setNoteViewMode("original");
     // Note list updates are handled explicitly so an autosave never overwrites an active draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
@@ -277,6 +297,10 @@ export function KnowledgeVault() {
     activeNotes.length === 0
       ? 100
       : Math.round(((activeNotes.length - unfiledCount) / activeNotes.length) * 100);
+  const aiIsStale = Boolean(
+    draft?.aiContentHtml &&
+      draft.aiSourceFingerprint !== contentFingerprint(draft.contentHtml),
+  );
 
   const filteredNotes = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -359,6 +383,9 @@ export function KnowledgeVault() {
           isFavorite: snapshot.isFavorite,
           isArchived: snapshot.isArchived,
           attachments: snapshot.attachments ?? [],
+          aiContentHtml: snapshot.aiContentHtml,
+          aiGeneratedAt: snapshot.aiGeneratedAt,
+          aiSourceFingerprint: snapshot.aiSourceFingerprint,
         },
       });
       setNotes((current) => current.map((note) => (note.id === saved.id ? saved : note)));
@@ -374,6 +401,70 @@ export function KnowledgeVault() {
       setSaving(false);
     }
   }, []);
+
+  const organizeWithAi = useCallback(async () => {
+    const current = draftRef.current;
+    if (!current) return;
+    const sourceText = htmlToPlainText(current.contentHtml).trim();
+    if (!sourceText) {
+      toast.error("Add some original notes before organizing them with AI.");
+      return;
+    }
+
+    setAiOrganizing(true);
+    try {
+      const result = await aiOrganizeKnowledgeNote({
+        data: {
+          title: current.title.trim() || "Untitled note",
+          noteType: current.noteType,
+          sourceText,
+          style: aiStyleHint(aiSettings),
+        },
+      });
+      if (!result.ok) {
+        toast.error(result.error ?? "AI could not organize this note.");
+        return;
+      }
+      if (!result.html) {
+        toast.error("AI returned an empty organized note.");
+        return;
+      }
+
+      const safeHtml = DOMPurify.sanitize(result.html, {
+        ALLOWED_TAGS: [
+          "h2",
+          "h3",
+          "p",
+          "ul",
+          "ol",
+          "li",
+          "strong",
+          "em",
+          "blockquote",
+          "code",
+          "pre",
+          "br",
+        ],
+        ALLOWED_ATTR: [],
+      });
+      const next: KnowledgeNote = {
+        ...current,
+        aiContentHtml: safeHtml,
+        aiGeneratedAt: new Date().toISOString(),
+        aiSourceFingerprint: contentFingerprint(current.contentHtml),
+      };
+      setDraft(next);
+      draftRef.current = next;
+      setDirty(true);
+      setNoteViewMode("organized");
+      await persistDraft(next);
+      toast.success("AI-organized version saved. Your original note is unchanged.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "AI could not organize this note.");
+    } finally {
+      setAiOrganizing(false);
+    }
+  }, [aiSettings, persistDraft]);
 
   useEffect(() => {
     if (!dirty || !draft) return;
@@ -1185,16 +1276,26 @@ export function KnowledgeVault() {
                     />
                   )}
                 </div>
+                <NoteViewModeBar
+                  mode={noteViewMode}
+                  onModeChange={setNoteViewMode}
+                  hasOrganized={Boolean(draft.aiContentHtml)}
+                  stale={aiIsStale}
+                  generatedAt={draft.aiGeneratedAt}
+                  aiEnabled={aiSettings.enabled}
+                  busy={aiOrganizing}
+                  onGenerate={() => void organizeWithAi()}
+                />
               </div>
               <ScrollArea className="min-h-0 flex-1">
                 <div className="p-4">
-                  <RichTextEditor
-                    value={draft.contentHtml}
-                    onChange={(contentHtml) => changeDraft({ contentHtml })}
-                    placeholder="Start writing your note, training guide, prompt, or procedure…"
+                  <KnowledgeContentWorkspace
+                    mode={noteViewMode}
+                    originalHtml={draft.contentHtml}
+                    organizedHtml={draft.aiContentHtml}
+                    onOriginalChange={(contentHtml) => changeDraft({ contentHtml })}
+                    onOrganizedChange={(aiContentHtml) => changeDraft({ aiContentHtml })}
                     minHeight="calc(100vh - 28rem)"
-                    editorClassName="text-[15px] leading-7"
-                    className="border-white/10 bg-black/10"
                   />
                   <AttachmentsPanel
                     attachments={draft.attachments ?? []}
@@ -1276,18 +1377,31 @@ export function KnowledgeVault() {
             <DialogDescription className="sr-only">
               Expanded note editor
             </DialogDescription>
+            {draft && (
+              <NoteViewModeBar
+                mode={noteViewMode}
+                onModeChange={setNoteViewMode}
+                hasOrganized={Boolean(draft.aiContentHtml)}
+                stale={aiIsStale}
+                generatedAt={draft.aiGeneratedAt}
+                aiEnabled={aiSettings.enabled}
+                busy={aiOrganizing}
+                onGenerate={() => void organizeWithAi()}
+                compact
+              />
+            )}
           </DialogHeader>
           {draft ? (
             <div className="flex h-[80vh] flex-col">
               <ScrollArea className="min-h-0 flex-1">
                 <div className="p-5">
-                  <RichTextEditor
-                    value={draft.contentHtml}
-                    onChange={(contentHtml) => changeDraft({ contentHtml })}
-                    placeholder="Start writing your note, training guide, prompt, or procedure…"
-                    minHeight="calc(80vh - 8rem)"
-                    editorClassName="text-[15px] leading-7"
-                    className="border-white/10 bg-black/10"
+                  <KnowledgeContentWorkspace
+                    mode={noteViewMode}
+                    originalHtml={draft.contentHtml}
+                    organizedHtml={draft.aiContentHtml}
+                    onOriginalChange={(contentHtml) => changeDraft({ contentHtml })}
+                    onOrganizedChange={(aiContentHtml) => changeDraft({ aiContentHtml })}
+                    minHeight="calc(80vh - 12rem)"
                   />
                   <AttachmentsPanel
                     attachments={draft.attachments ?? []}
@@ -1368,6 +1482,173 @@ export function KnowledgeVault() {
       </Dialog>
     </div>
   );
+}
+
+function NoteViewModeBar({
+  mode,
+  onModeChange,
+  hasOrganized,
+  stale,
+  generatedAt,
+  aiEnabled,
+  busy,
+  onGenerate,
+  compact = false,
+}: {
+  mode: NoteViewMode;
+  onModeChange: (mode: NoteViewMode) => void;
+  hasOrganized: boolean;
+  stale: boolean;
+  generatedAt: string | null;
+  aiEnabled: boolean;
+  busy: boolean;
+  onGenerate: () => void;
+  compact?: boolean;
+}) {
+  const options: Array<{ value: NoteViewMode; label: string; disabled?: boolean }> = [
+    { value: "original", label: "Original" },
+    { value: "organized", label: "AI Organized", disabled: !hasOrganized },
+    { value: "split", label: "Split View", disabled: !hasOrganized },
+  ];
+
+  return (
+    <div
+      className={cn(
+        "mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-violet-300/10 bg-violet-400/[0.035] p-1.5",
+        compact && "mt-1",
+      )}
+    >
+      <div className="flex rounded-lg border border-white/[0.07] bg-black/15 p-0.5">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            disabled={option.disabled}
+            onClick={() => onModeChange(option.value)}
+            className={cn(
+              "rounded-md px-2.5 py-1 text-[11px] transition",
+              mode === option.value
+                ? "bg-violet-300/15 text-violet-100 shadow-[inset_0_0_0_1px_oklch(0.8_0.15_295_/_0.16)]"
+                : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+              option.disabled && "cursor-not-allowed opacity-35",
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {hasOrganized && (
+        <div className="flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
+          <span
+            className={cn(
+              "rounded-full border px-2 py-0.5",
+              stale
+                ? "border-amber-300/25 bg-amber-300/[0.06] text-amber-200"
+                : "border-emerald-300/20 bg-emerald-300/[0.05] text-emerald-200",
+            )}
+          >
+            {stale ? "Original changed · refresh AI" : "AI version current"}
+          </span>
+          {generatedAt && !compact && (
+            <span className="hidden xl:inline">
+              Generated {formatDistanceToNow(new Date(generatedAt), { addSuffix: true })}
+            </span>
+          )}
+        </div>
+      )}
+
+      <Button
+        type="button"
+        size="sm"
+        className="ml-auto h-7 border border-violet-300/20 bg-violet-400/10 px-2.5 text-[11px] text-violet-100 hover:bg-violet-400/20"
+        variant="ghost"
+        disabled={busy || !aiEnabled}
+        onClick={onGenerate}
+        title={
+          aiEnabled
+            ? "Create a separate organized version while keeping the original"
+            : "AI is turned off in settings"
+        }
+      >
+        {busy ? (
+          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+        )}
+        {busy ? "Organizing…" : hasOrganized ? "Regenerate AI version" : "Organize with AI"}
+      </Button>
+    </div>
+  );
+}
+
+function KnowledgeContentWorkspace({
+  mode,
+  originalHtml,
+  organizedHtml,
+  onOriginalChange,
+  onOrganizedChange,
+  minHeight,
+}: {
+  mode: NoteViewMode;
+  originalHtml: string;
+  organizedHtml: string;
+  onOriginalChange: (html: string) => void;
+  onOrganizedChange: (html: string) => void;
+  minHeight: string;
+}) {
+  const editor = (
+    label: string,
+    value: string,
+    onChange: (html: string) => void,
+    organized: boolean,
+  ) => (
+    <div className="min-w-0">
+      <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/75">
+        {organized ? (
+          <Sparkles className="h-3 w-3 text-violet-300" />
+        ) : (
+          <FileText className="h-3 w-3 text-cyan-300" />
+        )}
+        {label}
+        {organized && (
+          <span className="normal-case tracking-normal text-muted-foreground/55">
+            editable copy · original protected
+          </span>
+        )}
+      </div>
+      <RichTextEditor
+        value={value}
+        onChange={onChange}
+        placeholder={
+          organized
+            ? "Generate an AI-organized version from your original note."
+            : "Start writing your note, training guide, prompt, or procedure…"
+        }
+        minHeight={minHeight}
+        editorClassName="text-[15px] leading-7"
+        className={cn(
+          "border-white/10 bg-black/10",
+          organized && "border-violet-300/15 bg-violet-400/[0.025]",
+        )}
+      />
+    </div>
+  );
+
+  if (mode === "split" && organizedHtml) {
+    return (
+      <div className="grid min-w-0 gap-3 2xl:grid-cols-2">
+        {editor("Original note", originalHtml, onOriginalChange, false)}
+        {editor("AI organized", organizedHtml, onOrganizedChange, true)}
+      </div>
+    );
+  }
+
+  if (mode === "organized" && organizedHtml) {
+    return editor("AI organized", organizedHtml, onOrganizedChange, true);
+  }
+
+  return editor("Original note", originalHtml, onOriginalChange, false);
 }
 
 function Stat({ value, label }: { value: number; label: string }) {
@@ -1531,6 +1812,12 @@ function NoteCard({
             )}
             {note.isPinned && <Pin className="h-3 w-3 shrink-0 text-cyan-200" />}
             {note.isFavorite && <Heart className="h-3 w-3 shrink-0 fill-pink-300 text-pink-300" />}
+            {note.aiContentHtml && (
+              <Sparkles
+                className="h-3 w-3 shrink-0 text-violet-300"
+                aria-label="AI-organized version available"
+              />
+            )}
           </div>
           <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
             {preview}

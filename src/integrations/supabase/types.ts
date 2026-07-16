@@ -226,6 +226,9 @@ export type Database = {
       }
       knowledge_notes: {
         Row: {
+          ai_content_html: string
+          ai_generated_at: string | null
+          ai_source_fingerprint: string
           attachments: Json
           content_html: string
           created_at: string
@@ -241,6 +244,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_content_html?: string
+          ai_generated_at?: string | null
+          ai_source_fingerprint?: string
           attachments?: Json
           content_html?: string
           created_at?: string
@@ -256,6 +262,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_content_html?: string
+          ai_generated_at?: string | null
+          ai_source_fingerprint?: string
           attachments?: Json
           content_html?: string
           created_at?: string
