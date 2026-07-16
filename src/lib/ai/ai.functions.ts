@@ -254,6 +254,78 @@ export const aiClassifyTicket = createServerFn({ method: "POST" })
   });
 
 /**
+ * Organize a Knowledge Vault note without changing its original text.
+ * The client stores the generated HTML in separate AI-only columns and
+ * sanitizes it before display/editing.
+ */
+const KnowledgeNoteOrganizeInput = z.object({
+  title: z.string().trim().min(1).max(200),
+  noteType: z.enum(["work-note", "training", "prompt", "procedure", "reference"]),
+  sourceText: z.string().trim().min(1).max(30000),
+  style: z.string().max(600).optional(),
+});
+
+export const aiOrganizeKnowledgeNote = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) => KnowledgeNoteOrganizeInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "knowledge-organize", "");
+
+    const formatGuidance: Record<typeof data.noteType, string> = {
+      "work-note":
+        "Use: Overview, Key details, Actions or next steps, and Warnings only when supported.",
+      training:
+        "Use: Objective, Key concepts, Step-by-step guidance, Examples, and Verification or tips.",
+      prompt:
+        "Use: Purpose, Reusable prompt, Variables to customize, and Usage notes.",
+      procedure:
+        "Use: Purpose, Prerequisites, Numbered steps, Warnings, and Verification.",
+      reference:
+        "Use: Summary, Key facts, Lookup details, and Examples or related notes when supported.",
+    };
+
+    const res = await aiComplete({
+      json: true,
+      system: [
+        "You organize rough operational notes into a clear, highly readable reference.",
+        "Preserve every factual detail from the source. Never invent, guess, or silently remove",
+        "account numbers, names, IDs, field names, expressions, warnings, exceptions, or steps.",
+        formatGuidance[data.noteType],
+        "Return strict JSON only: { \"html\": \"...\" }.",
+        "The html value may use only: h2, h3, p, ul, ol, li, strong, em, blockquote, code, pre, br.",
+        "Do not include html/body wrappers, CSS, styles, classes, links, images, scripts, or a preamble.",
+        "Use concise headings and short paragraphs. If the source is uncertain, label it clearly",
+        "instead of resolving the uncertainty yourself.",
+        data.style ?? "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      prompt: [
+        `Title: ${data.title}`,
+        `Knowledge type: ${data.noteType}`,
+        "",
+        "ORIGINAL NOTE:",
+        data.sourceText,
+      ].join("\n"),
+    });
+
+    if (!res.ok) return { ok: false as const, error: res.error };
+    try {
+      const parsed = JSON.parse(res.text ?? "{}") as { html?: unknown };
+      if (typeof parsed.html !== "string" || !parsed.html.trim()) {
+        return { ok: false as const, error: "AI returned an empty organized note." };
+      }
+      if (parsed.html.length > 250000) {
+        return { ok: false as const, error: "AI organized note was too large to save." };
+      }
+      return { ok: true as const, html: parsed.html.trim() };
+    } catch {
+      return { ok: false as const, error: "Could not parse the organized note." };
+    }
+  });
+
+/**
  * Parse a Freshdesk ticket description into the fixed "Ticket Issue" template.
  * Never invents values — missing fields come back as empty strings and the
  * client formatter renders them as "Not provided."
