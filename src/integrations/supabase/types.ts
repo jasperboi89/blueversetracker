@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements_unlocked: {
+        Row: {
+          achievement_id: string
+          id: string
+          progress_snapshot: Json
+          tier: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          progress_snapshot?: Json
+          tier: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          progress_snapshot?: Json
+          tier?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       auth_audit_log: {
         Row: {
           created_at: string

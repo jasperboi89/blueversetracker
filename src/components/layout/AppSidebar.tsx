@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Inbox,
   LibraryBig,
+  Trophy,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,6 +43,7 @@ const baseItems = [
   { title: "Accounts", url: "/accounts", icon: Building2, accent: "var(--electric)" },
   { title: "Completed Work", url: "/completed-work", icon: CheckCircle2, accent: "var(--green-glow)" },
   { title: "Reports", url: "/reports", icon: FileBarChart, accent: "oklch(0.9 0.06 230)" },
+  { title: "Achievements", url: "/achievements", icon: Trophy, accent: "oklch(0.85 0.15 90)" },
 ] as const;
 
 const adminItems = [

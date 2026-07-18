@@ -26,6 +26,7 @@ import { Route as AuthenticatedCompletedWorkRouteImport } from './routes/_authen
 import { Route as AuthenticatedAuditLogRouteImport } from './routes/_authenticated/audit-log'
 import { Route as AuthenticatedAssignedToMeRouteImport } from './routes/_authenticated/assigned-to-me'
 import { Route as AuthenticatedAdditionalWorkRouteImport } from './routes/_authenticated/additional-work'
+import { Route as AuthenticatedAchievementsRouteImport } from './routes/_authenticated/achievements'
 import { Route as AuthenticatedAccountsRouteImport } from './routes/_authenticated/accounts'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -130,6 +131,12 @@ const AuthenticatedAdditionalWorkRoute =
     path: '/additional-work',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAchievementsRoute =
+  AuthenticatedAchievementsRouteImport.update({
+    id: '/achievements',
+    path: '/achievements',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAccountsRoute = AuthenticatedAccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -204,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
+  '/achievements': typeof AuthenticatedAchievementsRoute
   '/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
   '/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
@@ -232,6 +240,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/accounts': typeof AuthenticatedAccountsRouteWithChildren
+  '/achievements': typeof AuthenticatedAchievementsRoute
   '/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
@@ -262,6 +271,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/accounts': typeof AuthenticatedAccountsRouteWithChildren
+  '/_authenticated/achievements': typeof AuthenticatedAchievementsRoute
   '/_authenticated/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
   '/_authenticated/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/_authenticated/audit-log': typeof AuthenticatedAuditLogRoute
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/accounts'
+    | '/achievements'
     | '/additional-work'
     | '/assigned-to-me'
     | '/audit-log'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/accounts'
+    | '/achievements'
     | '/assigned-to-me'
     | '/audit-log'
     | '/completed-work'
@@ -351,6 +363,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/accounts'
+    | '/_authenticated/achievements'
     | '/_authenticated/additional-work'
     | '/_authenticated/assigned-to-me'
     | '/_authenticated/audit-log'
@@ -506,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdditionalWorkRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/achievements': {
+      id: '/_authenticated/achievements'
+      path: '/achievements'
+      fullPath: '/achievements'
+      preLoaderRoute: typeof AuthenticatedAchievementsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/accounts': {
       id: '/_authenticated/accounts'
       path: '/accounts'
@@ -653,6 +673,7 @@ const AuthenticatedFreshdeskTicketsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountsRoute: typeof AuthenticatedAccountsRouteWithChildren
+  AuthenticatedAchievementsRoute: typeof AuthenticatedAchievementsRoute
   AuthenticatedAdditionalWorkRoute: typeof AuthenticatedAdditionalWorkRouteWithChildren
   AuthenticatedAssignedToMeRoute: typeof AuthenticatedAssignedToMeRoute
   AuthenticatedAuditLogRoute: typeof AuthenticatedAuditLogRoute
@@ -669,6 +690,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountsRoute: AuthenticatedAccountsRouteWithChildren,
+  AuthenticatedAchievementsRoute: AuthenticatedAchievementsRoute,
   AuthenticatedAdditionalWorkRoute:
     AuthenticatedAdditionalWorkRouteWithChildren,
   AuthenticatedAssignedToMeRoute: AuthenticatedAssignedToMeRoute,
