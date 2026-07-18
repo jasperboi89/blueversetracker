@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useAchievements } from "@/lib/achievements/achievements-store";
+import type { AchievementProgress } from "@/lib/achievements/achievements-store";
 import {
   ACHIEVEMENTS,
   CATEGORY_LABEL,
   TIER_COLOR,
   TIER_LABEL,
   type AchievementCategory,
-  type AchievementProgress,
+  type AchievementTier,
 } from "@/lib/achievements/catalog";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
