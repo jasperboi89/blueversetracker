@@ -5,6 +5,7 @@ import { HipaaPill } from "@/components/auth/HipaaPill";
 import { SanctuaryButton } from "@/components/quantum-bloom/SanctuaryButton";
 import { InsightToaster } from "@/components/workspace/InsightToaster";
 import { AssignedInboxPoller } from "@/components/assigned-inbox/AssignedInboxPoller";
+import { UnlockToast } from "@/components/achievements/UnlockToast";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -57,6 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <InsightToaster />
         <AssignedInboxPoller />
+        <UnlockToast />
       </div>
     </SidebarProvider>
   );
