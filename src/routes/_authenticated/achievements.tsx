@@ -9,7 +9,6 @@ import {
   TIER_COLOR,
   TIER_LABEL,
   type AchievementCategory,
-  type AchievementTier,
 } from "@/lib/achievements/catalog";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
