@@ -12,8 +12,6 @@ import {
   freshdeskIndexStatus,
   freshdeskSyncIndexBatch,
   freshdeskSync24h,
-  freshdeskGetTargetGroupIds,
-  freshdeskSaveTargetGroupIds,
   type FreshdeskIndexStatus,
   type FreshdeskSync24hResult,
 } from "@/lib/api/freshdesk-index.functions";
@@ -275,43 +273,6 @@ function Sync24hManager() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FreshdeskSync24hResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [groupIds, setGroupIds] = useState<Record<string, string>>({});
-  const [groupNames, setGroupNames] = useState<string[]>([]);
-  const [savingIds, setSavingIds] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    void freshdeskGetTargetGroupIds()
-      .then((res) => {
-        setGroupNames(res.names);
-        const next: Record<string, string> = {};
-        for (const n of res.names) {
-          const v = res.nameToId[n];
-          next[n] = typeof v === "number" ? String(v) : "";
-        }
-        setGroupIds(next);
-      })
-      .catch(() => undefined);
-  }, []);
-
-  const saveGroupIds = async () => {
-    setSavingIds(true);
-    setSaveMsg(null);
-    try {
-      const nameToId: Record<string, number> = {};
-      for (const [name, val] of Object.entries(groupIds)) {
-        const n = Number.parseInt(val.trim(), 10);
-        if (Number.isFinite(n) && n > 0) nameToId[name] = n;
-      }
-      const res = await freshdeskSaveTargetGroupIds({ data: { nameToId } });
-      if (!res.ok) setSaveMsg(res.error);
-      else setSaveMsg("Group IDs saved.");
-    } catch (e) {
-      setSaveMsg(e instanceof Error ? e.message : "Failed to save.");
-    } finally {
-      setSavingIds(false);
-    }
-  };
 
   const run = async () => {
     setLoading(true);
@@ -333,36 +294,6 @@ function Sync24hManager() {
 
   return (
     <div className="space-y-2 text-xs text-muted-foreground">
-      <div className="space-y-1.5 rounded border border-white/10 bg-white/[0.02] p-2">
-        <div className="text-foreground">Group IDs (optional if your API key can't list groups)</div>
-        <div className="grid gap-1.5 sm:grid-cols-3">
-          {groupNames.map((name) => (
-            <label key={name} className="flex flex-col gap-1">
-              <span className="text-[11px] text-muted-foreground">{name}</span>
-              <Input
-                className="h-7 text-xs"
-                inputMode="numeric"
-                placeholder="e.g. 12345"
-                value={groupIds[name] ?? ""}
-                onChange={(e) =>
-                  setGroupIds((prev) => ({ ...prev, [name]: e.target.value }))
-                }
-              />
-            </label>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={saveGroupIds} disabled={savingIds}>
-            {savingIds ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-            Save group IDs
-          </Button>
-          {saveMsg && <span className="text-[11px]">{saveMsg}</span>}
-        </div>
-        <div className="text-[11px]">
-          Find each group's ID in the Freshdesk URL when viewing the group in Admin → Groups (the
-          number at the end of the URL).
-        </div>
-      </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={run} disabled={loading}>
           {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}

@@ -135,10 +135,10 @@ function containsAny(hay: string, needles: string[]): boolean {
 function classifyExclusion(
   dto: FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
   normalized: NormalizedTicket,
-  allowedGroupIds: Set<number>,
+  groupAllowed: boolean,
 ): ExclusionReason | null {
   if (dto.spam === true || dto.deleted === true) return "spam_or_deleted";
-  if (!dto.group_id || !allowedGroupIds.has(dto.group_id)) return "group_not_allowed";
+  if (!groupAllowed) return "group_not_allowed";
   const subject = normalized.subject ?? "";
   const body = normalized.description ?? "";
   if (containsAny(subject, AUTO_REPLY_PHRASES) || containsAny(body, AUTO_REPLY_PHRASES)) {
@@ -574,15 +574,30 @@ export const freshdeskSync24h = createServerFn({ method: "POST" })
     const { host } = creds as { host: string };
     const db = await adminClient();
 
-    const { data: rawState } = await db
-      .from("freshdesk_search_sync_state")
-      .select("*")
-      .eq("id", "primary")
-      .maybeSingle();
-    const cached = (rawState as { target_group_ids?: unknown } | null)?.target_group_ids;
-    const resolved = await resolveTargetGroupIds(db, cached);
-    if ("error" in resolved) return { ok: false as const, error: resolved.error };
-    const allowedGroupIds = new Set(resolved.ids);
+    const normName = (s: string) => s.trim().toLowerCase();
+    const targetSet = new Set(TARGET_GROUP_NAMES.map(normName));
+    const groupNameCache = new Map<number, string | null>();
+    const observedNameToId: Record<string, number> = {};
+
+    async function resolveGroupName(groupId: number | null | undefined): Promise<
+      { name: string | null } | { error: string }
+    > {
+      if (!groupId) return { name: null };
+      if (groupNameCache.has(groupId)) return { name: groupNameCache.get(groupId) ?? null };
+      const res = await fdFetch<FreshdeskGroupDTO>(`/api/v2/groups/${groupId}`);
+      if (res.error || !res.data) {
+        if (res.status === 401 || res.status === 403) {
+          return {
+            error:
+              "Your Freshdesk API key can't read group details — ask an admin to enable Groups access for the key.",
+          };
+        }
+        groupNameCache.set(groupId, null);
+        return { name: null };
+      }
+      groupNameCache.set(groupId, res.data.name);
+      return { name: res.data.name };
+    }
 
     const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const allTickets: FreshdeskTicketDTO[] = [];
@@ -608,10 +623,19 @@ export const freshdeskSync24h = createServerFn({ method: "POST" })
 
     for (const dto of allTickets) {
       const normalized = normalizeTicket(dto, host);
+      const resolvedName = await resolveGroupName(dto.group_id ?? null);
+      if ("error" in resolvedName) {
+        return { ok: false as const, error: resolvedName.error };
+      }
+      const gName = resolvedName.name;
+      const groupAllowed = !!gName && targetSet.has(normName(gName));
+      if (groupAllowed && gName && dto.group_id) {
+        observedNameToId[gName] = dto.group_id;
+      }
       const reason = classifyExclusion(
         dto as FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
         normalized,
-        allowedGroupIds,
+        groupAllowed,
       );
       if (reason) {
         if (reason === "group_not_allowed") {
@@ -680,58 +704,7 @@ export const freshdeskSync24h = createServerFn({ method: "POST" })
       upserted: rowsToUpsert.length,
       excluded,
       skipped_wrong_group: skippedWrongGroup,
-      groupIds: resolved.nameToId,
+      groupIds: observedNameToId,
       warnings,
     } satisfies FreshdeskSync24hResult;
-  });
-
-export const TARGET_GROUP_LABELS = TARGET_GROUP_NAMES;
-
-export const freshdeskGetTargetGroupIds = createServerFn({ method: "GET" })
-  .middleware([requireActiveAuthorizedUser])
-  .handler(async ({ context }) => {
-    if (context.role !== "admin") throw new Error("Forbidden");
-    const db = await adminClient();
-    const { data } = await db
-      .from("freshdesk_search_sync_state")
-      .select("target_group_ids")
-      .eq("id", "primary")
-      .maybeSingle();
-    const raw = (data as { target_group_ids?: unknown } | null)?.target_group_ids;
-    const nameToId: Record<string, number> = {};
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-      for (const name of TARGET_GROUP_NAMES) {
-        const v = (raw as Record<string, unknown>)[name];
-        if (typeof v === "number") nameToId[name] = v;
-      }
-    }
-    return { names: TARGET_GROUP_NAMES, nameToId };
-  });
-
-export const freshdeskSaveTargetGroupIds = createServerFn({ method: "POST" })
-  .middleware([requireActiveAuthorizedUser])
-  .inputValidator((data: { nameToId: Record<string, number> }) =>
-    z
-      .object({
-        nameToId: z.record(z.string(), z.number().int().positive()),
-      })
-      .parse(data),
-  )
-  .handler(async ({ context, data }) => {
-    if (context.role !== "admin") throw new Error("Forbidden");
-    const db = await adminClient();
-    const clean: Record<string, number> = {};
-    for (const name of TARGET_GROUP_NAMES) {
-      const v = data.nameToId[name];
-      if (typeof v === "number" && Number.isFinite(v) && v > 0) clean[name] = v;
-    }
-    const { error } = await db
-      .from("freshdesk_search_sync_state")
-      .upsert({
-        id: "primary",
-        target_group_ids: clean,
-        updated_at: new Date().toISOString(),
-      });
-    if (error) return { ok: false as const, error: error.message };
-    return { ok: true as const, nameToId: clean };
   });
