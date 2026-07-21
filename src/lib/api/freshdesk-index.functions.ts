@@ -45,6 +45,107 @@ function laterIso(a: string | null | undefined, b: string): string {
   return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
 }
 
+const TARGET_GROUP_NAMES = ["Programming Support", "Customer Support", "Sup Pod - GB"];
+const AUTO_REPLY_PHRASES = [
+  "out of office",
+  "automatic reply",
+  "auto-reply",
+  "autoreply",
+  "vacation reply",
+  "i am currently out",
+  "away from the office",
+];
+const SPAM_KEYWORDS = ["unsubscribe", "viagra", "winner", "lottery", "bitcoin giveaway"];
+
+type ExclusionReason =
+  | "spam_or_deleted"
+  | "group_not_allowed"
+  | "auto_reply"
+  | "no_account_match"
+  | "keyword_spam";
+
+interface FreshdeskGroupDTO {
+  id: number;
+  name: string;
+}
+
+async function resolveTargetGroupIds(
+  db: ReturnType<typeof adminClient> extends Promise<infer T> ? T : never,
+  cached: unknown,
+): Promise<{ ids: number[]; nameToId: Record<string, number> } | { error: string }> {
+  const isRecord = (v: unknown): v is Record<string, number> =>
+    !!v && typeof v === "object" && !Array.isArray(v);
+  if (isRecord(cached)) {
+    const ids: number[] = [];
+    for (const name of TARGET_GROUP_NAMES) {
+      const id = cached[name];
+      if (typeof id !== "number") {
+        return await fetchAndCacheGroupIds(db);
+      }
+      ids.push(id);
+    }
+    return { ids, nameToId: cached };
+  }
+  return await fetchAndCacheGroupIds(db);
+}
+
+async function fetchAndCacheGroupIds(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+): Promise<{ ids: number[]; nameToId: Record<string, number> } | { error: string }> {
+  const listed = await fdFetch<FreshdeskGroupDTO[]>("/api/v2/groups?per_page=100");
+  if (listed.error || !listed.data) {
+    return { error: listed.error ?? "Freshdesk group listing failed." };
+  }
+  const norm = (s: string) => s.trim().toLowerCase();
+  const byName = new Map(listed.data.map((g) => [norm(g.name), g.id]));
+  const nameToId: Record<string, number> = {};
+  const ids: number[] = [];
+  for (const name of TARGET_GROUP_NAMES) {
+    const id = byName.get(norm(name));
+    if (typeof id !== "number") {
+      return { error: `Freshdesk group not found: "${name}"` };
+    }
+    nameToId[name] = id;
+    ids.push(id);
+  }
+  await db
+    .from("freshdesk_search_sync_state")
+    .upsert({
+      id: "primary",
+      target_group_ids: nameToId,
+      updated_at: new Date().toISOString(),
+    });
+  return { ids, nameToId };
+}
+
+function containsAny(hay: string, needles: string[]): boolean {
+  if (!hay) return false;
+  const lower = hay.toLowerCase();
+  return needles.some((n) => lower.includes(n));
+}
+
+function classifyExclusion(
+  dto: FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
+  normalized: NormalizedTicket,
+  allowedGroupIds: Set<number>,
+): ExclusionReason | null {
+  if (dto.spam === true || dto.deleted === true) return "spam_or_deleted";
+  if (!dto.group_id || !allowedGroupIds.has(dto.group_id)) return "group_not_allowed";
+  const subject = normalized.subject ?? "";
+  const body = normalized.description ?? "";
+  if (containsAny(subject, AUTO_REPLY_PHRASES) || containsAny(body, AUTO_REPLY_PHRASES)) {
+    return "auto_reply";
+  }
+  if (!normalized.accountNumber || !normalized.accountNumber.trim()) {
+    return "no_account_match";
+  }
+  if (containsAny(subject, SPAM_KEYWORDS) || containsAny(body, SPAM_KEYWORDS)) {
+    return "keyword_spam";
+  }
+  return null;
+}
+
 export interface FreshdeskIndexHit {
   ticket: NormalizedTicket;
   conversationText: string;
