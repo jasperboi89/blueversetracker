@@ -542,3 +542,138 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
       warnings: conversationErrors,
     };
   });
+
+export interface FreshdeskSync24hResult {
+  ok: true;
+  pulled: number;
+  upserted: number;
+  excluded: {
+    spam_or_deleted: number;
+    auto_reply: number;
+    no_account_match: number;
+    keyword_spam: number;
+  };
+  skipped_wrong_group: number;
+  groupIds: Record<string, number>;
+  warnings: string[];
+}
+
+export const freshdeskSync24h = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .handler(async ({ context }) => {
+    if (context.role !== "admin") throw new Error("Forbidden");
+    const creds = readFreshdeskCreds();
+    if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
+    const { host } = creds as { host: string };
+    const db = await adminClient();
+
+    const { data: rawState } = await db
+      .from("freshdesk_search_sync_state")
+      .select("*")
+      .eq("id", "primary")
+      .maybeSingle();
+    const cached = (rawState as { target_group_ids?: unknown } | null)?.target_group_ids;
+    const resolved = await resolveTargetGroupIds(db, cached);
+    if ("error" in resolved) return { ok: false as const, error: resolved.error };
+    const allowedGroupIds = new Set(resolved.ids);
+
+    const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const allTickets: FreshdeskTicketDTO[] = [];
+    for (let page = 1; page <= 20; page += 1) {
+      const path =
+        `/api/v2/tickets?updated_since=${encodeURIComponent(sinceIso)}` +
+        `&include=description,requester&order_by=updated_at&order_type=asc&per_page=100&page=${page}`;
+      const listed = await fdFetch<FreshdeskTicketDTO[]>(path);
+      if (listed.error || !listed.data) {
+        return { ok: false as const, error: listed.error ?? "Freshdesk ticket listing failed." };
+      }
+      allTickets.push(...listed.data);
+      if (listed.data.length < 100) break;
+    }
+
+    const excluded = { spam_or_deleted: 0, auto_reply: 0, no_account_match: 0, keyword_spam: 0 };
+    let skippedWrongGroup = 0;
+    const warnings: string[] = [];
+    const rowsToUpsert: Record<string, unknown>[] = [];
+    const excludedRows: Record<string, unknown>[] = [];
+    const excludedIds: number[] = [];
+    const now = new Date().toISOString();
+
+    for (const dto of allTickets) {
+      const normalized = normalizeTicket(dto, host);
+      const reason = classifyExclusion(
+        dto as FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
+        normalized,
+        allowedGroupIds,
+      );
+      if (reason) {
+        if (reason === "group_not_allowed") {
+          skippedWrongGroup += 1;
+        } else {
+          excluded[reason] += 1;
+        }
+        excludedIds.push(dto.id);
+        excludedRows.push({
+          ticket_id: dto.id,
+          reason,
+          subject: dto.subject ?? null,
+          group_id: dto.group_id ?? null,
+          excluded_at: now,
+        });
+        continue;
+      }
+
+      const conversations = await fetchAllConversations(String(dto.id));
+      if (!conversations.ok && conversations.error) {
+        warnings.push(`#${dto.id}: ${conversations.error}`);
+      }
+      const conversationText = conversations.conversations
+        .map((c) => (c.body_text ?? c.body ?? "").trim())
+        .filter(Boolean)
+        .join("\n---\n");
+      rowsToUpsert.push({
+        ticket_id: dto.id,
+        ticket: normalized,
+        subject: normalized.subject,
+        description_text: normalized.description,
+        conversation_text: conversationText,
+        requester_name: normalized.requesterName ?? "",
+        company_name: normalized.companyName ?? normalized.accountName ?? "",
+        account_number: normalized.accountNumber ?? "",
+        status: dto.status,
+        priority: dto.priority,
+        group_id: dto.group_id ?? null,
+        agent_id: dto.responder_id ?? null,
+        tags: normalized.tags ?? [],
+        custom_fields: normalized.customFields ?? {},
+        freshdesk_created_at: dto.created_at,
+        freshdesk_updated_at: dto.updated_at,
+        indexed_at: now,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+
+    if (rowsToUpsert.length) {
+      const { error } = await db
+        .from("freshdesk_search_documents")
+        .upsert(rowsToUpsert, { onConflict: "ticket_id" });
+      if (error) return { ok: false as const, error: error.message };
+    }
+
+    if (excludedIds.length) {
+      await db.from("freshdesk_search_documents").delete().in("ticket_id", excludedIds);
+      await db
+        .from("freshdesk_excluded_tickets")
+        .upsert(excludedRows, { onConflict: "ticket_id" });
+    }
+
+    return {
+      ok: true as const,
+      pulled: allTickets.length,
+      upserted: rowsToUpsert.length,
+      excluded,
+      skipped_wrong_group: skippedWrongGroup,
+      groupIds: resolved.nameToId,
+      warnings,
+    } satisfies FreshdeskSync24hResult;
+  });
