@@ -266,6 +266,79 @@ function IndexManager() {
 }
 
 function AccountCoverageTester() {
+  return <AccountCoverageTesterImpl />;
+}
+
+function Sync24hManager() {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<FreshdeskSync24hResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await freshdeskSync24h();
+      if (!res.ok) {
+        setError(res.error);
+      } else {
+        setResult(res);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sync failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={run} disabled={loading}>
+          {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+          Sync last 24h
+        </Button>
+      </div>
+      <div>
+        Pulls Freshdesk tickets updated in the last 24 hours from Programming Support, Customer
+        Support, and Sup Pod - GB, upserts them into the search index, and skips spam, trash,
+        out-of-office replies, and tickets with no matching account number.
+      </div>
+      {error && <div className="text-rose-300">{error}</div>}
+      {result && (
+        <ul className="space-y-1">
+          <Row label="Tickets pulled">{result.pulled}</Row>
+          <Row label="Indexed / updated">{result.upserted}</Row>
+          <Row label="Skipped: wrong group">{result.skipped_wrong_group}</Row>
+          <Row label="Excluded: spam / trash">{result.excluded.spam_or_deleted}</Row>
+          <Row label="Excluded: auto-reply">{result.excluded.auto_reply}</Row>
+          <Row label="Excluded: no account match">{result.excluded.no_account_match}</Row>
+          <Row label="Excluded: keyword spam">{result.excluded.keyword_spam}</Row>
+          <Row label="Group IDs">
+            <code className="text-foreground/90">
+              {Object.entries(result.groupIds)
+                .map(([n, id]) => `${n}:${id}`)
+                .join(" · ")}
+            </code>
+          </Row>
+          {result.warnings.length > 0 && (
+            <li className="text-amber-300">
+              Warnings:
+              <ul className="ml-3 mt-1 space-y-0.5">
+                {result.warnings.slice(0, 10).map((w, i) => (
+                  <li key={i}>• {w}</li>
+                ))}
+              </ul>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function AccountCoverageTesterImpl() {
   const [num, setNum] = useState("");
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<AccountCoverageReport | null>(null);
