@@ -70,7 +70,8 @@ interface FreshdeskGroupDTO {
 }
 
 async function resolveTargetGroupIds(
-  db: ReturnType<typeof adminClient> extends Promise<infer T> ? T : never,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
   cached: unknown,
 ): Promise<{ ids: number[]; nameToId: Record<string, number> } | { error: string }> {
   const isRecord = (v: unknown): v is Record<string, number> =>
