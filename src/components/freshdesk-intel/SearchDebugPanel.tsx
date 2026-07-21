@@ -11,7 +11,9 @@ import {
 import {
   freshdeskIndexStatus,
   freshdeskSyncIndexBatch,
+  freshdeskSync24h,
   type FreshdeskIndexStatus,
+  type FreshdeskSync24hResult,
 } from "@/lib/api/freshdesk-index.functions";
 
 type SyncReport = {
@@ -43,6 +45,10 @@ export function SearchDebugPanel({ lastDebug }: { lastDebug: SearchDebug | null 
 
       <Section title="Intelligence index (last 6 months)">
         <IndexManager />
+      </Section>
+
+      <Section title="24-hour targeted sync">
+        <Sync24hManager />
       </Section>
 
       <Section title="Account coverage test">
