@@ -135,10 +135,10 @@ function containsAny(hay: string, needles: string[]): boolean {
 function classifyExclusion(
   dto: FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
   normalized: NormalizedTicket,
-  allowedGroupIds: Set<number>,
+  groupAllowed: boolean,
 ): ExclusionReason | null {
   if (dto.spam === true || dto.deleted === true) return "spam_or_deleted";
-  if (!dto.group_id || !allowedGroupIds.has(dto.group_id)) return "group_not_allowed";
+  if (!groupAllowed) return "group_not_allowed";
   const subject = normalized.subject ?? "";
   const body = normalized.description ?? "";
   if (containsAny(subject, AUTO_REPLY_PHRASES) || containsAny(body, AUTO_REPLY_PHRASES)) {
