@@ -96,6 +96,12 @@ async function fetchAndCacheGroupIds(
 ): Promise<{ ids: number[]; nameToId: Record<string, number> } | { error: string }> {
   const listed = await fdFetch<FreshdeskGroupDTO[]>("/api/v2/groups?per_page=100");
   if (listed.error || !listed.data) {
+    if (listed.status === 401 || listed.status === 403) {
+      return {
+        error:
+          "Your Freshdesk API key can't list groups (admin scope required). Enter the three group IDs manually above and click Save, then retry.",
+      };
+    }
     return { error: listed.error ?? "Freshdesk group listing failed." };
   }
   const norm = (s: string) => s.trim().toLowerCase();
@@ -677,4 +683,55 @@ export const freshdeskSync24h = createServerFn({ method: "POST" })
       groupIds: resolved.nameToId,
       warnings,
     } satisfies FreshdeskSync24hResult;
+  });
+
+export const TARGET_GROUP_LABELS = TARGET_GROUP_NAMES;
+
+export const freshdeskGetTargetGroupIds = createServerFn({ method: "GET" })
+  .middleware([requireActiveAuthorizedUser])
+  .handler(async ({ context }) => {
+    if (context.role !== "admin") throw new Error("Forbidden");
+    const db = await adminClient();
+    const { data } = await db
+      .from("freshdesk_search_sync_state")
+      .select("target_group_ids")
+      .eq("id", "primary")
+      .maybeSingle();
+    const raw = (data as { target_group_ids?: unknown } | null)?.target_group_ids;
+    const nameToId: Record<string, number> = {};
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      for (const name of TARGET_GROUP_NAMES) {
+        const v = (raw as Record<string, unknown>)[name];
+        if (typeof v === "number") nameToId[name] = v;
+      }
+    }
+    return { names: TARGET_GROUP_NAMES, nameToId };
+  });
+
+export const freshdeskSaveTargetGroupIds = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((data: { nameToId: Record<string, number> }) =>
+    z
+      .object({
+        nameToId: z.record(z.string(), z.number().int().positive()),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    if (context.role !== "admin") throw new Error("Forbidden");
+    const db = await adminClient();
+    const clean: Record<string, number> = {};
+    for (const name of TARGET_GROUP_NAMES) {
+      const v = data.nameToId[name];
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) clean[name] = v;
+    }
+    const { error } = await db
+      .from("freshdesk_search_sync_state")
+      .upsert({
+        id: "primary",
+        target_group_ids: clean,
+        updated_at: new Date().toISOString(),
+      });
+    if (error) return { ok: false as const, error: error.message };
+    return { ok: true as const, nameToId: clean };
   });
