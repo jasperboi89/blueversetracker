@@ -574,15 +574,30 @@ export const freshdeskSync24h = createServerFn({ method: "POST" })
     const { host } = creds as { host: string };
     const db = await adminClient();
 
-    const { data: rawState } = await db
-      .from("freshdesk_search_sync_state")
-      .select("*")
-      .eq("id", "primary")
-      .maybeSingle();
-    const cached = (rawState as { target_group_ids?: unknown } | null)?.target_group_ids;
-    const resolved = await resolveTargetGroupIds(db, cached);
-    if ("error" in resolved) return { ok: false as const, error: resolved.error };
-    const allowedGroupIds = new Set(resolved.ids);
+    const normName = (s: string) => s.trim().toLowerCase();
+    const targetSet = new Set(TARGET_GROUP_NAMES.map(normName));
+    const groupNameCache = new Map<number, string | null>();
+    const observedNameToId: Record<string, number> = {};
+
+    async function resolveGroupName(groupId: number | null | undefined): Promise<
+      { name: string | null } | { error: string }
+    > {
+      if (!groupId) return { name: null };
+      if (groupNameCache.has(groupId)) return { name: groupNameCache.get(groupId) ?? null };
+      const res = await fdFetch<FreshdeskGroupDTO>(`/api/v2/groups/${groupId}`);
+      if (res.error || !res.data) {
+        if (res.status === 401 || res.status === 403) {
+          return {
+            error:
+              "Your Freshdesk API key can't read group details — ask an admin to enable Groups access for the key.",
+          };
+        }
+        groupNameCache.set(groupId, null);
+        return { name: null };
+      }
+      groupNameCache.set(groupId, res.data.name);
+      return { name: res.data.name };
+    }
 
     const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const allTickets: FreshdeskTicketDTO[] = [];
@@ -608,10 +623,19 @@ export const freshdeskSync24h = createServerFn({ method: "POST" })
 
     for (const dto of allTickets) {
       const normalized = normalizeTicket(dto, host);
+      const resolvedName = await resolveGroupName(dto.group_id ?? null);
+      if ("error" in resolvedName) {
+        return { ok: false as const, error: resolvedName.error };
+      }
+      const gName = resolvedName.name;
+      const groupAllowed = !!gName && targetSet.has(normName(gName));
+      if (groupAllowed && gName && dto.group_id) {
+        observedNameToId[gName] = dto.group_id;
+      }
       const reason = classifyExclusion(
         dto as FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
         normalized,
-        allowedGroupIds,
+        groupAllowed,
       );
       if (reason) {
         if (reason === "group_not_allowed") {
