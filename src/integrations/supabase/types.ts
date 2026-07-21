@@ -110,6 +110,30 @@ export type Database = {
         }
         Relationships: []
       }
+      freshdesk_excluded_tickets: {
+        Row: {
+          excluded_at: string
+          group_id: number | null
+          reason: string
+          subject: string | null
+          ticket_id: number
+        }
+        Insert: {
+          excluded_at?: string
+          group_id?: number | null
+          reason: string
+          subject?: string | null
+          ticket_id: number
+        }
+        Update: {
+          excluded_at?: string
+          group_id?: number | null
+          reason?: string
+          subject?: string | null
+          ticket_id?: number
+        }
+        Relationships: []
+      }
       freshdesk_search_documents: {
         Row: {
           account_number: string
@@ -187,6 +211,7 @@ export type Database = {
           next_page: number
           started_at: string | null
           sync_since: string | null
+          target_group_ids: Json | null
           tickets_indexed: number
           updated_at: string
         }
@@ -200,6 +225,7 @@ export type Database = {
           next_page?: number
           started_at?: string | null
           sync_since?: string | null
+          target_group_ids?: Json | null
           tickets_indexed?: number
           updated_at?: string
         }
@@ -213,6 +239,7 @@ export type Database = {
           next_page?: number
           started_at?: string | null
           sync_since?: string | null
+          target_group_ids?: Json | null
           tickets_indexed?: number
           updated_at?: string
         }

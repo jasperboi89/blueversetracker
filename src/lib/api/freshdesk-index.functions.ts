@@ -45,6 +45,108 @@ function laterIso(a: string | null | undefined, b: string): string {
   return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
 }
 
+const TARGET_GROUP_NAMES = ["Programming Support", "Customer Support", "Sup Pod - GB"];
+const AUTO_REPLY_PHRASES = [
+  "out of office",
+  "automatic reply",
+  "auto-reply",
+  "autoreply",
+  "vacation reply",
+  "i am currently out",
+  "away from the office",
+];
+const SPAM_KEYWORDS = ["unsubscribe", "viagra", "winner", "lottery", "bitcoin giveaway"];
+
+type ExclusionReason =
+  | "spam_or_deleted"
+  | "group_not_allowed"
+  | "auto_reply"
+  | "no_account_match"
+  | "keyword_spam";
+
+interface FreshdeskGroupDTO {
+  id: number;
+  name: string;
+}
+
+async function resolveTargetGroupIds(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  cached: unknown,
+): Promise<{ ids: number[]; nameToId: Record<string, number> } | { error: string }> {
+  const isRecord = (v: unknown): v is Record<string, number> =>
+    !!v && typeof v === "object" && !Array.isArray(v);
+  if (isRecord(cached)) {
+    const ids: number[] = [];
+    for (const name of TARGET_GROUP_NAMES) {
+      const id = cached[name];
+      if (typeof id !== "number") {
+        return await fetchAndCacheGroupIds(db);
+      }
+      ids.push(id);
+    }
+    return { ids, nameToId: cached };
+  }
+  return await fetchAndCacheGroupIds(db);
+}
+
+async function fetchAndCacheGroupIds(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+): Promise<{ ids: number[]; nameToId: Record<string, number> } | { error: string }> {
+  const listed = await fdFetch<FreshdeskGroupDTO[]>("/api/v2/groups?per_page=100");
+  if (listed.error || !listed.data) {
+    return { error: listed.error ?? "Freshdesk group listing failed." };
+  }
+  const norm = (s: string) => s.trim().toLowerCase();
+  const byName = new Map(listed.data.map((g) => [norm(g.name), g.id]));
+  const nameToId: Record<string, number> = {};
+  const ids: number[] = [];
+  for (const name of TARGET_GROUP_NAMES) {
+    const id = byName.get(norm(name));
+    if (typeof id !== "number") {
+      return { error: `Freshdesk group not found: "${name}"` };
+    }
+    nameToId[name] = id;
+    ids.push(id);
+  }
+  await db
+    .from("freshdesk_search_sync_state")
+    .upsert({
+      id: "primary",
+      target_group_ids: nameToId,
+      updated_at: new Date().toISOString(),
+    });
+  return { ids, nameToId };
+}
+
+function containsAny(hay: string, needles: string[]): boolean {
+  if (!hay) return false;
+  const lower = hay.toLowerCase();
+  return needles.some((n) => lower.includes(n));
+}
+
+function classifyExclusion(
+  dto: FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
+  normalized: NormalizedTicket,
+  allowedGroupIds: Set<number>,
+): ExclusionReason | null {
+  if (dto.spam === true || dto.deleted === true) return "spam_or_deleted";
+  if (!dto.group_id || !allowedGroupIds.has(dto.group_id)) return "group_not_allowed";
+  const subject = normalized.subject ?? "";
+  const body = normalized.description ?? "";
+  if (containsAny(subject, AUTO_REPLY_PHRASES) || containsAny(body, AUTO_REPLY_PHRASES)) {
+    return "auto_reply";
+  }
+  if (!normalized.accountNumber || !normalized.accountNumber.trim()) {
+    return "no_account_match";
+  }
+  if (containsAny(subject, SPAM_KEYWORDS) || containsAny(body, SPAM_KEYWORDS)) {
+    return "keyword_spam";
+  }
+  return null;
+}
+
 export interface FreshdeskIndexHit {
   ticket: NormalizedTicket;
   conversationText: string;
@@ -440,4 +542,139 @@ export const freshdeskSyncIndexBatch = createServerFn({ method: "POST" })
       conversationsIndexed: nextState.conversations_indexed,
       warnings: conversationErrors,
     };
+  });
+
+export interface FreshdeskSync24hResult {
+  ok: true;
+  pulled: number;
+  upserted: number;
+  excluded: {
+    spam_or_deleted: number;
+    auto_reply: number;
+    no_account_match: number;
+    keyword_spam: number;
+  };
+  skipped_wrong_group: number;
+  groupIds: Record<string, number>;
+  warnings: string[];
+}
+
+export const freshdeskSync24h = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .handler(async ({ context }) => {
+    if (context.role !== "admin") throw new Error("Forbidden");
+    const creds = readFreshdeskCreds();
+    if ("error" in creds && creds.error) return { ok: false as const, error: creds.error };
+    const { host } = creds as { host: string };
+    const db = await adminClient();
+
+    const { data: rawState } = await db
+      .from("freshdesk_search_sync_state")
+      .select("*")
+      .eq("id", "primary")
+      .maybeSingle();
+    const cached = (rawState as { target_group_ids?: unknown } | null)?.target_group_ids;
+    const resolved = await resolveTargetGroupIds(db, cached);
+    if ("error" in resolved) return { ok: false as const, error: resolved.error };
+    const allowedGroupIds = new Set(resolved.ids);
+
+    const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const allTickets: FreshdeskTicketDTO[] = [];
+    for (let page = 1; page <= 20; page += 1) {
+      const path =
+        `/api/v2/tickets?updated_since=${encodeURIComponent(sinceIso)}` +
+        `&include=description,requester&order_by=updated_at&order_type=asc&per_page=100&page=${page}`;
+      const listed = await fdFetch<FreshdeskTicketDTO[]>(path);
+      if (listed.error || !listed.data) {
+        return { ok: false as const, error: listed.error ?? "Freshdesk ticket listing failed." };
+      }
+      allTickets.push(...listed.data);
+      if (listed.data.length < 100) break;
+    }
+
+    const excluded = { spam_or_deleted: 0, auto_reply: 0, no_account_match: 0, keyword_spam: 0 };
+    let skippedWrongGroup = 0;
+    const warnings: string[] = [];
+    const rowsToUpsert: Record<string, unknown>[] = [];
+    const excludedRows: Record<string, unknown>[] = [];
+    const excludedIds: number[] = [];
+    const now = new Date().toISOString();
+
+    for (const dto of allTickets) {
+      const normalized = normalizeTicket(dto, host);
+      const reason = classifyExclusion(
+        dto as FreshdeskTicketDTO & { spam?: boolean; deleted?: boolean },
+        normalized,
+        allowedGroupIds,
+      );
+      if (reason) {
+        if (reason === "group_not_allowed") {
+          skippedWrongGroup += 1;
+        } else {
+          excluded[reason] += 1;
+        }
+        excludedIds.push(dto.id);
+        excludedRows.push({
+          ticket_id: dto.id,
+          reason,
+          subject: dto.subject ?? null,
+          group_id: dto.group_id ?? null,
+          excluded_at: now,
+        });
+        continue;
+      }
+
+      const conversations = await fetchAllConversations(String(dto.id));
+      if (!conversations.ok && conversations.error) {
+        warnings.push(`#${dto.id}: ${conversations.error}`);
+      }
+      const conversationText = conversations.conversations
+        .map((c) => (c.body_text ?? c.body ?? "").trim())
+        .filter(Boolean)
+        .join("\n---\n");
+      rowsToUpsert.push({
+        ticket_id: dto.id,
+        ticket: normalized,
+        subject: normalized.subject,
+        description_text: normalized.description,
+        conversation_text: conversationText,
+        requester_name: normalized.requesterName ?? "",
+        company_name: normalized.companyName ?? normalized.accountName ?? "",
+        account_number: normalized.accountNumber ?? "",
+        status: dto.status,
+        priority: dto.priority,
+        group_id: dto.group_id ?? null,
+        agent_id: dto.responder_id ?? null,
+        tags: normalized.tags ?? [],
+        custom_fields: normalized.customFields ?? {},
+        freshdesk_created_at: dto.created_at,
+        freshdesk_updated_at: dto.updated_at,
+        indexed_at: now,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+
+    if (rowsToUpsert.length) {
+      const { error } = await db
+        .from("freshdesk_search_documents")
+        .upsert(rowsToUpsert, { onConflict: "ticket_id" });
+      if (error) return { ok: false as const, error: error.message };
+    }
+
+    if (excludedIds.length) {
+      await db.from("freshdesk_search_documents").delete().in("ticket_id", excludedIds);
+      await db
+        .from("freshdesk_excluded_tickets")
+        .upsert(excludedRows, { onConflict: "ticket_id" });
+    }
+
+    return {
+      ok: true as const,
+      pulled: allTickets.length,
+      upserted: rowsToUpsert.length,
+      excluded,
+      skipped_wrong_group: skippedWrongGroup,
+      groupIds: resolved.nameToId,
+      warnings,
+    } satisfies FreshdeskSync24hResult;
   });
