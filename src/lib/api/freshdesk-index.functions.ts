@@ -96,6 +96,12 @@ async function fetchAndCacheGroupIds(
 ): Promise<{ ids: number[]; nameToId: Record<string, number> } | { error: string }> {
   const listed = await fdFetch<FreshdeskGroupDTO[]>("/api/v2/groups?per_page=100");
   if (listed.error || !listed.data) {
+    if (listed.status === 401 || listed.status === 403) {
+      return {
+        error:
+          "Your Freshdesk API key can't list groups (admin scope required). Enter the three group IDs manually above and click Save, then retry.",
+      };
+    }
     return { error: listed.error ?? "Freshdesk group listing failed." };
   }
   const norm = (s: string) => s.trim().toLowerCase();
