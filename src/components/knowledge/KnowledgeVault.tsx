@@ -23,6 +23,7 @@ import {
   Pencil,
   Pin,
   Plus,
+  Printer,
   RefreshCw,
   Search,
   Sparkles,
@@ -41,6 +42,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { PrintableNote } from "@/components/knowledge/PrintableNote";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -229,6 +231,7 @@ export function KnowledgeVault() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<KnowledgeNote | null>(null);
+  const [printTarget, setPrintTarget] = useState<KnowledgeNote | null>(null);
   const draftRef = useRef<KnowledgeNote | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
