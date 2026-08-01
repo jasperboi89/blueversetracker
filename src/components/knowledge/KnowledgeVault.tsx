@@ -1127,6 +1127,7 @@ export function KnowledgeVault() {
                   folders={folders}
                   onPatch={(changes) => void patchNoteById(note.id, changes)}
                   onDelete={() => void deleteNoteById(note.id)}
+                  onPrint={() => setPrintTarget(note)}
                   showFolderChip={!view.startsWith("folder:")}
                   onClick={() => selectNote(note.id)}
                 />
@@ -1462,6 +1463,17 @@ export function KnowledgeVault() {
             </div>
           ) : null}
           <DialogFooter className="border-t border-white/10 px-5 py-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                setExpanded(false);
+                setPrintTarget(draftRef.current ?? draft);
+              }}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
             <Button variant="ghost" onClick={() => setExpanded(false)}>
               Done
             </Button>
@@ -1740,6 +1752,7 @@ function NoteCard({
   folders,
   onPatch,
   onDelete,
+  onPrint,
   showFolderChip,
 }: {
   note: KnowledgeNote;
@@ -1758,6 +1771,7 @@ function NoteCard({
     >,
   ) => void;
   onDelete: () => void;
+  onPrint: () => void;
   showFolderChip: boolean;
 }) {
   const config = typeConfig(note.noteType);
@@ -1886,6 +1900,9 @@ function NoteCard({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onStartRename()}>
                 <Pencil className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPrint()}>
+                <Printer className="mr-2 h-4 w-4" /> Print
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onPatch({ isPinned: !note.isPinned })}>
                 {note.isPinned ? (
