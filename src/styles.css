@@ -721,3 +721,108 @@ html[data-qb-sanctuary="on"] header.sticky:hover {
   height: 0;
   pointer-events: none;
 }
+
+/* ---------- Knowledge Vault printing ---------- */
+.knowledge-print-root { display: none; }
+
+@media print {
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body * { visibility: hidden !important; }
+  .knowledge-print-root,
+  .knowledge-print-root * { visibility: visible !important; }
+  .knowledge-print-root {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 12pt;
+    line-height: 1.5;
+    box-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .knowledge-print-root * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  .knowledge-print-root mark {
+    background: #eee !important;
+    text-decoration: underline;
+  }
+  .knowledge-print-root .kp-header {
+    border-bottom: 1px solid #999;
+    padding-bottom: 8pt;
+    margin-bottom: 14pt;
+  }
+  .knowledge-print-root .kp-title {
+    font-size: 20pt;
+    font-weight: 700;
+    margin: 0 0 4pt;
+  }
+  .knowledge-print-root .kp-meta {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .knowledge-print-root .kp-meta span + span::before {
+    content: " · ";
+  }
+  .knowledge-print-root .kp-tags {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    margin-top: 3pt;
+  }
+  .knowledge-print-root .kp-section { margin-bottom: 14pt; }
+  .knowledge-print-root .kp-h2 {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 3pt;
+    margin: 0 0 8pt;
+  }
+  .knowledge-print-root .kp-body p { margin: 0 0 8pt; }
+  .knowledge-print-root .kp-body ul,
+  .knowledge-print-root .kp-body ol { margin: 0 0 8pt 18pt; }
+  .knowledge-print-root .kp-body li { margin: 0 0 3pt; }
+  .knowledge-print-root .kp-body h1,
+  .knowledge-print-root .kp-body h2,
+  .knowledge-print-root .kp-body h3 { margin: 12pt 0 6pt; }
+  .knowledge-print-root .kp-body blockquote {
+    border-left: 2pt solid #999;
+    padding-left: 8pt;
+    margin: 0 0 8pt;
+  }
+  .knowledge-print-root .kp-figure {
+    margin: 0 0 12pt;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .knowledge-print-root .kp-figure img {
+    max-width: 100%;
+    max-height: 8in;
+    border: 1px solid #ccc;
+  }
+  .knowledge-print-root .kp-figure figcaption {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    margin-top: 3pt;
+  }
+  .knowledge-print-root .kp-files {
+    margin: 0 0 0 18pt;
+    font-size: 11pt;
+  }
+  @page { margin: 0.6in; }
+}

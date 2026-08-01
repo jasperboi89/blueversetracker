@@ -23,6 +23,7 @@ import {
   Pencil,
   Pin,
   Plus,
+  Printer,
   RefreshCw,
   Search,
   Sparkles,
@@ -41,6 +42,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { PrintableNote } from "@/components/knowledge/PrintableNote";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -229,6 +231,16 @@ export function KnowledgeVault() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<KnowledgeNote | null>(null);
+  const [printTarget, setPrintTarget] = useState<KnowledgeNote | null>(null);
+
+  useEffect(() => {
+    if (!printTarget) return;
+    const timer = window.setTimeout(() => {
+      window.print();
+      setPrintTarget(null);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [printTarget]);
   const draftRef = useRef<KnowledgeNote | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1115,6 +1127,7 @@ export function KnowledgeVault() {
                   folders={folders}
                   onPatch={(changes) => void patchNoteById(note.id, changes)}
                   onDelete={() => void deleteNoteById(note.id)}
+                  onPrint={() => setPrintTarget(note)}
                   showFolderChip={!view.startsWith("folder:")}
                   onClick={() => selectNote(note.id)}
                 />
@@ -1220,6 +1233,18 @@ export function KnowledgeVault() {
                       title="Expand note to full-screen editor"
                     >
                       <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                        setPrintTarget(draftRef.current ?? draft);
+                      }}
+                      title="Print note"
+                    >
+                      <Printer className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -1346,6 +1371,13 @@ export function KnowledgeVault() {
         </main>
       </div>
 
+      {printTarget ? (
+        <PrintableNote
+          note={printTarget}
+          folderName={folderById.get(printTarget.folderId ?? "")?.name}
+        />
+      ) : null}
+
       <FolderDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
@@ -1431,6 +1463,17 @@ export function KnowledgeVault() {
             </div>
           ) : null}
           <DialogFooter className="border-t border-white/10 px-5 py-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                setExpanded(false);
+                setPrintTarget(draftRef.current ?? draft);
+              }}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
             <Button variant="ghost" onClick={() => setExpanded(false)}>
               Done
             </Button>
@@ -1709,6 +1752,7 @@ function NoteCard({
   folders,
   onPatch,
   onDelete,
+  onPrint,
   showFolderChip,
 }: {
   note: KnowledgeNote;
@@ -1727,6 +1771,7 @@ function NoteCard({
     >,
   ) => void;
   onDelete: () => void;
+  onPrint: () => void;
   showFolderChip: boolean;
 }) {
   const config = typeConfig(note.noteType);
@@ -1855,6 +1900,9 @@ function NoteCard({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onStartRename()}>
                 <Pencil className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPrint()}>
+                <Printer className="mr-2 h-4 w-4" /> Print
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onPatch({ isPinned: !note.isPinned })}>
                 {note.isPinned ? (
