@@ -1370,6 +1370,13 @@ export function KnowledgeVault() {
         </main>
       </div>
 
+      {printTarget ? (
+        <PrintableNote
+          note={printTarget}
+          folderName={folderById.get(printTarget.folderId ?? "")?.name}
+        />
+      ) : null}
+
       <FolderDialog
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
