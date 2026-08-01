@@ -232,6 +232,15 @@ export function KnowledgeVault() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<KnowledgeNote | null>(null);
   const [printTarget, setPrintTarget] = useState<KnowledgeNote | null>(null);
+
+  useEffect(() => {
+    if (!printTarget) return;
+    const timer = window.setTimeout(() => {
+      window.print();
+      setPrintTarget(null);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [printTarget]);
   const draftRef = useRef<KnowledgeNote | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1223,6 +1232,18 @@ export function KnowledgeVault() {
                       title="Expand note to full-screen editor"
                     >
                       <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                        setPrintTarget(draftRef.current ?? draft);
+                      }}
+                      title="Print note"
+                    >
+                      <Printer className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
