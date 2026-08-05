@@ -215,6 +215,9 @@ export async function aiRespondWithTools(opts: {
       input: items,
       tools: opts.tools,
       tool_choice: "auto",
+      // Reasoning is on by default for these models; carry it forward inline
+      // so the follow-up turn can resend the items verbatim.
+      include: ["reasoning.encrypted_content"],
     });
     if (!res.ok) return { ok: false, error: res.error, toolsUsed };
 
