@@ -159,7 +159,8 @@ export async function runCopilotTool(
       const t = arr(blob, "tickets").find((x) => str(x["number"]) === wanted);
       if (!t) return { found: false, number: wanted };
       const details = (t["details"] as Row | undefined) ?? {};
-      const session = (t["session"] as Row | undefined) ?? {};
+      const sessions = (blob["workSessions"] as Record<string, Row> | undefined) ?? {};
+      const session = sessions[str(t["id"])] ?? {};
       const notes = (Array.isArray(t["freshdeskNotes"]) ? (t["freshdeskNotes"] as Row[]) : [])
         .slice(0, 15)
         .map((n) => ({ author: str(n["author"]), body: str(n["body"]).slice(0, 1200) }));
