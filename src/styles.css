@@ -826,3 +826,22 @@ html[data-qb-sanctuary="on"] header.sticky:hover {
   }
   @page { margin: 0.6in; }
 }
+
+/* Intel Copilot markdown answers */
+.copilot-markdown p { margin: 0 0 0.5em; }
+.copilot-markdown p:last-child { margin-bottom: 0; }
+.copilot-markdown ul { list-style: disc; padding-left: 1.15rem; margin: 0 0 0.5em; }
+.copilot-markdown ol { list-style: decimal; padding-left: 1.15rem; margin: 0 0 0.5em; }
+.copilot-markdown li { margin: 0.15em 0; }
+.copilot-markdown strong { font-weight: 600; }
+.copilot-markdown h1, .copilot-markdown h2, .copilot-markdown h3 {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0.6em 0 0.3em;
+}
+.copilot-markdown code {
+  font-size: 0.85em;
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.07);
+}
