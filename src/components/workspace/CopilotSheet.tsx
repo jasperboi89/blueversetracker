@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, Send, Sparkles, ShieldOff, Compass, ArrowUpRight } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import {
+  Loader2,
+  Send,
+  Sparkles,
+  ShieldOff,
+  Compass,
+  ArrowUpRight,
+  Wrench,
+  RotateCcw,
+} from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,12 +21,13 @@ import {
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { aiCopilot, aiFocus } from "@/lib/ai/ai.functions";
-import { useAISettings } from "@/lib/settings/ai-settings-store";
+import { aiCopilotChat, aiFocus } from "@/lib/ai/ai.functions";
+import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
 import { ticketsStore, isOverdue, STATUS_LABEL } from "@/lib/tickets-store";
 import { accountsStore } from "@/lib/accounts-store";
 import { nightPlanStore } from "@/lib/night-plan-store";
 import { activitySummary } from "@/lib/workspace/activity-store";
+import { htmlToPlainText } from "@/lib/rich-text";
 import { useInsights, type InsightSeverity } from "@/lib/ai/awareness";
 
 export const COPILOT_OPEN_EVENT = "intel-copilot:open";
@@ -68,6 +79,12 @@ const SUGGESTIONS = [
   "What should I work next?",
 ];
 
+interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+  tools?: string[];
+}
+
 const SEVERITY_TONE: Record<InsightSeverity, string> = {
   high: "oklch(0.82 0.18 25)",
   warn: "oklch(0.85 0.16 85)",
@@ -80,9 +97,10 @@ export function CopilotSheet() {
   const insights = useInsights();
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -98,24 +116,44 @@ export function CopilotSheet() {
       }, 60);
   }, [open]);
 
-  const ask = async (q: string) => {
-    const query = q.trim();
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [turns, busy]);
+
+  /** Multi-turn ask: the server-side Copilot pulls its own data via tools. */
+  const ask = async (raw: string) => {
+    const query = htmlToPlainText(raw).trim();
     if (!query || busy) return;
+    const history: ChatTurn[] = [...turns, { role: "user", content: query }];
+    setTurns(history);
+    setQuestion("");
     setBusy(true);
-    setAnswer("");
-    const res = await aiCopilot({ data: { question: query, snapshot: buildHubSnapshot() } });
+    const res = await aiCopilotChat({
+      data: {
+        messages: history.slice(-16).map((t) => ({ role: t.role, content: t.content })),
+        signals: insights.map((i) => `- ${i.text}`).join("\n") || undefined,
+        style: aiStyleHint(ai),
+        nowIso: new Date().toISOString(),
+      },
+    });
     setBusy(false);
     if (!res.ok) {
       toast.error(res.error ?? "Copilot failed.");
       return;
     }
-    setAnswer(res.text ?? "");
+    setTurns((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: res.text ?? "",
+        tools: Array.from(new Set((res.toolsUsed ?? []).map((t) => t.name))),
+      },
+    ]);
   };
 
   const askFocus = async () => {
     if (busy) return;
     setBusy(true);
-    setAnswer("");
     const res = await aiFocus({
       data: {
         activity: activitySummary(),
@@ -128,7 +166,11 @@ export function CopilotSheet() {
       toast.error(res.error ?? "Copilot failed.");
       return;
     }
-    setAnswer(res.text ?? "");
+    setTurns((prev) => [
+      ...prev,
+      { role: "user", content: "What should I focus on?" },
+      { role: "assistant", content: res.text ?? "" },
+    ]);
   };
 
   const jump = (to?: string, params?: Record<string, string>) => {
@@ -147,9 +189,18 @@ export function CopilotSheet() {
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" style={{ color: "var(--cyan-glow)" }} />
             Intel Copilot
+            {turns.length > 0 && (
+              <button
+                className="ml-auto inline-flex items-center gap-1 text-[11px] font-normal text-muted-foreground hover:text-foreground"
+                onClick={() => setTurns([])}
+              >
+                <RotateCcw className="h-3 w-3" /> New chat
+              </button>
+            )}
           </SheetTitle>
           <SheetDescription>
-            Answers from your Hub data. Every request is recorded in the Audit Log.
+            Ask follow-ups — Copilot looks up your tickets, accounts, night plan, dispatches and
+            work time itself. Every request is recorded in the Audit Log.
           </SheetDescription>
         </SheetHeader>
 
@@ -197,14 +248,47 @@ export function CopilotSheet() {
                 <button
                   key={s}
                   className="rounded-full border border-border/40 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setQuestion(s);
-                    void ask(s);
-                  }}
+                  onClick={() => void ask(s)}
                 >
                   {s}
                 </button>
               ))}
+            </div>
+
+            <div
+              ref={scrollRef}
+              className="min-h-0 flex-1 space-y-2 overflow-auto rounded-md border border-border/30 bg-white/[0.02] p-3 text-sm"
+            >
+              {turns.length === 0 && !busy && (
+                <div className="text-muted-foreground">
+                  Ask a question or tap a suggestion to get started.
+                </div>
+              )}
+              {turns.map((t, i) =>
+                t.role === "user" ? (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[85%] rounded-lg border border-border/40 bg-white/[0.05] px-2.5 py-1.5 text-foreground/90">
+                      {t.content}
+                    </div>
+                  </div>
+                ) : (
+                  <div key={i} className="space-y-1">
+                    {t.tools && t.tools.length > 0 && (
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                        <Wrench className="h-3 w-3" /> {t.tools.join(", ")}
+                      </div>
+                    )}
+                    <div className="copilot-markdown text-foreground/90">
+                      <ReactMarkdown>{t.content}</ReactMarkdown>
+                    </div>
+                  </div>
+                ),
+              )}
+              {busy && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Looking through your Hub…
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -222,20 +306,6 @@ export function CopilotSheet() {
               <Button onClick={() => void ask(question)} disabled={busy || !question.trim()}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto rounded-md border border-border/30 bg-white/[0.02] p-3 text-sm">
-              {busy && !answer ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Thinking…
-                </div>
-              ) : answer ? (
-                <div className="whitespace-pre-wrap text-foreground/90">{answer}</div>
-              ) : (
-                <div className="text-muted-foreground">
-                  Ask a question or tap a suggestion to get started.
-                </div>
-              )}
             </div>
           </>
         )}
