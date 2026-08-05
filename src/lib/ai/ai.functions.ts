@@ -74,6 +74,7 @@ export const aiSummarizeTicket = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: threadText(data),
+      tier: "balanced",
     });
     return res;
   });
@@ -95,6 +96,7 @@ export const aiDraftNote = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: `${threadText(data)}\n\n${workText(data)}`,
+      tier: "balanced",
     });
     return res;
   });
@@ -118,6 +120,7 @@ export const aiCopilot = createServerFn({ method: "POST" })
         "Be concise and specific. Reference ticket numbers and accounts where relevant.",
       ].join("\n"),
       prompt: `Question: ${data.question}\n\nHub snapshot:\n${data.snapshot}`,
+      tier: "balanced",
     });
   });
 
@@ -142,6 +145,7 @@ export const aiShiftSummary = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: data.snapshot,
+      tier: "balanced",
     });
   });
 
@@ -177,6 +181,7 @@ export const aiFocus = createServerFn({ method: "POST" })
       ]
         .filter(Boolean)
         .join("\n\n"),
+      tier: "flagship",
     });
   });
 
@@ -220,6 +225,7 @@ export const aiAccountIntel = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: body || "No ticket history provided.",
+      tier: "balanced",
     });
   });
 
@@ -238,6 +244,7 @@ export const aiClassifyTicket = createServerFn({ method: "POST" })
         "Base it ONLY on the provided text.",
       ].join("\n"),
       prompt: `${threadText(data)}\n\n${workText(data)}`,
+      tier: "fast",
     });
     if (!res.ok) return { ok: false as const, error: res.error };
     try {
@@ -308,6 +315,7 @@ export const aiOrganizeKnowledgeNote = createServerFn({ method: "POST" })
         "ORIGINAL NOTE:",
         data.sourceText,
       ].join("\n"),
+      tier: "balanced",
     });
 
     if (!res.ok) return { ok: false as const, error: res.error };
@@ -407,6 +415,7 @@ export const aiParseTicketIssue = createServerFn({ method: "POST" })
       ]
         .filter(Boolean)
         .join("\n"),
+      tier: "fast",
     });
     if (!res.ok) return { ok: false as const, error: res.error };
     try {
@@ -415,4 +424,63 @@ export const aiParseTicketIssue = createServerFn({ method: "POST" })
     } catch {
       return { ok: false as const, error: "Could not parse AI response." };
     }
+  });
+
+/**
+ * Intel Copilot chat: multi-turn, tool-using. The model pulls exactly the
+ * Hub data it needs through read-only tools scoped to the caller, instead of
+ * relying on a truncated client snapshot.
+ */
+const CopilotChatInput = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().min(1).max(6000),
+      }),
+    )
+    .min(1)
+    .max(24),
+  signals: z.string().max(2000).optional(),
+  style: z.string().max(600).optional(),
+  nowIso: z.string().max(40).optional(),
+});
+
+export const aiCopilotChat = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) => CopilotChatInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { aiRespondWithTools } = await import("./ai-client.server");
+    const { COPILOT_TOOLS, runCopilotTool } = await import("./copilot-tools.server");
+    await logAi(context, "copilot-chat", "");
+
+    const system = [
+      "You are Intel Copilot for a night-shift support/programming operator in the Account Intel Hub.",
+      "Use the provided read-only tools to look up the operator's real Hub data before answering —",
+      "never guess ticket numbers, accounts, statuses, or times.",
+      "Call several tools when needed. If a lookup returns nothing, say so plainly.",
+      "Be concise and specific: reference ticket numbers and account numbers.",
+      "Use short markdown (bold labels, bullets). No preamble.",
+      data.nowIso ? `Current time (ISO): ${data.nowIso}.` : "",
+      data.signals ? `Detected signals from the Hub:\n${data.signals}` : "",
+      data.style ?? "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const input = data.messages.map((m) =>
+      m.role === "user"
+        ? { role: "user", content: [{ type: "input_text", text: m.content }] }
+        : { role: "assistant", content: [{ type: "output_text", text: m.content }] },
+    );
+
+    const res = await aiRespondWithTools({
+      system,
+      input,
+      tools: COPILOT_TOOLS,
+      tier: "flagship",
+      runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
+    });
+
+    return res;
   });
