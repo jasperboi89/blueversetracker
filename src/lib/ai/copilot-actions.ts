@@ -62,7 +62,10 @@ export function applyAction(a: ProposedAction): { ok: boolean; message: string }
         kind: "ticket",
         id: t.id,
         label: `#${t.number} ${t.details.subject ?? ""}`.trim(),
-        to: `/freshdesk-tickets/${t.id}/work`,
+        to: "/freshdesk-tickets/$ticketId/work",
+        params: { ticketId: t.id },
+        accountNumber: t.accountNumber,
+        accountName: t.accountName,
       });
       return { ok: true, message: `Timer started on #${num}.` };
     }
