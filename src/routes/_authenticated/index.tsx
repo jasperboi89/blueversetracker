@@ -9,6 +9,7 @@ import { LookupCards } from "@/components/home/LookupCards";
 import { OverviewCards } from "@/components/home/OverviewCards";
 import { RecentlyCompleted } from "@/components/home/RecentlyCompleted";
 import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
+import { BriefingPanel } from "@/components/home/BriefingPanel";
 import { NightForecast } from "@/components/quantum-bloom/NightForecast";
 import { useTheme } from "@/lib/settings/theme-store";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
@@ -25,6 +26,7 @@ const HOME_PANES: Array<{
   { id: "home:greeting", title: "Greeting", def: { xPct: 0, yPct: 0, wPct: 62, hPct: 34 }, body: () => <GreetingPanel /> },
   { id: "home:shift", title: "Shift", def: { xPct: 63, yPct: 0, wPct: 37, hPct: 34 }, body: () => <ShiftCard /> },
   { id: "home:nba", title: "Next Best Action", def: { xPct: 0, yPct: 35, wPct: 100, hPct: 14 }, body: () => <NextBestActionStrip /> },
+  { id: "home:briefing", title: "AI Briefings", def: { xPct: 0, yPct: 49, wPct: 100, hPct: 22 }, body: () => <BriefingPanel /> },
   { id: "home:alerts", title: "Alert Center", def: { xPct: 0, yPct: 50, wPct: 50, hPct: 24 }, body: () => <AlertCenter /> },
   { id: "home:plan", title: "Night Plan", def: { xPct: 51, yPct: 50, wPct: 49, hPct: 34 }, body: () => <NightPlan /> },
   { id: "home:lookup", title: "Lookup", def: { xPct: 0, yPct: 75, wPct: 50, hPct: 25 }, body: () => <LookupCards /> },
@@ -67,6 +69,7 @@ function Home() {
             <ShiftCard />
           </div>
           <NextBestActionStrip />
+          <BriefingPanel />
           <AlertCenter />
           <NightPlan />
           <LookupCards />

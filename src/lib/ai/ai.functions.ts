@@ -484,3 +484,59 @@ export const aiCopilotChat = createServerFn({ method: "POST" })
 
     return res;
   });
+
+/**
+ * Proactive briefings. The model pulls its own Hub data with the same
+ * read-only Copilot tools, so briefings reflect live tickets, plan items,
+ * dispatches and work time rather than a client snapshot.
+ */
+const BriefingInput = z.object({
+  kind: z.enum(["shift-start", "shift-end", "weekly-digest"]),
+  signals: z.string().max(2000).optional(),
+  style: z.string().max(600).optional(),
+  nowIso: z.string().max(40).optional(),
+});
+
+const BRIEFING_GOAL: Record<z.infer<typeof BriefingInput>["kind"], string> = {
+  "shift-start":
+    "Write a SHIFT-START BRIEFING. Look up open/overdue tickets, waiting items, the night plan (including rolled-over items) and what was completed on the last shift. Output: one short orienting paragraph, then a bulleted 'Start here' list of at most 5 concrete next actions in priority order.",
+  "shift-end":
+    "Write a SHIFT-END HANDOFF NOTE for the next operator, copy-ready. Look up what was completed this shift, what is still open or waiting and on whom, night plan items not finished, and logged work time. Output sections: **Completed**, **Still open / waiting**, **Watch outs**, **Next shift should**. Bullets only, no filler.",
+  "weekly-digest":
+    "Write a WEEKLY PATTERN DIGEST. Look across tickets and account history for recurring issue clusters. Output: at most 6 bullets, each phrased as 'Account <number> (<name>) keeps hitting <pattern>' with ticket numbers as evidence, then one short 'Suggested follow-ups' list. Only report patterns backed by 2+ tickets.",
+};
+
+export const aiBriefing = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) => BriefingInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { aiRespondWithTools } = await import("./ai-client.server");
+    const { COPILOT_TOOLS, runCopilotTool } = await import("./copilot-tools.server");
+    await logAi(context, `briefing-${data.kind}`, "");
+
+    const system = [
+      "You are Intel Copilot briefing a night-shift support/programming operator in the Account Intel Hub.",
+      "Use the read-only tools to gather the operator's real data before writing. Never invent tickets, accounts, or times.",
+      "If a lookup returns nothing, say so plainly instead of padding.",
+      "Short markdown only: bold labels and bullets, no preamble, no closing pleasantries.",
+      data.nowIso ? `Current time (ISO): ${data.nowIso}.` : "",
+      data.signals ? `Detected signals from the Hub:\n${data.signals}` : "",
+      data.style ?? "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    return aiRespondWithTools({
+      system,
+      input: [
+        {
+          role: "user",
+          content: [{ type: "input_text", text: BRIEFING_GOAL[data.kind] }],
+        },
+      ],
+      tools: COPILOT_TOOLS,
+      tier: "flagship",
+      maxSteps: 8,
+      runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
+    });
+  });
