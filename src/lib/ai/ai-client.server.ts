@@ -74,6 +74,13 @@ function statusError(status: number): string {
  * return the accumulated text plus the terminal output items.
  */
 async function callResponses(body: Record<string, unknown>): Promise<RawCallResult> {
+  return callResponsesStreaming(body);
+}
+
+async function callResponsesStreaming(
+  body: Record<string, unknown>,
+  onTextDelta?: (delta: string) => void,
+): Promise<RawCallResult> {
   const guard = gatewayGuard();
   if (!guard.ok) return { ok: false, error: guard.error };
 
@@ -123,6 +130,7 @@ async function callResponses(body: Record<string, unknown>): Promise<RawCallResu
     }
     if (evt.type === "response.output_text.delta" && typeof evt.delta === "string") {
       text += evt.delta;
+      onTextDelta?.(evt.delta);
     } else if (evt.type === "response.completed" || evt.type === "response.incomplete") {
       output = evt.response?.output ?? output;
       if (!text && typeof evt.response?.output_text === "string") text = evt.response.output_text;
