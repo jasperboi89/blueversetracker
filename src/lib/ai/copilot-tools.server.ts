@@ -82,6 +82,25 @@ export const COPILOT_TOOLS: ResponsesTool[] = [
       "Logged work-timer sessions (what was worked, for how long, on which account) within the last N hours. Pass null for 24.",
     parameters: schema({ sinceHours: { type: ["number", "null"] } }),
   },
+  {
+    type: "function",
+    name: "propose_action",
+    strict: true,
+    description:
+      "Propose ONE change for the operator to confirm. Nothing is applied until they tap Apply. kind: add_night_plan_item | complete_night_plan_item | set_ticket_classification | start_timer. " +
+      "add_night_plan_item needs task (+ optional notes, priority must|important|normal). complete_night_plan_item needs task (matched against existing plan items). " +
+      "set_ticket_classification needs ticketNumber and classification ('Scripting Issue' | 'Client Change' | 'Other'). start_timer needs ticketNumber. " +
+      "Always look the data up first, then propose. Pass null for fields that do not apply.",
+    parameters: schema({
+      kind: { type: "string" },
+      task: nullableString,
+      notes: nullableString,
+      priority: nullableString,
+      ticketNumber: nullableString,
+      classification: nullableString,
+      reason: { type: "string" },
+    }),
+  },
 ];
 
 async function readBlob(
@@ -256,6 +275,24 @@ export async function runCopilotTool(
         }));
       const totalMinutes = entries.reduce((sum, e) => sum + e.minutes, 0);
       return { sinceHours: hours, totalMinutes, count: entries.length, entries };
+    }
+
+    case "propose_action": {
+      // Proposals are never executed server-side. The client renders an
+      // Apply / Discard card and applies the change locally on confirmation.
+      return {
+        proposed: true,
+        note: "Proposal queued for the operator to confirm. Tell them what you proposed in one short line.",
+        action: {
+          kind: str(args["kind"]),
+          task: str(args["task"]) || null,
+          notes: str(args["notes"]) || null,
+          priority: str(args["priority"]) || null,
+          ticketNumber: str(args["ticketNumber"]) || null,
+          classification: str(args["classification"]) || null,
+          reason: str(args["reason"]) || null,
+        },
+      };
     }
 
     default:

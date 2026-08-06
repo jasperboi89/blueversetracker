@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { Loader2, Sunrise, Sunset, CalendarRange, ClipboardCopy, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { aiBriefing } from "@/lib/ai/ai.functions";
+import { streamCopilot, TOOL_LABEL } from "@/lib/ai/copilot-stream";
 import { aiStyleHint, useAISettings } from "@/lib/settings/ai-settings-store";
 import { useInsights } from "@/lib/ai/awareness";
 
@@ -23,6 +23,7 @@ export function BriefingPanel() {
   const [active, setActive] = useState<Kind | null>(null);
   const [text, setText] = useState("");
   const [tools, setTools] = useState<string[]>([]);
+  const [activity, setActivity] = useState<string[]>([]);
 
   const run = async (kind: Kind) => {
     if (busy) return;
@@ -30,21 +31,30 @@ export function BriefingPanel() {
     setActive(kind);
     setText("");
     setTools([]);
-    const res = await aiBriefing({
-      data: {
+    setActivity([]);
+    const res = await streamCopilot(
+      {
+        mode: "briefing",
         kind,
         signals: insights.map((i) => `- ${i.text}`).join("\n") || undefined,
         style: aiStyleHint(ai),
-        nowIso: new Date().toISOString(),
       },
-    });
+      {
+        onDelta: (t) => setText((prev) => prev + t),
+        onToolStart: (name) => {
+          setText("");
+          setActivity((prev) => [...prev, TOOL_LABEL[name] ?? name]);
+        },
+      },
+    );
     setBusy(null);
+    setActivity([]);
     if (!res.ok) {
       toast.error(res.error ?? "Briefing failed.");
       return;
     }
     setText(res.text ?? "");
-    setTools(Array.from(new Set((res.toolsUsed ?? []).map((t) => t.name))));
+    setTools(Array.from(new Set((res.toolsUsed ?? []).map((t) => TOOL_LABEL[t.name] ?? t.name))));
   };
 
   if (!ai.enabled) return null;
@@ -78,8 +88,22 @@ export function BriefingPanel() {
       </div>
 
       {busy && (
-        <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Reading your Hub…
+        <div className="mt-3 space-y-1">
+          {activity.map((a, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-[11px] text-muted-foreground/80">
+              <Wrench className="h-3 w-3" /> {a}
+              {i === activity.length - 1 ? "…" : ""}
+            </div>
+          ))}
+          {text ? (
+            <div className="copilot-markdown rounded-md border border-border/30 bg-white/[0.02] p-3 text-sm text-foreground/90">
+              <ReactMarkdown>{text}</ReactMarkdown>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Reading your Hub…
+            </div>
+          )}
         </div>
       )}
 
