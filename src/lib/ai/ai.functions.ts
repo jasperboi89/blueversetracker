@@ -540,3 +540,37 @@ export const aiBriefing = createServerFn({ method: "POST" })
       runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
     });
   });
+
+/**
+ * Rolling operator profile. The model reads the operator's own Hub data and
+ * writes a short set of durable facts (busiest accounts, recurring issue
+ * types, shift rhythm, note style) that every later AI call is primed with.
+ */
+export const aiOperatorProfile = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator(() => ({}))
+  .handler(async ({ context }) => {
+    const { aiRespondWithTools } = await import("./ai-client.server");
+    const { COPILOT_TOOLS, runCopilotTool } = await import("./copilot-tools.server");
+    await logAi(context, "operator-profile", "");
+
+    return aiRespondWithTools({
+      system: [
+        "You build a compact operator profile for a night-shift support/programming operator.",
+        "Use the read-only tools to inspect their tickets, accounts, night plan and work time.",
+        "Output at most 8 short bullets of durable facts only: most-touched accounts (with numbers),",
+        "recurring issue types, typical shift window and rhythm, common ticket classifications,",
+        "and anything a assistant should always keep in mind. No advice, no filler, no headings.",
+      ].join("\n"),
+      input: [
+        {
+          role: "user",
+          content: [{ type: "input_text", text: "Build my operator profile from my Hub data." }],
+        },
+      ],
+      tools: COPILOT_TOOLS,
+      tier: "balanced",
+      maxSteps: 6,
+      runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
+    });
+  });
