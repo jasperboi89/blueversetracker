@@ -200,6 +200,12 @@ export interface ToolRunTrace {
   args: string;
 }
 
+/** Live progress events emitted while a tool-using run is in flight. */
+export type CopilotStreamEvent =
+  | { type: "tool-start"; name: string; args: string }
+  | { type: "tool-done"; name: string }
+  | { type: "delta"; text: string };
+
 /**
  * Multi-turn, tool-using call. `input` carries the accumulated conversation
  * items; the loop runs tools until the model answers or the step cap is hit.
@@ -211,22 +217,27 @@ export async function aiRespondWithTools(opts: {
   runTool: (name: string, args: unknown) => Promise<unknown>;
   tier?: ModelTier;
   maxSteps?: number;
+  /** Optional live progress sink (tool activity + answer text deltas). */
+  onEvent?: (event: CopilotStreamEvent) => void;
 }): Promise<{ ok: boolean; text?: string; error?: string; toolsUsed?: ToolRunTrace[] }> {
   const items = [...opts.input];
   const toolsUsed: ToolRunTrace[] = [];
   const maxSteps = opts.maxSteps ?? 6;
 
   for (let step = 0; step < maxSteps; step++) {
-    const res = await callResponses({
-      model: modelFor(opts.tier ?? "flagship"),
-      instructions: opts.system,
-      input: items,
-      tools: opts.tools,
-      tool_choice: "auto",
-      // Reasoning is on by default for these models; carry it forward inline
-      // so the follow-up turn can resend the items verbatim.
-      include: ["reasoning.encrypted_content"],
-    });
+    const res = await callResponsesStreaming(
+      {
+        model: modelFor(opts.tier ?? "flagship"),
+        instructions: opts.system,
+        input: items,
+        tools: opts.tools,
+        tool_choice: "auto",
+        // Reasoning is on by default for these models; carry it forward inline
+        // so the follow-up turn can resend the items verbatim.
+        include: ["reasoning.encrypted_content"],
+      },
+      opts.onEvent ? (text) => opts.onEvent?.({ type: "delta", text }) : undefined,
+    );
     if (!res.ok) return { ok: false, error: res.error, toolsUsed };
 
     const output = res.output ?? [];
@@ -247,12 +258,14 @@ export async function aiRespondWithTools(opts: {
         parsedArgs = {};
       }
       toolsUsed.push({ name: call.name ?? "tool", args: call.arguments ?? "{}" });
+      opts.onEvent?.({ type: "tool-start", name: call.name ?? "tool", args: call.arguments ?? "{}" });
       let result: unknown;
       try {
         result = await opts.runTool(call.name ?? "", parsedArgs);
       } catch (e) {
         result = { error: e instanceof Error ? e.message : "Tool failed." };
       }
+      opts.onEvent?.({ type: "tool-done", name: call.name ?? "tool" });
       items.push({
         type: "function_call_output",
         call_id: call.call_id,
