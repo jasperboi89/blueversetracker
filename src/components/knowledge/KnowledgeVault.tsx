@@ -14,6 +14,7 @@ import {
   FolderOpen,
   GraduationCap,
   Heart,
+  History,
   Inbox,
   LibraryBig,
   ListChecks,
@@ -87,6 +88,7 @@ import {
   type KnowledgeAttachment,
   type KnowledgeFolder,
   type KnowledgeNote,
+  type KnowledgeNoteVersion,
   type KnowledgeNoteType,
 } from "@/lib/knowledge/knowledge.functions";
 
