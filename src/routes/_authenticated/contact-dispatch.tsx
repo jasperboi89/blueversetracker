@@ -4,6 +4,7 @@ import { StartTestingPane } from "@/components/dispatch/StartTestingPane";
 import { MiniDashboard } from "@/components/dispatch/MiniDashboard";
 import { ActiveSessionsList } from "@/components/dispatch/ActiveSessionsList";
 import { DispatchTabs } from "@/components/dispatch/DispatchTabs";
+import { ResumeBanner } from "@/components/dispatch/ResumeBanner";
 import { useDispatch } from "@/lib/dispatch-store";
 
 export const Route = createFileRoute("/_authenticated/contact-dispatch")({
@@ -45,6 +46,7 @@ function ContactDispatchIndex() {
         </div>
       </header>
       <DispatchTabs archivedCount={archivedCount} />
+      <ResumeBanner />
       <StartTestingPane />
       <MiniDashboard />
       <ActiveSessionsList />

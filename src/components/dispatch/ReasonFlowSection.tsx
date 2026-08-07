@@ -3,6 +3,7 @@ import { ChevronDown, Copy, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { PolishNoteButton } from "@/components/ui/polish-note-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   dispatchStore, reasonCardStatus,
@@ -218,7 +219,8 @@ function ReasonCardView({
           </div>
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Actual Flow</label>
-            <RichTextEditor minHeight={72} value={reason.actualFlow} onChange={(v) => update({ actualFlow: v })} className="mt-1" />
+            <RichTextEditor minHeight={72} value={reason.actualFlow} onChange={(v) => update({ actualFlow: v })} snippetScope="dispatch" className="mt-1" />
+            <PolishNoteButton value={reason.actualFlow} onChange={(v) => update({ actualFlow: v })} kind="dispatch" />
           </div>
         </div>
 
@@ -243,7 +245,8 @@ function ReasonCardView({
         {(reason.result === "failed" || reason.retests.length > 0) && (
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Changes Made</label>
-            <RichTextEditor minHeight={72} value={reason.changesMade} onChange={(v) => update({ changesMade: v })} className="mt-1" />
+            <RichTextEditor minHeight={72} value={reason.changesMade} onChange={(v) => update({ changesMade: v })} snippetScope="dispatch" className="mt-1" />
+            <PolishNoteButton value={reason.changesMade} onChange={(v) => update({ changesMade: v })} kind="dispatch" />
           </div>
         )}
 
@@ -263,7 +266,8 @@ function ReasonCardView({
 
         <div>
           <label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</label>
-          <RichTextEditor minHeight={72} value={reason.notes} onChange={(v) => update({ notes: v })} className="mt-1" />
+          <RichTextEditor minHeight={72} value={reason.notes} onChange={(v) => update({ notes: v })} snippetScope="dispatch" className="mt-1" />
+          <PolishNoteButton value={reason.notes} onChange={(v) => update({ notes: v })} kind="dispatch" />
         </div>
 
         <div className="space-y-2">

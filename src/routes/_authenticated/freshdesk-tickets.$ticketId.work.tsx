@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { PolishNoteButton } from "@/components/ui/polish-note-button";
 import { RichText } from "@/components/ui/rich-text";
 import {
   Select,
@@ -53,6 +54,7 @@ import {
 } from "@/lib/tickets-store";
 import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
 import { AccountLinker } from "@/components/freshdesk/AccountLinker";
+import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { resolveFloating, setLayoutMode, usePaneLayout } from "@/lib/workspace/pane-layout-store";
@@ -309,7 +311,13 @@ function WorkspacePage() {
         minHeight={110}
         value={session.issueText}
         onChange={(v) => update({ issueText: v })}
+        snippetScope="work-note"
         placeholder="Describe the ticket issue freely. Prefilled from Freshdesk on pull."
+      />
+      <PolishNoteButton
+        value={session.issueText}
+        onChange={(v) => update({ issueText: v })}
+        kind="work-note"
       />
       {aiSettings.enabled && (
         <Button
@@ -331,11 +339,35 @@ function WorkspacePage() {
   );
 
   const changesBody = (
-    <RichTextEditor
-      minHeight={110}
-      value={session.changesText}
-      onChange={(v) => update({ changesText: v })}
-      placeholder="Describe what you changed. Bullets allowed."
+    <div className="space-y-2">
+      <RichTextEditor
+        minHeight={110}
+        value={session.changesText}
+        onChange={(v) => update({ changesText: v })}
+        snippetScope="work-note"
+        placeholder="Describe what you changed. Bullets allowed."
+      />
+      <PolishNoteButton
+        value={session.changesText}
+        onChange={(v) => update({ changesText: v })}
+        kind="work-note"
+      />
+    </div>
+  );
+
+  const priorFixesBody = (
+    <PriorFixesPanel
+      ticketNumber={ticket.number}
+      subject={ticket.details.subject}
+      description={(ticket.freshdeskNotes[0]?.body ?? "").slice(0, 12000)}
+      {...(ticket.accountNumber ? { accountNumber: ticket.accountNumber } : {})}
+      onUseFix={(text) =>
+        update({
+          changesText: session.changesText.trim()
+            ? `${session.changesText}<p>${text}</p>`
+            : `<p>${text}</p>`,
+        })
+      }
     />
   );
 
@@ -393,7 +425,13 @@ function WorkspacePage() {
           value={session.resultNotes}
           onChange={(v) => update({ resultNotes: v })}
           minHeight={72}
+          snippetScope="work-note"
           className="mt-1"
+        />
+        <PolishNoteButton
+          value={session.resultNotes}
+          onChange={(v) => update({ resultNotes: v })}
+          kind="work-note"
         />
       </div>
     </div>
@@ -739,6 +777,12 @@ function WorkspacePage() {
       ),
     },
     { id: "issue", title: "Ticket Issue", chip: issueChip, body: issueBody },
+    {
+      id: "prior-fixes",
+      title: "Seen This Before",
+      chip: "similar work",
+      body: priorFixesBody,
+    },
     { id: "changes", title: "Changes Made", chip: changesChip, body: changesBody },
     { id: "result", title: "Result / Testing", chip: resultChip, body: resultBody },
     { id: "notes", title: "Notes", chip: noteCountChip, body: notesBody },
