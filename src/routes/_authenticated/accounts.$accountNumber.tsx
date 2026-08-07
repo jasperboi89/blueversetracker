@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accountsStore, useAccounts, type AccountTemplateType } from "@/lib/accounts-store";
@@ -290,6 +291,16 @@ function AccountProfilePage() {
 
           {/* Side: Notes + Templates + Details */}
           <div className="space-y-4">
+            <div className="glass-panel p-4">
+              <h2 className="mb-2 text-sm font-semibold text-foreground">Seen This Before</h2>
+              <PriorFixesPanel
+                subject={acct.name ?? ""}
+                description=""
+                accountNumber={accountNumber}
+                accountOnly
+                autoRun={false}
+              />
+            </div>
             <NotesCard accountNumber={accountNumber} />
             <TemplatesCard accountNumber={accountNumber} />
             <DetailsCard accountNumber={accountNumber} />
