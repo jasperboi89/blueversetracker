@@ -296,6 +296,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          versions: Json
         }
         Insert: {
           ai_content_html?: string
@@ -314,6 +315,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id: string
+          versions?: Json
         }
         Update: {
           ai_content_html?: string
@@ -332,6 +334,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          versions?: Json
         }
         Relationships: [
           {
