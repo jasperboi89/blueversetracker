@@ -66,16 +66,6 @@ export function PrintableNote({
         />
       </section>
 
-      {note.aiContentHtml ? (
-        <section className="kp-section">
-          <h2 className="kp-h2">Organized version</h2>
-          <div
-            className="kp-body"
-            dangerouslySetInnerHTML={{ __html: sanitize(note.aiContentHtml) }}
-          />
-        </section>
-      ) : null}
-
       {images.length > 0 && (
         <section className="kp-section">
           <h2 className="kp-h2">Attachments</h2>
