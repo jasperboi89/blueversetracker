@@ -33,6 +33,13 @@ export interface KnowledgeFolder {
   updatedAt: string;
 }
 
+export interface KnowledgeNoteVersion {
+  id: string;
+  label: string;
+  html: string;
+  createdAt: string;
+}
+
 export interface KnowledgeNote {
   id: string;
   folderId: string | null;
@@ -49,6 +56,7 @@ export interface KnowledgeNote {
   aiContentHtml: string;
   aiGeneratedAt: string | null;
   aiSourceFingerprint: string;
+  versions: KnowledgeNoteVersion[];
 }
 
 const IdSchema = z.string().uuid();
@@ -70,6 +78,14 @@ const AttachmentSchema = z.object({
   label: z.string().trim().max(200).optional(),
 });
 const AttachmentsSchema = z.array(AttachmentSchema).max(30);
+
+const VersionSchema = z.object({
+  id: z.string().min(1).max(64),
+  label: z.string().trim().min(1).max(80),
+  html: z.string().max(250000),
+  createdAt: z.string().min(1).max(64),
+});
+const VersionsSchema = z.array(VersionSchema).max(30);
 
 function mapFolder(row: {
   id: string;
@@ -107,6 +123,7 @@ function mapNote(row: {
   ai_content_html?: string;
   ai_generated_at?: string | null;
   ai_source_fingerprint?: string;
+  versions?: unknown;
 }): KnowledgeNote {
   return {
     id: row.id,
@@ -124,6 +141,7 @@ function mapNote(row: {
     aiContentHtml: row.ai_content_html ?? "",
     aiGeneratedAt: row.ai_generated_at ?? null,
     aiSourceFingerprint: row.ai_source_fingerprint ?? "",
+    versions: Array.isArray(row.versions) ? (row.versions as KnowledgeNoteVersion[]) : [],
   };
 }
 
