@@ -79,11 +79,19 @@ const AttachmentSchema = z.object({
 });
 const AttachmentsSchema = z.array(AttachmentSchema).max(30);
 
+/** Accepts any parseable timestamp (Postgres "+00:00" or ISO "Z") and normalizes it. */
+const FlexibleTimestamp = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine((value) => !Number.isNaN(new Date(value).getTime()), { message: "Invalid datetime" })
+  .transform((value) => new Date(value).toISOString());
+
 const VersionSchema = z.object({
   id: z.string().min(1).max(64),
   label: z.string().trim().min(1).max(80),
   html: z.string().max(250000),
-  createdAt: z.string().min(1).max(64),
+  createdAt: FlexibleTimestamp,
 });
 const VersionsSchema = z.array(VersionSchema).max(30);
 
@@ -283,7 +291,7 @@ const UpdateNoteSchema = z.object({
   isArchived: z.boolean().optional(),
   attachments: AttachmentsSchema.optional(),
   aiContentHtml: z.string().max(250000).optional(),
-  aiGeneratedAt: z.string().datetime().nullable().optional(),
+  aiGeneratedAt: FlexibleTimestamp.nullable().optional(),
   aiSourceFingerprint: z.string().max(64).optional(),
   versions: VersionsSchema.optional(),
 });
