@@ -845,3 +845,9 @@ html[data-qb-sanctuary="on"] header.sticky:hover {
   border-radius: 4px;
   background: rgb(255 255 255 / 0.07);
 }
+
+/* Presence avatar — gentle holographic float */
+@keyframes presence-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.015); }
+}
