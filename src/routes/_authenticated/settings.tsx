@@ -30,6 +30,11 @@ import {
 } from "@/lib/settings/dropdowns-store";
 import { useShiftSettings, shiftSettingsStore, fmtHour } from "@/lib/settings/shift-settings-store";
 import { useDisplayPrefs, displayPrefsStore } from "@/lib/settings/display-prefs-store";
+import {
+  usePresencePrefs,
+  presencePrefsStore,
+  type CheckInFrequency,
+} from "@/lib/presence/presence-prefs-store";
 import { nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useTickets } from "@/lib/tickets-store";
 import { useAccounts } from "@/lib/accounts-store";
@@ -59,6 +64,7 @@ const SECTIONS = [
   { id: "dropdowns",  title: "Dropdown Management",   icon: ListChecks },
   { id: "shift",      title: "Shift Settings",        icon: Clock },
   { id: "display",    title: "Display Preferences",   icon: Eye },
+  { id: "presence",   title: "Presence Avatar",       icon: Sparkles },
   { id: "data",       title: "Data / Cleanup",        icon: Database },
 ] as const;
 
@@ -95,6 +101,7 @@ function SettingsPage() {
             <DropdownsSection />
             <ShiftSection />
             <DisplaySection />
+            <PresenceSection />
             <DataSection />
           </div>
         </div>
@@ -713,6 +720,67 @@ function ToggleRow({ label, description, checked, onChange }: { label: string; d
         {description && <div className="text-muted-foreground">{description}</div>}
       </div>
     </div>
+  );
+}
+
+/* ---------------- Presence Avatar ---------------- */
+function PresenceSection() {
+  const p = usePresencePrefs();
+  return (
+    <SectionCard id="presence" title="Presence Avatar" icon={Sparkles}>
+      <p className="mb-1 text-xs text-muted-foreground">
+        A holographic companion that floats in with guidance, checks in during the shift, and
+        opens the Intel Copilot when you tap it.
+      </p>
+      <ToggleRow
+        label="Enable holographic avatar"
+        description="When off, the classic sparkle Copilot button comes back."
+        checked={p.enabled}
+        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, enabled: v }))}
+      />
+      <ToggleRow
+        label="Speak messages aloud"
+        description="Uses your device voice. Nothing plays until you've interacted with the page."
+        checked={p.voice}
+        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, voice: v }))}
+      />
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field label="Check-in frequency">
+          <Select
+            value={p.checkIn}
+            onValueChange={(v) =>
+              presencePrefsStore.update((c) => ({ ...c, checkIn: v as CheckInFrequency }))
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="off">Off</SelectItem>
+              <SelectItem value="relaxed">Relaxed (~45 min)</SelectItem>
+              <SelectItem value="normal">Normal (~25 min)</SelectItem>
+              <SelectItem value="attentive">Attentive (~12 min)</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label={`Size — ${p.size}px`}>
+          <input
+            type="range" min={80} max={220} step={4} value={p.size}
+            onChange={(e) =>
+              presencePrefsStore.update((c) => ({ ...c, size: Number(e.target.value) }))
+            }
+            className="w-full accent-[var(--cyan-glow)]"
+          />
+        </Field>
+        <Field label={`Idle opacity — ${Math.round(p.opacity * 100)}%`}>
+          <input
+            type="range" min={20} max={100} step={5} value={Math.round(p.opacity * 100)}
+            onChange={(e) =>
+              presencePrefsStore.update((c) => ({ ...c, opacity: Number(e.target.value) / 100 }))
+            }
+            className="w-full accent-[var(--cyan-glow)]"
+          />
+        </Field>
+      </div>
+    </SectionCard>
   );
 }
 
