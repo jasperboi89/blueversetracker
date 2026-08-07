@@ -19,6 +19,8 @@ import {
   Palette,
   Eraser,
   Type,
+  BookmarkPlus,
+  Trash2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -33,6 +35,12 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
+import { Input } from "@/components/ui/input";
+import {
+  useSnippets,
+  snippetsActions,
+  type SnippetScope,
+} from "@/lib/settings/snippets-store";
 
 // ── Custom FontSize mark (Tiptap has no built-in) ────────────────────────────
 const FontSize = TextStyle.extend({
@@ -155,7 +163,93 @@ function ColorSwatchPicker({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor | null }) {
+/** Snippet picker: insert a saved block, or save the current selection. */
+function SnippetMenu({ editor, scope }: { editor: Editor; scope: SnippetScope }) {
+  const snippets = useSnippets(scope);
+  const [open, setOpen] = React.useState(false);
+  const [title, setTitle] = React.useState("");
+
+  const insert = (id: string, html: string) => {
+    editor.chain().focus().insertContent(html).run();
+    snippetsActions.markUsed(id);
+    setOpen(false);
+  };
+
+  const saveSelection = () => {
+    const { from, to } = editor.state.selection;
+    const html =
+      from === to
+        ? editor.getHTML()
+        : (() => {
+            const slice = editor.state.doc.slice(from, to);
+            const div = document.createElement("div");
+            div.textContent = slice.content.textBetween(0, slice.content.size, "\n");
+            return `<p>${div.innerHTML.replace(/\n/g, "</p><p>")}</p>`;
+          })();
+    if (!html || html === "<p></p>") return;
+    snippetsActions.add({ title: title || "Untitled snippet", html, scope });
+    setTitle("");
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" aria-label="Snippets">
+          <BookmarkPlus className="mr-1 h-3.5 w-3.5" />
+          Snippets
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 p-2">
+        <div className="mb-2 text-xs font-medium text-muted-foreground">Insert a snippet</div>
+        <div className="max-h-56 space-y-1 overflow-y-auto">
+          {snippets.length === 0 && (
+            <div className="px-1 py-2 text-xs text-muted-foreground">
+              No snippets yet. Save one below.
+            </div>
+          )}
+          {snippets.map((s) => (
+            <div key={s.id} className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => insert(s.id, s.html)}
+                className="flex-1 truncate rounded px-2 py-1 text-left text-xs hover:bg-accent"
+                title={s.title}
+              >
+                {s.title}
+              </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                aria-label={`Delete ${s.title}`}
+                onClick={() => snippetsActions.remove(s.id)}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <Separator className="my-2" />
+        <div className="space-y-1.5">
+          <div className="text-xs font-medium text-muted-foreground">
+            Save selection (or whole box) as snippet
+          </div>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Snippet name"
+            className="h-7 text-xs"
+          />
+          <Button size="sm" variant="outline" className="h-7 w-full text-xs" onClick={saveSelection}>
+            Save snippet
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function Toolbar({ editor, snippetScope }: { editor: Editor | null; snippetScope?: SnippetScope }) {
   if (!editor) return null;
 
   const currentFontFamily =
@@ -310,6 +404,13 @@ function Toolbar({ editor }: { editor: Editor | null }) {
       >
         <Eraser className="h-3.5 w-3.5" />
       </Button>
+
+      {snippetScope && (
+        <>
+          <Separator orientation="vertical" className="mx-1 h-5" />
+          <SnippetMenu editor={editor} scope={snippetScope} />
+        </>
+      )}
     </div>
   );
 }
@@ -330,6 +431,8 @@ export interface RichTextEditorProps {
   onBlur?: () => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   toolbar?: boolean;
+  /** Enables the snippet picker in the toolbar for this kind of box. */
+  snippetScope?: SnippetScope;
 }
 
 export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorProps>(
@@ -346,6 +449,7 @@ export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorPro
       onBlur,
       onKeyDown,
       toolbar = true,
+      snippetScope,
     },
     ref,
   ) {
@@ -406,7 +510,7 @@ export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorPro
           className,
         )}
       >
-        {toolbar ? <Toolbar editor={editor} /> : null}
+        {toolbar ? <Toolbar editor={editor} {...(snippetScope ? { snippetScope } : {})} /> : null}
         <EditorContent
           editor={editor}
           style={{ minHeight: typeof minHeight === "number" ? `${minHeight}px` : minHeight }}
