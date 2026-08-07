@@ -202,7 +202,7 @@ export const findPriorFixes = createServerFn({ method: "POST" })
           "",
           "PAST TICKETS:",
           ...tickets.map(
-            (t) => `#${t.number} [${t.accountNumber ?? "?"}] ${t.subject}\n${t.excerpt}`,
+            (t) => `#${t.ticketNumber} [${t.accountNumber ?? "?"}] ${t.subject}\n${t.excerpt}`,
           ),
         ].join("\n"),
       });
