@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dispatchStore } from "@/lib/dispatch-store";
+import { Checkbox } from "@/components/ui/checkbox";
 import { accountsStore } from "@/lib/accounts-store";
 import { ticketsStore } from "@/lib/tickets-store";
 import { toast } from "sonner";
@@ -17,6 +18,15 @@ export function StartTestingPane() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newNumber, setNewNumber] = useState("");
   const [newName, setNewName] = useState("");
+  const [prefill, setPrefill] = useState(true);
+
+  // Most recent finished test for the selected account — its reason cards are
+  // almost always the same list the operator is about to retype.
+  const lastSession = picked
+    ? [...dispatchStore.getState().sessions]
+        .filter((s) => s.accountNumber === picked.number && s.reasons.length > 0)
+        .sort((a, b) => b.updatedAt - a.updatedAt)[0]
+    : undefined;
 
   const matches = q.trim() ? accountsStore.search(q, { includeArchived: true }) : [];
 
@@ -61,6 +71,15 @@ export function StartTestingPane() {
       accountName: picked.name,
       ticketNumber: ticket.trim() || undefined,
     });
+    if (prefill && lastSession) {
+      lastSession.reasons.forEach((r) => {
+        dispatchStore.addReason(s.id, r.source, {
+          text: r.text,
+          type: r.type,
+          expectedFlow: r.expectedFlow,
+        });
+      });
+    }
     toast.success(`Started testing for ${picked.name}.`);
     navigate({ to: "/contact-dispatch/$sessionId/work", params: { sessionId: s.id } });
   };
@@ -138,6 +157,22 @@ export function StartTestingPane() {
         </div>
       )}
 
+      {linkedTicket && (
+        <>
+        </>
+      )}
+      {lastSession && (
+        <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-border/30 bg-white/[0.02] p-2 text-xs">
+          <Checkbox checked={prefill} onCheckedChange={(v) => setPrefill(v === true)} />
+          <span className="text-foreground">
+            Prefill {lastSession.reasons.length} reason card
+            {lastSession.reasons.length === 1 ? "" : "s"} from the last test
+          </span>
+          <span className="text-muted-foreground">
+            ({new Date(lastSession.updatedAt).toLocaleDateString()})
+          </span>
+        </label>
+      )}
       {linkedTicket && (
         <div className="mt-3 flex items-center gap-2 rounded-md border border-border/30 bg-white/[0.02] p-2 text-xs">
           <TicketIcon className="h-3.5 w-3.5" style={{ color: "var(--cyan-glow)" }} />
