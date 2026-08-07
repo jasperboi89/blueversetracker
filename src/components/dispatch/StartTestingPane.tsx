@@ -157,10 +157,6 @@ export function StartTestingPane() {
         </div>
       )}
 
-      {linkedTicket && (
-        <>
-        </>
-      )}
       {lastSession && (
         <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-border/30 bg-white/[0.02] p-2 text-xs">
           <Checkbox checked={prefill} onCheckedChange={(v) => setPrefill(v === true)} />
