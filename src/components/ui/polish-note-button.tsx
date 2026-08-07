@@ -7,7 +7,7 @@ import { aiPolishNote } from "@/lib/ai/ai.functions";
 import { htmlToPlainText, plainTextToHtml } from "@/lib/rich-text";
 
 /**
- * Rewrites the operator's own text in place (grammar/структure only) and keeps
+ * Rewrites the operator's own text in place (grammar/structure only) and keeps
  * one level of undo so a bad polish is never destructive.
  */
 export function PolishNoteButton({
