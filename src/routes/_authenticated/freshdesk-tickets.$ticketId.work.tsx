@@ -53,6 +53,7 @@ import {
 } from "@/lib/tickets-store";
 import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
 import { AccountLinker } from "@/components/freshdesk/AccountLinker";
+import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { resolveFloating, setLayoutMode, usePaneLayout } from "@/lib/workspace/pane-layout-store";
@@ -336,6 +337,22 @@ function WorkspacePage() {
       value={session.changesText}
       onChange={(v) => update({ changesText: v })}
       placeholder="Describe what you changed. Bullets allowed."
+    />
+  );
+
+  const priorFixesBody = (
+    <PriorFixesPanel
+      ticketNumber={ticket.number}
+      subject={ticket.details.subject}
+      description={(ticket.freshdeskNotes[0]?.body ?? "").slice(0, 12000)}
+      {...(ticket.accountNumber ? { accountNumber: ticket.accountNumber } : {})}
+      onUseFix={(text) =>
+        update({
+          changesText: session.changesText.trim()
+            ? `${session.changesText}<p>${text}</p>`
+            : `<p>${text}</p>`,
+        })
+      }
     />
   );
 
@@ -739,6 +756,12 @@ function WorkspacePage() {
       ),
     },
     { id: "issue", title: "Ticket Issue", chip: issueChip, body: issueBody },
+    {
+      id: "prior-fixes",
+      title: "Seen This Before",
+      chip: "similar work",
+      body: priorFixesBody,
+    },
     { id: "changes", title: "Changes Made", chip: changesChip, body: changesBody },
     { id: "result", title: "Result / Testing", chip: resultChip, body: resultBody },
     { id: "notes", title: "Notes", chip: noteCountChip, body: notesBody },
