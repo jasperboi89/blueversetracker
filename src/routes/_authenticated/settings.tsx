@@ -30,6 +30,11 @@ import {
 } from "@/lib/settings/dropdowns-store";
 import { useShiftSettings, shiftSettingsStore, fmtHour } from "@/lib/settings/shift-settings-store";
 import { useDisplayPrefs, displayPrefsStore } from "@/lib/settings/display-prefs-store";
+import {
+  usePresencePrefs,
+  presencePrefsStore,
+  type CheckInFrequency,
+} from "@/lib/presence/presence-prefs-store";
 import { nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useTickets } from "@/lib/tickets-store";
 import { useAccounts } from "@/lib/accounts-store";
@@ -59,6 +64,7 @@ const SECTIONS = [
   { id: "dropdowns",  title: "Dropdown Management",   icon: ListChecks },
   { id: "shift",      title: "Shift Settings",        icon: Clock },
   { id: "display",    title: "Display Preferences",   icon: Eye },
+  { id: "presence",   title: "Presence Avatar",       icon: Sparkles },
   { id: "data",       title: "Data / Cleanup",        icon: Database },
 ] as const;
 
@@ -95,6 +101,7 @@ function SettingsPage() {
             <DropdownsSection />
             <ShiftSection />
             <DisplaySection />
+            <PresenceSection />
             <DataSection />
           </div>
         </div>
