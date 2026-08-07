@@ -159,7 +159,7 @@ export const listKnowledgeVault = createServerFn({ method: "GET" })
       supabase
         .from("knowledge_notes")
         .select(
-          "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint",
+          "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint,versions",
         )
         .eq("user_id", userId)
         .order("is_pinned", { ascending: false })
@@ -264,7 +264,7 @@ export const createKnowledgeNote = createServerFn({ method: "POST" })
         title: data.title,
       })
       .select(
-        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint",
+        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint,versions",
       )
       .single();
     if (error) throw new Error(error.message);
@@ -285,6 +285,7 @@ const UpdateNoteSchema = z.object({
   aiContentHtml: z.string().max(250000).optional(),
   aiGeneratedAt: z.string().datetime().nullable().optional(),
   aiSourceFingerprint: z.string().max(64).optional(),
+  versions: VersionsSchema.optional(),
 });
 
 export const updateKnowledgeNote = createServerFn({ method: "POST" })
@@ -311,6 +312,7 @@ export const updateKnowledgeNote = createServerFn({ method: "POST" })
       ...(changes.aiSourceFingerprint !== undefined
         ? { ai_source_fingerprint: changes.aiSourceFingerprint }
         : {}),
+      ...(changes.versions !== undefined ? { versions: changes.versions } : {}),
     };
     const { data: row, error } = await context.supabase
       .from("knowledge_notes")
@@ -318,7 +320,7 @@ export const updateKnowledgeNote = createServerFn({ method: "POST" })
       .eq("id", id)
       .eq("user_id", context.userId)
       .select(
-        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint",
+        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint,versions",
       )
       .single();
     if (error) throw new Error(error.message);
