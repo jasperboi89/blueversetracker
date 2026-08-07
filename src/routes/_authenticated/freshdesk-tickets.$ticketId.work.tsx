@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { PolishNoteButton } from "@/components/ui/polish-note-button";
 import { RichText } from "@/components/ui/rich-text";
 import {
   Select,
@@ -310,7 +311,13 @@ function WorkspacePage() {
         minHeight={110}
         value={session.issueText}
         onChange={(v) => update({ issueText: v })}
+        snippetScope="work-note"
         placeholder="Describe the ticket issue freely. Prefilled from Freshdesk on pull."
+      />
+      <PolishNoteButton
+        value={session.issueText}
+        onChange={(v) => update({ issueText: v })}
+        kind="work-note"
       />
       {aiSettings.enabled && (
         <Button
@@ -332,12 +339,20 @@ function WorkspacePage() {
   );
 
   const changesBody = (
-    <RichTextEditor
-      minHeight={110}
-      value={session.changesText}
-      onChange={(v) => update({ changesText: v })}
-      placeholder="Describe what you changed. Bullets allowed."
-    />
+    <div className="space-y-2">
+      <RichTextEditor
+        minHeight={110}
+        value={session.changesText}
+        onChange={(v) => update({ changesText: v })}
+        snippetScope="work-note"
+        placeholder="Describe what you changed. Bullets allowed."
+      />
+      <PolishNoteButton
+        value={session.changesText}
+        onChange={(v) => update({ changesText: v })}
+        kind="work-note"
+      />
+    </div>
   );
 
   const priorFixesBody = (
@@ -410,7 +425,13 @@ function WorkspacePage() {
           value={session.resultNotes}
           onChange={(v) => update({ resultNotes: v })}
           minHeight={72}
+          snippetScope="work-note"
           className="mt-1"
+        />
+        <PolishNoteButton
+          value={session.resultNotes}
+          onChange={(v) => update({ resultNotes: v })}
+          kind="work-note"
         />
       </div>
     </div>
