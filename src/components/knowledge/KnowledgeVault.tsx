@@ -489,6 +489,59 @@ export function KnowledgeVault() {
     }
   }, [aiSettings, persistDraft]);
 
+  /** Legacy notes kept the AI copy alongside the original; promote it and archive the original. */
+  useEffect(() => {
+    const note = draftRef.current;
+    if (!note) return;
+    if (!note.aiContentHtml || note.aiContentHtml === note.contentHtml) return;
+    if ((note.versions ?? []).length > 0) return;
+    const promoted: KnowledgeNote = {
+      ...note,
+      contentHtml: note.aiContentHtml,
+      versions: [
+        {
+          id: `ver-${Date.now()}-legacy`,
+          label: "Original note",
+          html: note.contentHtml,
+          createdAt: note.createdAt,
+        },
+      ],
+      aiSourceFingerprint: contentFingerprint(note.aiContentHtml),
+    };
+    setDraft(promoted);
+    draftRef.current = promoted;
+    void persistDraft(promoted);
+  }, [selectedId, persistDraft]);
+
+  const restoreVersion = useCallback(
+    (version: KnowledgeNoteVersion) => {
+      const current = draftRef.current;
+      if (!current) return;
+      const next: KnowledgeNote = {
+        ...current,
+        contentHtml: version.html,
+        versions: [
+          {
+            id: `ver-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            label: "Replaced by restore",
+            html: current.contentHtml,
+            createdAt: new Date().toISOString(),
+          },
+          ...(current.versions ?? []),
+        ].slice(0, 30),
+        aiGeneratedAt: null,
+        aiContentHtml: "",
+        aiSourceFingerprint: "",
+      };
+      setDraft(next);
+      draftRef.current = next;
+      setVersionsOpen(false);
+      void persistDraft(next);
+      toast.success(`Restored “${version.label}”.`);
+    },
+    [persistDraft],
+  );
+
   useEffect(() => {
     if (!dirty || !draft) return;
     const timer = window.setTimeout(() => void persistDraft(draft), 900);
@@ -1483,6 +1536,63 @@ export function KnowledgeVault() {
             </Button>
             <Button variant="ghost" onClick={() => setExpanded(false)}>
               Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={versionsOpen} onOpenChange={setVersionsOpen}>
+        <DialogContent className="max-w-3xl border-violet-300/15 bg-background/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4 text-violet-300" />
+              Archived versions
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Earlier text for this note, kept out of the way. Restore any version to make it the
+              note again.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            <div className="space-y-3 pr-3">
+              {(draft?.versions ?? []).length === 0 && (
+                <div className="rounded-lg border border-white/10 bg-black/10 p-6 text-center text-sm text-muted-foreground">
+                  No archived versions yet.
+                </div>
+              )}
+              {(draft?.versions ?? []).map((version) => (
+                <div
+                  key={version.id}
+                  className="rounded-xl border border-white/10 bg-black/15 p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm text-foreground">{version.label}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(version.createdAt), { addSuffix: true })}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 border border-violet-300/20 bg-violet-400/10 px-2.5 text-[11px] text-violet-100 hover:bg-violet-400/20"
+                      onClick={() => restoreVersion(version)}
+                    >
+                      <RefreshCw className="mr-1.5 h-3 w-3" />
+                      Restore
+                    </Button>
+                  </div>
+                  <div
+                    className="rich-text-content max-h-48 overflow-auto rounded-lg border border-white/[0.06] bg-black/20 p-3 text-[13px] leading-6 text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(version.html) }}
+                  />
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setVersionsOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
