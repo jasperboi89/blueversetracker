@@ -723,6 +723,79 @@ function ToggleRow({ label, description, checked, onChange }: { label: string; d
   );
 }
 
+/* ---------------- Presence Avatar ---------------- */
+function PresenceSection() {
+  const p = usePresencePrefs();
+  return (
+    <SectionCard id="presence" title="Presence Avatar" icon={Sparkles}>
+      <p className="mb-1 text-xs text-muted-foreground">
+        A holographic companion that floats in with guidance, checks in during the shift, and
+        opens the Intel Copilot when you tap it.
+      </p>
+      <ToggleRow
+        label="Enable holographic avatar"
+        description="When off, the classic sparkle Copilot button comes back."
+        checked={p.enabled}
+        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, enabled: v }))}
+      />
+      <ToggleRow
+        label="Speak messages aloud"
+        description="Uses your device voice. Nothing plays until you've interacted with the page."
+        checked={p.voice}
+        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, voice: v }))}
+      />
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field label="Check-in frequency">
+          <Select
+            value={p.checkIn}
+            onValueChange={(v) =>
+              presencePrefsStore.update((c) => ({ ...c, checkIn: v as CheckInFrequency }))
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="off">Off</SelectItem>
+              <SelectItem value="relaxed">Relaxed (~45 min)</SelectItem>
+              <SelectItem value="normal">Normal (~25 min)</SelectItem>
+              <SelectItem value="attentive">Attentive (~12 min)</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label={`Size — ${p.size}px`}>
+          <input
+            type="range" min={80} max={220} step={4} value={p.size}
+            onChange={(e) =>
+              presencePrefsStore.update((c) => ({ ...c, size: Number(e.target.value) }))
+            }
+            className="w-full accent-[var(--cyan-glow)]"
+          />
+        </Field>
+        <Field label={`Idle opacity — ${Math.round(p.opacity * 100)}%`}>
+          <input
+            type="range" min={20} max={100} step={5} value={Math.round(p.opacity * 100)}
+            onChange={(e) =>
+              presencePrefsStore.update((c) => ({ ...c, opacity: Number(e.target.value) / 100 }))
+            }
+            className="w-full accent-[var(--cyan-glow)]"
+          />
+        </Field>
+      </div>
+    </SectionCard>
+  );
+}
+
+function ToggleRowUnused({ label, description, checked, onChange }: { label: string; description?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="mt-3 flex items-start gap-3 rounded-md border border-border/40 p-3">
+      <Switch checked={checked} onCheckedChange={onChange} />
+      <div className="text-xs">
+        <div className="font-medium text-foreground">{label}</div>
+        {description && <div className="text-muted-foreground">{description}</div>}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Data / Cleanup ---------------- */
 function DataSection() {
   const { tickets } = useTickets();
