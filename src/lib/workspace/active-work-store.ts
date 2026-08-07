@@ -120,6 +120,25 @@ export function resumeActive() {
   });
 }
 
+/** Set the live timer's elapsed time to an exact value (manual correction). */
+export function setActiveElapsed(ms: number) {
+  const next = Math.max(0, Math.round(ms));
+  activeWorkStore.update((s) => {
+    if (!s.current) return s;
+    return {
+      ...s,
+      current: { ...s.current, accumulatedMs: next, startedAt: Date.now() },
+    };
+  });
+}
+
+/** Nudge the live timer by a delta in ms (can be negative). */
+export function adjustActiveElapsed(deltaMs: number) {
+  const cur = activeWorkStore.get().current;
+  if (!cur) return;
+  setActiveElapsed(elapsedMs(cur) + deltaMs);
+}
+
 /** Stop the active item and bank its time into totals. */
 export function stopActive() {
   activeWorkStore.update((s) => ({ ...bankAndLog(s), current: null }));

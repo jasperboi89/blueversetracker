@@ -607,3 +607,37 @@ export const aiPolishNote = createServerFn({ method: "POST" })
     if (!res.ok) return { ok: false as const, error: res.error };
     return { ok: true as const, text: (res.text ?? "").trim() };
   });
+
+/** Suggest a short, consistent subject line for an Additional Work item. */
+export const aiSuggestSubject = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        text: z.string().min(1).max(6000),
+        accountName: z.string().max(200).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "suggest-subject", "");
+
+    const res = await aiComplete({
+      tier: "fast",
+      system: [
+        "You write the subject line for an internal support work item.",
+        "Return ONE line, 3-9 words, sentence case, no trailing period, no quotes,",
+        "no ticket numbers unless present in the text. Lead with the action",
+        "(e.g. 'Update holiday hours script'). Return only the subject.",
+      ].join(" "),
+      prompt: [data.accountName ? `Account: ${data.accountName}` : "", data.text]
+        .filter(Boolean)
+        .join("\n\n"),
+    });
+    if (!res.ok) return { ok: false as const, error: res.error };
+    return {
+      ok: true as const,
+      subject: (res.text ?? "").trim().replace(/^["'\s]+|["'.\s]+$/g, "").slice(0, 120),
+    };
+  });

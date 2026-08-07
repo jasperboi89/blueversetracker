@@ -14,6 +14,7 @@ import {
   FolderOpen,
   GraduationCap,
   Heart,
+  History,
   Inbox,
   LibraryBig,
   ListChecks,
@@ -87,6 +88,7 @@ import {
   type KnowledgeAttachment,
   type KnowledgeFolder,
   type KnowledgeNote,
+  type KnowledgeNoteVersion,
   type KnowledgeNoteType,
 } from "@/lib/knowledge/knowledge.functions";
 
@@ -146,7 +148,7 @@ type VaultView =
   | `folder:${string}`;
 
 type SortMode = "updated" | "created" | "title" | "type" | "folder";
-type NoteViewMode = "original" | "organized" | "split";
+
 
 const SORT_LABELS: Record<SortMode, string> = {
   updated: "Recently updated",
@@ -258,7 +260,7 @@ export function KnowledgeVault() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState<KnowledgeAttachment | null>(null);
-  const [noteViewMode, setNoteViewMode] = useState<NoteViewMode>("original");
+  const [versionsOpen, setVersionsOpen] = useState(false);
   const [aiOrganizing, setAiOrganizing] = useState(false);
 
   useEffect(() => {
@@ -291,7 +293,7 @@ export function KnowledgeVault() {
     setDirty(false);
     setLastSaved(null);
     setTagInput("");
-    setNoteViewMode("original");
+    setVersionsOpen(false);
     // Note list updates are handled explicitly so an autosave never overwrites an active draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
@@ -398,6 +400,7 @@ export function KnowledgeVault() {
           aiContentHtml: snapshot.aiContentHtml,
           aiGeneratedAt: snapshot.aiGeneratedAt,
           aiSourceFingerprint: snapshot.aiSourceFingerprint,
+          versions: snapshot.versions ?? [],
         },
       });
       setNotes((current) => current.map((note) => (note.id === saved.id ? saved : note)));
@@ -459,24 +462,85 @@ export function KnowledgeVault() {
         ],
         ALLOWED_ATTR: [],
       });
+      const history = current.versions ?? [];
+      const archived: KnowledgeNoteVersion = {
+        id: `ver-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        label: history.length === 0 ? "Original note" : "Before AI pass",
+        html: current.contentHtml,
+        createdAt: new Date().toISOString(),
+      };
       const next: KnowledgeNote = {
         ...current,
+        contentHtml: safeHtml,
+        versions: [archived, ...history].slice(0, 30),
         aiContentHtml: safeHtml,
         aiGeneratedAt: new Date().toISOString(),
-        aiSourceFingerprint: contentFingerprint(current.contentHtml),
+        aiSourceFingerprint: contentFingerprint(safeHtml),
       };
       setDraft(next);
       draftRef.current = next;
       setDirty(true);
-      setNoteViewMode("organized");
       await persistDraft(next);
-      toast.success("AI-organized version saved. Your original note is unchanged.");
+      toast.success("AI version is now the note. Your previous text is in Versions.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "AI could not organize this note.");
     } finally {
       setAiOrganizing(false);
     }
   }, [aiSettings, persistDraft]);
+
+  /** Legacy notes kept the AI copy alongside the original; promote it and archive the original. */
+  useEffect(() => {
+    const note = draftRef.current;
+    if (!note) return;
+    if (!note.aiContentHtml || note.aiContentHtml === note.contentHtml) return;
+    if ((note.versions ?? []).length > 0) return;
+    const promoted: KnowledgeNote = {
+      ...note,
+      contentHtml: note.aiContentHtml,
+      versions: [
+        {
+          id: `ver-${Date.now()}-legacy`,
+          label: "Original note",
+          html: note.contentHtml,
+          createdAt: note.createdAt,
+        },
+      ],
+      aiSourceFingerprint: contentFingerprint(note.aiContentHtml),
+    };
+    setDraft(promoted);
+    draftRef.current = promoted;
+    void persistDraft(promoted);
+  }, [selectedId, persistDraft]);
+
+  const restoreVersion = useCallback(
+    (version: KnowledgeNoteVersion) => {
+      const current = draftRef.current;
+      if (!current) return;
+      const next: KnowledgeNote = {
+        ...current,
+        contentHtml: version.html,
+        versions: [
+          {
+            id: `ver-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            label: "Replaced by restore",
+            html: current.contentHtml,
+            createdAt: new Date().toISOString(),
+          },
+          ...(current.versions ?? []),
+        ].slice(0, 30),
+        aiGeneratedAt: null,
+        aiContentHtml: "",
+        aiSourceFingerprint: "",
+      };
+      setDraft(next);
+      draftRef.current = next;
+      setVersionsOpen(false);
+      void persistDraft(next);
+      toast.success(`Restored “${version.label}”.`);
+    },
+    [persistDraft],
+  );
 
   useEffect(() => {
     if (!dirty || !draft) return;
@@ -1302,9 +1366,9 @@ export function KnowledgeVault() {
                   )}
                 </div>
                 <NoteViewModeBar
-                  mode={noteViewMode}
-                  onModeChange={setNoteViewMode}
-                  hasOrganized={Boolean(draft.aiContentHtml)}
+                  versionCount={(draft.versions ?? []).length}
+                  onOpenVersions={() => setVersionsOpen(true)}
+                  hasOrganized={Boolean(draft.aiGeneratedAt)}
                   stale={aiIsStale}
                   generatedAt={draft.aiGeneratedAt}
                   aiEnabled={aiSettings.enabled}
@@ -1315,11 +1379,9 @@ export function KnowledgeVault() {
               <ScrollArea className="min-h-0 flex-1">
                 <div className="p-4">
                   <KnowledgeContentWorkspace
-                    mode={noteViewMode}
-                    originalHtml={draft.contentHtml}
-                    organizedHtml={draft.aiContentHtml}
-                    onOriginalChange={(contentHtml) => changeDraft({ contentHtml })}
-                    onOrganizedChange={(aiContentHtml) => changeDraft({ aiContentHtml })}
+                    html={draft.contentHtml}
+                    aiGenerated={Boolean(draft.aiGeneratedAt)}
+                    onChange={(contentHtml) => changeDraft({ contentHtml })}
                     minHeight="calc(100vh - 28rem)"
                   />
                   <AttachmentsPanel
@@ -1411,9 +1473,9 @@ export function KnowledgeVault() {
             </DialogDescription>
             {draft && (
               <NoteViewModeBar
-                mode={noteViewMode}
-                onModeChange={setNoteViewMode}
-                hasOrganized={Boolean(draft.aiContentHtml)}
+                versionCount={(draft.versions ?? []).length}
+                onOpenVersions={() => setVersionsOpen(true)}
+                hasOrganized={Boolean(draft.aiGeneratedAt)}
                 stale={aiIsStale}
                 generatedAt={draft.aiGeneratedAt}
                 aiEnabled={aiSettings.enabled}
@@ -1428,11 +1490,9 @@ export function KnowledgeVault() {
               <ScrollArea className="min-h-0 flex-1">
                 <div className="p-5">
                   <KnowledgeContentWorkspace
-                    mode={noteViewMode}
-                    originalHtml={draft.contentHtml}
-                    organizedHtml={draft.aiContentHtml}
-                    onOriginalChange={(contentHtml) => changeDraft({ contentHtml })}
-                    onOrganizedChange={(aiContentHtml) => changeDraft({ aiContentHtml })}
+                    html={draft.contentHtml}
+                    aiGenerated={Boolean(draft.aiGeneratedAt)}
+                    onChange={(contentHtml) => changeDraft({ contentHtml })}
                     minHeight="calc(80vh - 12rem)"
                   />
                   <AttachmentsPanel
@@ -1476,6 +1536,63 @@ export function KnowledgeVault() {
             </Button>
             <Button variant="ghost" onClick={() => setExpanded(false)}>
               Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={versionsOpen} onOpenChange={setVersionsOpen}>
+        <DialogContent className="max-w-3xl border-violet-300/15 bg-background/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4 text-violet-300" />
+              Archived versions
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Earlier text for this note, kept out of the way. Restore any version to make it the
+              note again.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            <div className="space-y-3 pr-3">
+              {(draft?.versions ?? []).length === 0 && (
+                <div className="rounded-lg border border-white/10 bg-black/10 p-6 text-center text-sm text-muted-foreground">
+                  No archived versions yet.
+                </div>
+              )}
+              {(draft?.versions ?? []).map((version) => (
+                <div
+                  key={version.id}
+                  className="rounded-xl border border-white/10 bg-black/15 p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm text-foreground">{version.label}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(version.createdAt), { addSuffix: true })}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 border border-violet-300/20 bg-violet-400/10 px-2.5 text-[11px] text-violet-100 hover:bg-violet-400/20"
+                      onClick={() => restoreVersion(version)}
+                    >
+                      <RefreshCw className="mr-1.5 h-3 w-3" />
+                      Restore
+                    </Button>
+                  </div>
+                  <div
+                    className="rich-text-content max-h-48 overflow-auto rounded-lg border border-white/[0.06] bg-black/20 p-3 text-[13px] leading-6 text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(version.html) }}
+                  />
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setVersionsOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1528,8 +1645,8 @@ export function KnowledgeVault() {
 }
 
 function NoteViewModeBar({
-  mode,
-  onModeChange,
+  versionCount,
+  onOpenVersions,
   hasOrganized,
   stale,
   generatedAt,
@@ -1538,8 +1655,8 @@ function NoteViewModeBar({
   onGenerate,
   compact = false,
 }: {
-  mode: NoteViewMode;
-  onModeChange: (mode: NoteViewMode) => void;
+  versionCount: number;
+  onOpenVersions: () => void;
   hasOrganized: boolean;
   stale: boolean;
   generatedAt: string | null;
@@ -1548,12 +1665,6 @@ function NoteViewModeBar({
   onGenerate: () => void;
   compact?: boolean;
 }) {
-  const options: Array<{ value: NoteViewMode; label: string; disabled?: boolean }> = [
-    { value: "original", label: "Original" },
-    { value: "organized", label: "AI Organized", disabled: !hasOrganized },
-    { value: "split", label: "Split View", disabled: !hasOrganized },
-  ];
-
   return (
     <div
       className={cn(
@@ -1561,25 +1672,24 @@ function NoteViewModeBar({
         compact && "mt-1",
       )}
     >
-      <div className="flex rounded-lg border border-white/[0.07] bg-black/15 p-0.5">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            disabled={option.disabled}
-            onClick={() => onModeChange(option.value)}
-            className={cn(
-              "rounded-md px-2.5 py-1 text-[11px] transition",
-              mode === option.value
-                ? "bg-violet-300/15 text-violet-100 shadow-[inset_0_0_0_1px_oklch(0.8_0.15_295_/_0.16)]"
-                : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-              option.disabled && "cursor-not-allowed opacity-35",
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={onOpenVersions}
+        disabled={versionCount === 0}
+        className={cn(
+          "flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-black/15 px-2.5 py-1 text-[11px] transition",
+          versionCount === 0
+            ? "cursor-not-allowed opacity-35"
+            : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+        )}
+        title="Earlier versions of this note, archived automatically"
+      >
+        <History className="h-3 w-3" />
+        Versions
+        {versionCount > 0 && (
+          <span className="rounded-full bg-white/10 px-1.5 font-mono">{versionCount}</span>
+        )}
+      </button>
 
       {hasOrganized && (
         <div className="flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
@@ -1591,7 +1701,7 @@ function NoteViewModeBar({
                 : "border-emerald-300/20 bg-emerald-300/[0.05] text-emerald-200",
             )}
           >
-            {stale ? "Original changed · refresh AI" : "AI version current"}
+            {stale ? "Edited since AI pass" : "AI-written version"}
           </span>
           {generatedAt && !compact && (
             <span className="hidden xl:inline">
@@ -1610,7 +1720,7 @@ function NoteViewModeBar({
         onClick={onGenerate}
         title={
           aiEnabled
-            ? "Create a separate organized version while keeping the original"
+            ? "Rewrite this note with AI; the current text is archived to Versions"
             : "AI is turned off in settings"
         }
       >
@@ -1619,79 +1729,51 @@ function NoteViewModeBar({
         ) : (
           <Sparkles className="mr-1.5 h-3.5 w-3.5" />
         )}
-        {busy ? "Organizing…" : hasOrganized ? "Regenerate AI version" : "Organize with AI"}
+        {busy ? "Organizing…" : hasOrganized ? "Re-run AI" : "Organize with AI"}
       </Button>
     </div>
   );
 }
 
 function KnowledgeContentWorkspace({
-  mode,
-  originalHtml,
-  organizedHtml,
-  onOriginalChange,
-  onOrganizedChange,
+  html,
+  aiGenerated,
+  onChange,
   minHeight,
 }: {
-  mode: NoteViewMode;
-  originalHtml: string;
-  organizedHtml: string;
-  onOriginalChange: (html: string) => void;
-  onOrganizedChange: (html: string) => void;
+  html: string;
+  aiGenerated: boolean;
+  onChange: (html: string) => void;
   minHeight: string;
 }) {
-  const editor = (
-    label: string,
-    value: string,
-    onChange: (html: string) => void,
-    organized: boolean,
-  ) => (
+  return (
     <div className="min-w-0">
       <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/75">
-        {organized ? (
+        {aiGenerated ? (
           <Sparkles className="h-3 w-3 text-violet-300" />
         ) : (
           <FileText className="h-3 w-3 text-cyan-300" />
         )}
-        {label}
-        {organized && (
+        Note
+        {aiGenerated && (
           <span className="normal-case tracking-normal text-muted-foreground/55">
-            editable copy · original protected
+            AI-written · earlier text in Versions
           </span>
         )}
       </div>
       <RichTextEditor
-        value={value}
+        value={html}
         onChange={onChange}
-        placeholder={
-          organized
-            ? "Generate an AI-organized version from your original note."
-            : "Start writing your note, training guide, prompt, or procedure…"
-        }
+        placeholder="Start writing your note, training guide, prompt, or procedure…"
         minHeight={minHeight}
         editorClassName="text-[15px] leading-7"
         className={cn(
           "border-white/10 bg-black/10",
-          organized && "border-violet-300/15 bg-violet-400/[0.025]",
+          aiGenerated && "border-violet-300/15 bg-violet-400/[0.025]",
         )}
       />
     </div>
   );
-
-  if (mode === "split" && organizedHtml) {
-    return (
-      <div className="grid min-w-0 gap-3 2xl:grid-cols-2">
-        {editor("Original note", originalHtml, onOriginalChange, false)}
-        {editor("AI organized", organizedHtml, onOrganizedChange, true)}
-      </div>
-    );
-  }
-
-  if (mode === "organized" && organizedHtml) {
-    return editor("AI organized", organizedHtml, onOrganizedChange, true);
-  }
-
-  return editor("Original note", originalHtml, onOriginalChange, false);
 }
 
 function Stat({ value, label }: { value: number; label: string }) {

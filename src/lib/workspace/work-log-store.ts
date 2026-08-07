@@ -14,6 +14,8 @@ export interface WorkLogEntry {
   durationMs: number;
   to: string;
   params: Record<string, string>;
+  /** Set when the operator edited the duration or entered it by hand. */
+  adjusted?: boolean;
 }
 
 interface WorkLogState {
@@ -49,6 +51,47 @@ export function workLogForAccount(accountNumber: string): WorkLogEntry[] {
   return workLogStore
     .get()
     .entries.filter((e) => e.accountNumber === accountNumber);
+}
+
+/** Edit a logged session (duration, label, account). Marks it as adjusted. */
+export function updateWorkLogEntry(
+  id: string,
+  patch: Partial<Pick<WorkLogEntry, "durationMs" | "label" | "accountNumber" | "accountName">>,
+): void {
+  workLogStore.update((s) => ({
+    entries: s.entries.map((e) => (e.id === id ? { ...e, ...patch, adjusted: true } : e)),
+  }));
+}
+
+export function deleteWorkLogEntry(id: string): void {
+  workLogStore.update((s) => ({ entries: s.entries.filter((e) => e.id !== id) }));
+}
+
+/** Add a session by hand (forgot to run the timer). */
+export function addManualWorkLogEntry(input: {
+  kind?: ActiveKind;
+  label: string;
+  accountNumber: string;
+  accountName?: string;
+  durationMs: number;
+  endedAt?: number;
+}): void {
+  const endedAt = input.endedAt ?? Date.now();
+  const entry: WorkLogEntry = {
+    id: `wl_${endedAt}_${Math.random().toString(36).slice(2, 8)}`,
+    kind: input.kind ?? "additional",
+    workId: `manual-${endedAt}`,
+    label: input.label || "Manual time entry",
+    accountNumber: input.accountNumber,
+    accountName: input.accountName,
+    startedAt: endedAt - input.durationMs,
+    endedAt,
+    durationMs: Math.max(0, Math.round(input.durationMs)),
+    to: "",
+    params: {},
+    adjusted: true,
+  };
+  workLogStore.update((s) => ({ entries: [entry, ...s.entries].slice(0, MAX_ENTRIES) }));
 }
 
 attachCloudSync<WorkLogState>({

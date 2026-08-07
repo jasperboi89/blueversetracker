@@ -33,6 +33,13 @@ export interface KnowledgeFolder {
   updatedAt: string;
 }
 
+export interface KnowledgeNoteVersion {
+  id: string;
+  label: string;
+  html: string;
+  createdAt: string;
+}
+
 export interface KnowledgeNote {
   id: string;
   folderId: string | null;
@@ -49,6 +56,7 @@ export interface KnowledgeNote {
   aiContentHtml: string;
   aiGeneratedAt: string | null;
   aiSourceFingerprint: string;
+  versions: KnowledgeNoteVersion[];
 }
 
 const IdSchema = z.string().uuid();
@@ -70,6 +78,14 @@ const AttachmentSchema = z.object({
   label: z.string().trim().max(200).optional(),
 });
 const AttachmentsSchema = z.array(AttachmentSchema).max(30);
+
+const VersionSchema = z.object({
+  id: z.string().min(1).max(64),
+  label: z.string().trim().min(1).max(80),
+  html: z.string().max(250000),
+  createdAt: z.string().min(1).max(64),
+});
+const VersionsSchema = z.array(VersionSchema).max(30);
 
 function mapFolder(row: {
   id: string;
@@ -107,6 +123,7 @@ function mapNote(row: {
   ai_content_html?: string;
   ai_generated_at?: string | null;
   ai_source_fingerprint?: string;
+  versions?: unknown;
 }): KnowledgeNote {
   return {
     id: row.id,
@@ -124,6 +141,7 @@ function mapNote(row: {
     aiContentHtml: row.ai_content_html ?? "",
     aiGeneratedAt: row.ai_generated_at ?? null,
     aiSourceFingerprint: row.ai_source_fingerprint ?? "",
+    versions: Array.isArray(row.versions) ? (row.versions as KnowledgeNoteVersion[]) : [],
   };
 }
 
@@ -141,7 +159,7 @@ export const listKnowledgeVault = createServerFn({ method: "GET" })
       supabase
         .from("knowledge_notes")
         .select(
-          "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint",
+          "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint,versions",
         )
         .eq("user_id", userId)
         .order("is_pinned", { ascending: false })
@@ -246,7 +264,7 @@ export const createKnowledgeNote = createServerFn({ method: "POST" })
         title: data.title,
       })
       .select(
-        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint",
+        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint,versions",
       )
       .single();
     if (error) throw new Error(error.message);
@@ -267,6 +285,7 @@ const UpdateNoteSchema = z.object({
   aiContentHtml: z.string().max(250000).optional(),
   aiGeneratedAt: z.string().datetime().nullable().optional(),
   aiSourceFingerprint: z.string().max(64).optional(),
+  versions: VersionsSchema.optional(),
 });
 
 export const updateKnowledgeNote = createServerFn({ method: "POST" })
@@ -293,6 +312,7 @@ export const updateKnowledgeNote = createServerFn({ method: "POST" })
       ...(changes.aiSourceFingerprint !== undefined
         ? { ai_source_fingerprint: changes.aiSourceFingerprint }
         : {}),
+      ...(changes.versions !== undefined ? { versions: changes.versions } : {}),
     };
     const { data: row, error } = await context.supabase
       .from("knowledge_notes")
@@ -300,7 +320,7 @@ export const updateKnowledgeNote = createServerFn({ method: "POST" })
       .eq("id", id)
       .eq("user_id", context.userId)
       .select(
-        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint",
+        "id,folder_id,title,content_html,note_type,tags,is_pinned,is_favorite,is_archived,created_at,updated_at,attachments,ai_content_html,ai_generated_at,ai_source_fingerprint,versions",
       )
       .single();
     if (error) throw new Error(error.message);
