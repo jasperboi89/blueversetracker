@@ -8,6 +8,9 @@ import { ActiveWorkDock } from "@/components/workspace/ActiveWorkDock";
 import { GlobalSnipPaste } from "@/components/workspace/GlobalSnipPaste";
 import { CopilotSheet } from "@/components/workspace/CopilotSheet";
 import { CopilotLauncher } from "@/components/workspace/CopilotLauncher";
+import { PresenceAvatar } from "@/components/presence/PresenceAvatar";
+import { PresenceDriver } from "@/components/presence/PresenceDriver";
+import { usePresencePrefs } from "@/lib/presence/presence-prefs-store";
 import { MilestoneWatcher } from "@/components/workspace/MilestoneWatcher";
 import { recordActivity } from "@/lib/workspace/activity-store";
 import { useThemeSync } from "@/hooks/use-theme-sync";
@@ -31,6 +34,7 @@ function AuthenticatedLayout() {
 function AuthorizedShell() {
   useThemeSync();
   useTuningSync();
+  const presence = usePresencePrefs();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   useEffect(() => {
     recordActivity("nav", pathname);
@@ -45,7 +49,14 @@ function AuthorizedShell() {
       <ActiveWorkDock />
       <GlobalSnipPaste />
       <CopilotSheet />
-      <CopilotLauncher />
+      {presence.enabled ? (
+        <>
+          <PresenceAvatar />
+          <PresenceDriver />
+        </>
+      ) : (
+        <CopilotLauncher />
+      )}
       <MilestoneWatcher />
     </>
   );
