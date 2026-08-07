@@ -784,18 +784,6 @@ function PresenceSection() {
   );
 }
 
-function ToggleRowUnused({ label, description, checked, onChange }: { label: string; description?: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="mt-3 flex items-start gap-3 rounded-md border border-border/40 p-3">
-      <Switch checked={checked} onCheckedChange={onChange} />
-      <div className="text-xs">
-        <div className="font-medium text-foreground">{label}</div>
-        {description && <div className="text-muted-foreground">{description}</div>}
-      </div>
-    </div>
-  );
-}
-
 /* ---------------- Data / Cleanup ---------------- */
 function DataSection() {
   const { tickets } = useTickets();
