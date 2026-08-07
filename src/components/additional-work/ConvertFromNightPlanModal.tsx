@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { accountsStore } from "@/lib/accounts-store";
 import { nightPlanStore, type NightPlanItem } from "@/lib/night-plan-store";
+import { additionalWorkStore } from "@/lib/additional-work-store";
+import { rememberSubject } from "@/lib/settings/subject-presets-store";
+import { SubjectBuilder } from "@/components/additional-work/SubjectBuilder";
 import { toast } from "sonner";
 
 export function ConvertFromNightPlanModal({
@@ -18,12 +21,16 @@ export function ConvertFromNightPlanModal({
   const nav = useNavigate();
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<{ number: string; name: string } | null>(null);
+  const [subject, setSubject] = useState(item.task);
 
   const results = useMemo(() => (q.trim() ? accountsStore.search(q, { includeArchived: false }) : []), [q]);
 
   const convert = (account?: { number: string; name: string }) => {
     const workId = nightPlanStore.convertToAdditionalWork(item.id, account);
     if (!workId) return;
+    const clean = subject.trim();
+    if (clean && clean !== item.task) additionalWorkStore.update(workId, { title: clean });
+    rememberSubject(clean || item.task, account?.number);
     toast.success("Converted to Additional Work.");
     onOpenChange(false);
     onConverted?.();
@@ -36,6 +43,19 @@ export function ConvertFromNightPlanModal({
         <DialogHeader><DialogTitle>Convert to Additional Work?</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">"{item.task}"</p>
+          <div>
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">Subject</label>
+            <Input className="mt-1" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Work subject" />
+            <div className="mt-1.5">
+              <SubjectBuilder
+                value={subject}
+                onChange={setSubject}
+                accountNumber={picked?.number}
+                accountName={picked?.name}
+                describeText={item.task}
+              />
+            </div>
+          </div>
           <div>
             <label className="text-xs uppercase tracking-wider text-muted-foreground">Attach Account (optional)</label>
             <Input className="mt-1" value={q} onChange={(e) => { setQ(e.target.value); setPicked(null); }} placeholder="Search account number or name" />

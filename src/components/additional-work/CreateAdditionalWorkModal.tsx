@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { accountsStore } from "@/lib/accounts-store";
 import { additionalWorkStore, type AddWorkIssueClassification } from "@/lib/additional-work-store";
 import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
+import { rememberSubject } from "@/lib/settings/subject-presets-store";
+import { SubjectBuilder } from "@/components/additional-work/SubjectBuilder";
+import { htmlToPlainText } from "@/lib/rich-text";
 import { toast } from "sonner";
 
 export function CreateAdditionalWorkModal({
@@ -52,6 +55,7 @@ export function CreateAdditionalWorkModal({
       programmingStatusNotes: progNotes.trim(),
       issueClassification: classification || undefined,
     });
+    rememberSubject(title.trim(), acctNum.trim() || undefined);
     toast.success("Additional Work created.");
     reset();
     onOpenChange(false);
@@ -65,6 +69,15 @@ export function CreateAdditionalWorkModal({
         <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
           <Field label="Work Title *">
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Email client about holiday hours" />
+            <div className="mt-1.5">
+              <SubjectBuilder
+                value={title}
+                onChange={setTitle}
+                accountNumber={acctNum.trim() || undefined}
+                accountName={acctName || undefined}
+                describeText={htmlToPlainText(need)}
+              />
+            </div>
           </Field>
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="Account Number (optional)">

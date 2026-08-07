@@ -15,8 +15,16 @@ import { accountsStore, useAccounts, type AccountTemplateType } from "@/lib/acco
 import { useTickets } from "@/lib/tickets-store";
 import { useDispatch } from "@/lib/dispatch-store";
 import { useAdditionalWork } from "@/lib/additional-work-store";
-import { useWorkLog, workLogForAccount } from "@/lib/workspace/work-log-store";
+import {
+  useWorkLog,
+  workLogForAccount,
+  updateWorkLogEntry,
+  deleteWorkLogEntry,
+  addManualWorkLogEntry,
+  type WorkLogEntry,
+} from "@/lib/workspace/work-log-store";
 import { formatElapsed } from "@/lib/workspace/active-work-store";
+import { TimeEditDialog } from "@/components/workspace/TimeEditDialog";
 import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAdditionalWorkModal";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
@@ -47,6 +55,8 @@ function AccountProfilePage() {
   const [startTicketOpen, setStartTicketOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [filter, setFilter] = useState<TimelineFilter>("all");
+  const [timeEdit, setTimeEdit] = useState<WorkLogEntry | null>(null);
+  const [addTimeOpen, setAddTimeOpen] = useState(false);
 
   if (!acct) {
     return (
@@ -169,9 +179,30 @@ function AccountProfilePage() {
             <div className="flex items-center gap-2">
               <div className="text-sm font-medium text-foreground">Time logged · {formatElapsed(e.durationMs)}</div>
               <span className="rounded-full border border-border/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">{e.kind}</span>
+              {e.adjusted && (
+                <span className="rounded-full border border-border/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">adjusted</span>
+              )}
             </div>
             <div className="text-xs text-muted-foreground">{e.label}</div>
             <div className="mt-0.5 text-[10px] text-muted-foreground">{formatCentralShort(new Date(e.endedAt))}</div>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              title="Edit time"
+              className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+              onClick={() => setTimeEdit(e)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              title="Delete entry"
+              className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:text-destructive"
+              onClick={() => { deleteWorkLogEntry(e.id); toast.success("Time entry removed."); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       ),
@@ -269,6 +300,11 @@ function AccountProfilePage() {
           <div className="glass-panel p-4 lg:col-span-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">Account Timeline</h2>
+              {filter === "timelog" && (
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddTimeOpen(true)}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add time
+                </Button>
+              )}
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as TimelineFilter)} className="mt-3">
               <TabsList className="grid w-full grid-cols-6 bg-white/5">
@@ -315,6 +351,43 @@ function AccountProfilePage() {
         <AddNoteModal open={noteOpen} onOpenChange={setNoteOpen} accountNumber={acct.number} tickets={tks.map(t => ({ id: t.id, number: t.number, subject: t.details.subject }))} />
         <StartFreshdeskModal open={startTicketOpen} onOpenChange={setStartTicketOpen} accountNumber={acct.number} accountName={acct.name} />
         <ArchiveModal open={archiveOpen} onOpenChange={setArchiveOpen} archived={acct.status === "archived"} accountNumber={acct.number} />
+        <TimeEditDialog
+          open={Boolean(timeEdit)}
+          onOpenChange={(v) => { if (!v) setTimeEdit(null); }}
+          valueMs={timeEdit?.durationMs ?? 0}
+          label={timeEdit?.label ?? ""}
+          onLabelChange={() => {}}
+          onSave={(ms, label) => {
+            if (!timeEdit) return;
+            updateWorkLogEntry(timeEdit.id, { durationMs: ms, label: label || timeEdit.label });
+            setTimeEdit(null);
+            toast.success("Time entry updated.");
+          }}
+          onDelete={() => {
+            if (!timeEdit) return;
+            deleteWorkLogEntry(timeEdit.id);
+            setTimeEdit(null);
+            toast.success("Time entry removed.");
+          }}
+        />
+        <TimeEditDialog
+          open={addTimeOpen}
+          onOpenChange={setAddTimeOpen}
+          title="Add time entry"
+          valueMs={0}
+          label=""
+          onLabelChange={() => {}}
+          onSave={(ms, label) => {
+            if (ms <= 0) { toast.error("Enter a duration first."); return; }
+            addManualWorkLogEntry({
+              label: label || "Manual time entry",
+              accountNumber: acct.number,
+              accountName: acct.name,
+              durationMs: ms,
+            });
+            toast.success("Time added.");
+          }}
+        />
       </div>
     </>
   );

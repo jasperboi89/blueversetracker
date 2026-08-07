@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Pause, Play, Square, Timer, ArrowUpRight } from "lucide-react";
+import { Pause, Play, Square, Timer, ArrowUpRight, Pencil } from "lucide-react";
 import { useNow } from "@/hooks/use-now";
 import {
   elapsedMs,
   pauseActive,
   resumeActive,
+  setActiveElapsed,
   stopActive,
   useActiveWork,
   type ActiveKind,
 } from "@/lib/workspace/active-work-store";
+import { TimeEditDialog } from "@/components/workspace/TimeEditDialog";
 
 const KIND_LABEL: Record<ActiveKind, string> = {
   ticket: "Ticket",
@@ -33,6 +36,7 @@ function fmt(ms: number): string {
 export function ActiveWorkDock() {
   const { current } = useActiveWork();
   const now = useNow(1000);
+  const [editing, setEditing] = useState(false);
 
   if (!current) return null;
   const elapsed = elapsedMs(current, now.getTime() || Date.now());
@@ -55,12 +59,16 @@ export function ActiveWorkDock() {
           {current.label}
           <ArrowUpRight className="h-3 w-3" />
         </Link>
-        <span
-          className="font-mono tabular-nums"
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          title="Edit time spent"
+          className="flex items-center gap-1 font-mono tabular-nums hover:underline"
           style={{ color: current.running ? "var(--green-glow)" : "var(--muted-foreground)" }}
         >
           {fmt(elapsed)}
-        </span>
+          <Pencil className="h-2.5 w-2.5 opacity-60" />
+        </button>
         <div className="flex items-center gap-0.5">
           {current.running ? (
             <button
@@ -88,6 +96,12 @@ export function ActiveWorkDock() {
           </button>
         </div>
       </div>
+      <TimeEditDialog
+        open={editing}
+        onOpenChange={setEditing}
+        valueMs={elapsed}
+        onSave={(next) => setActiveElapsed(next)}
+      />
     </div>
   );
 }
