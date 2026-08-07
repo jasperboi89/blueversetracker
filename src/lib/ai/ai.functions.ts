@@ -574,3 +574,36 @@ export const aiOperatorProfile = createServerFn({ method: "POST" })
       runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
     });
   });
+
+/**
+ * "Polish this note" — tightens the operator's own wording without adding
+ * facts. Returns plain text lines; the caller converts to HTML.
+ */
+export const aiPolishNote = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        text: z.string().min(1).max(8000),
+        kind: z.enum(["work-note", "retest", "dispatch", "general"]).default("general"),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "polish-note", "");
+
+    const res = await aiComplete({
+      tier: "fast",
+      system: [
+        "You clean up a support operator's internal note before it is pasted into a ticket.",
+        "Rules: keep every fact exactly as written; never invent details, causes, or outcomes.",
+        "Fix grammar, spelling and spacing. Use short declarative sentences.",
+        "Use '- ' bullets when the note lists multiple actions. No headings, no preamble,",
+        "no closing pleasantries, no markdown bold. Return only the cleaned note text.",
+      ].join(" "),
+      prompt: `Note type: ${data.kind}\n\n${data.text}`,
+    });
+    if (!res.ok) return { ok: false as const, error: res.error };
+    return { ok: true as const, text: (res.text ?? "").trim() };
+  });
