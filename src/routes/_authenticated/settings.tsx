@@ -724,27 +724,137 @@ function ToggleRow({ label, description, checked, onChange }: { label: string; d
   );
 }
 
-/* ---------------- Presence Avatar ---------------- */
+/* ---------------- Clara ---------------- */
 function PresenceSection() {
   const p = usePresencePrefs();
+  const [deviceVoices, setDeviceVoices] = useState<SpeechSynthesisVoice[]>([]);
+  useEffect(() => {
+    const sync = () => setDeviceVoices(listDeviceVoices());
+    sync();
+    return onVoicesChanged(sync);
+  }, []);
   return (
-    <SectionCard id="presence" title="Presence Avatar" icon={Sparkles}>
+    <SectionCard id="presence" title="Clara" icon={Sparkles}>
       <p className="mb-1 text-xs text-muted-foreground">
-        A holographic companion that floats in with guidance, checks in during the shift, and
-        opens the Intel Copilot when you tap it.
+        Clara is your holographic companion — she floats in with guidance, checks in during the
+        shift, and opens the Intel Copilot when you tap her. Close her any time and she collapses
+        to a small pill that still pulses for alerts.
       </p>
       <ToggleRow
-        label="Enable holographic avatar"
+        label="Enable Clara"
         description="When off, the classic sparkle Copilot button comes back."
         checked={p.enabled}
         onChange={(v) => presencePrefsStore.update((c) => ({ ...c, enabled: v }))}
       />
       <ToggleRow
+        label="Collapse to pill"
+        description="Keeps her out of the way; alerts still arrive on the pill."
+        checked={p.hidden}
+        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, hidden: v }))}
+      />
+      <ToggleRow
         label="Speak messages aloud"
-        description="Uses your device voice. Nothing plays until you've interacted with the page."
+        description="Nothing plays until you've interacted with the page."
         checked={p.voice}
         onChange={(v) => presencePrefsStore.update((c) => ({ ...c, voice: v }))}
       />
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field label="Voice type">
+          <Select
+            value={p.voiceMode}
+            onValueChange={(v) =>
+              presencePrefsStore.update((c) => ({ ...c, voiceMode: v as VoiceMode }))
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="device">Device voices (instant, free)</SelectItem>
+              <SelectItem value="ai">Human AI voices (higher quality)</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+        {p.voiceMode === "ai" ? (
+          <Field label="Clara's voice">
+            <Select
+              value={p.aiVoice}
+              onValueChange={(v) => presencePrefsStore.update((c) => ({ ...c, aiVoice: v }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CLARA_AI_VOICES.map((voice) => (
+                  <SelectItem key={voice.id} value={voice.id}>{voice.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : (
+          <Field label="Device voice">
+            <Select
+              value={p.deviceVoiceUri || "__auto"}
+              onValueChange={(v) =>
+                presencePrefsStore.update((c) => ({
+                  ...c,
+                  deviceVoiceUri: v === "__auto" ? "" : v,
+                }))
+              }
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__auto">Automatic</SelectItem>
+                {deviceVoices.map((voice) => (
+                  <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
+                    {voice.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+        <Field label="Preview">
+          <Button variant="secondary" className="w-full" onClick={() => previewVoice()}>
+            Hear Clara
+          </Button>
+        </Field>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field label={`Speaking rate — ${p.rate.toFixed(2)}×`}>
+          <input
+            type="range" min={60} max={140} step={2} value={Math.round(p.rate * 100)}
+            onChange={(e) =>
+              presencePrefsStore.update((c) => ({ ...c, rate: Number(e.target.value) / 100 }))
+            }
+            className="w-full accent-[var(--cyan-glow)]"
+          />
+        </Field>
+        <Field label={`Pitch — ${p.pitch.toFixed(2)}`}>
+          <input
+            type="range" min={60} max={160} step={5} value={Math.round(p.pitch * 100)}
+            onChange={(e) =>
+              presencePrefsStore.update((c) => ({ ...c, pitch: Number(e.target.value) / 100 }))
+            }
+            className="w-full accent-[var(--cyan-glow)]"
+          />
+        </Field>
+        <Field label="Corner">
+          <Select
+            value={p.corner}
+            onValueChange={(v) =>
+              presencePrefsStore.update((c) => ({ ...c, corner: v as PresenceCorner }))
+            }
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="br">Bottom right</SelectItem>
+              <SelectItem value="bl">Bottom left</SelectItem>
+              <SelectItem value="tr">Top right</SelectItem>
+              <SelectItem value="tl">Top left</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <Field label="Check-in frequency">
           <Select
