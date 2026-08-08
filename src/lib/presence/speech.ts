@@ -5,6 +5,7 @@
  */
 import { presencePrefsStore } from "./presence-prefs-store";
 import { claraSpeech } from "./tts.functions";
+import { generateKokoroSpeech } from "./kokoro";
 
 let interacted = false;
 let audioEl: HTMLAudioElement | null = null;
@@ -71,6 +72,30 @@ function speakWithDevice(text: string) {
   }
 }
 
+async function playBlob(blob: Blob): Promise<boolean> {
+  try {
+    stopSpeaking();
+    audioUrl = URL.createObjectURL(blob);
+    audioEl = new Audio(audioUrl);
+    audioEl.volume = 0.95;
+    await audioEl.play();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Free, natural voices generated locally in the browser. */
+async function speakWithKokoro(text: string): Promise<boolean> {
+  const prefs = presencePrefsStore.get();
+  try {
+    const blob = await generateKokoroSpeech(text.slice(0, 600), prefs.kokoroVoice, prefs.rate);
+    return await playBlob(blob);
+  } catch {
+    return false;
+  }
+}
+
 async function speakWithAi(text: string): Promise<boolean> {
   const prefs = presencePrefsStore.get();
   try {
@@ -94,6 +119,12 @@ async function speakWithAi(text: string): Promise<boolean> {
 export function speak(text: string) {
   if (!interacted || !text.trim()) return;
   const prefs = presencePrefsStore.get();
+  if (prefs.voiceMode === "kokoro") {
+    void speakWithKokoro(text).then((ok) => {
+      if (!ok) speakWithDevice(text);
+    });
+    return;
+  }
   if (prefs.voiceMode === "ai") {
     void speakWithAi(text).then((ok) => {
       if (!ok) speakWithDevice(text);
