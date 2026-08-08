@@ -72,6 +72,7 @@
     "dompurify": "^3.4.11",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "kokoro-js": "^1.2.1",
     "lucide-react": "^0.575.0",
     "pdfjs-dist": "^6.2.108",
     "react": "^19.2.0",
