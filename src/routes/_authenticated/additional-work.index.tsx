@@ -187,7 +187,6 @@ function CompletedCard({ w }: { w: ReturnType<typeof useAdditionalWork>["items"]
         <Link to="/additional-work/$workId/work" params={{ workId: w.id }}>
           <Button size="sm" variant="ghost" className="text-xs">Open Record</Button>
         </Link>
-        <DeleteWorkButton workId={w.id} title={w.title} />
       </div>
     </div>
   );
