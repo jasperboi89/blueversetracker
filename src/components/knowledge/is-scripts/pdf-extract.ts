@@ -26,6 +26,5 @@ export async function extractPdfPages(
     pages.push({ pageNumber, text: text.slice(0, 200000) });
     onProgress?.(pageNumber, doc.numPages);
   }
-  await doc.destroy();
   return pages;
 }
