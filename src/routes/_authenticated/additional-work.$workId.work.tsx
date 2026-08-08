@@ -31,6 +31,7 @@ import {
   type AddWorkIssueClassification,
 } from "@/lib/additional-work-store";
 import { AddWorkSnipModal } from "@/components/additional-work/AddWorkSnipModal";
+import { DeleteWorkButton } from "@/components/additional-work/DeleteWorkButton";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
