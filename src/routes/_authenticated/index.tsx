@@ -10,6 +10,7 @@ import { OverviewCards } from "@/components/home/OverviewCards";
 import { RecentlyCompleted } from "@/components/home/RecentlyCompleted";
 import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
 import { BriefingPanel } from "@/components/home/BriefingPanel";
+import { ShiftHandoffPanel } from "@/components/handoff/ShiftHandoffPanel";
 import { NightForecast } from "@/components/quantum-bloom/NightForecast";
 import { useTheme } from "@/lib/settings/theme-store";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
@@ -32,6 +33,7 @@ const HOME_PANES: Array<{
   { id: "home:lookup", title: "Lookup", def: { xPct: 0, yPct: 75, wPct: 50, hPct: 25 }, body: () => <LookupCards /> },
   { id: "home:overview", title: "Overview", def: { xPct: 51, yPct: 85, wPct: 49, hPct: 15 }, body: () => <OverviewCards /> },
   { id: "home:recent", title: "Recently Completed", def: { xPct: 0, yPct: 100, wPct: 100, hPct: 25 }, body: () => <RecentlyCompleted /> },
+  { id: "home:handoff", title: "Shift Handoff", def: { xPct: 0, yPct: 126, wPct: 100, hPct: 30 }, body: () => <ShiftHandoffPanel /> },
 ];
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -75,6 +77,9 @@ function Home() {
           <LookupCards />
           <OverviewCards />
           <RecentlyCompleted />
+          <section className="glass-panel p-4">
+            <ShiftHandoffPanel />
+          </section>
         </>
       )}
       <ShiftSummaryButton />
