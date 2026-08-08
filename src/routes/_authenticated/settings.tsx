@@ -38,6 +38,7 @@ import {
   type PresenceCorner,
 } from "@/lib/presence/presence-prefs-store";
 import { listDeviceVoices, onVoicesChanged, previewVoice } from "@/lib/presence/speech";
+import { KOKORO_VOICES, onKokoroProgress } from "@/lib/presence/kokoro";
 import { CLARA_AI_VOICES } from "@/lib/presence/tts.functions";
 import { nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useTickets } from "@/lib/tickets-store";
@@ -732,11 +733,13 @@ function ToggleRow({ label, description, checked, onChange }: { label: string; d
 function PresenceSection() {
   const p = usePresencePrefs();
   const [deviceVoices, setDeviceVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [kokoroPct, setKokoroPct] = useState<number | null>(null);
   useEffect(() => {
     const sync = () => setDeviceVoices(listDeviceVoices());
     sync();
     return onVoicesChanged(sync);
   }, []);
+  useEffect(() => onKokoroProgress(setKokoroPct), []);
   return (
     <SectionCard id="presence" title="Clara" icon={Sparkles}>
       <p className="mb-1 text-xs text-muted-foreground">
@@ -774,6 +777,7 @@ function PresenceSection() {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="device">Device voices (instant, free)</SelectItem>
+              <SelectItem value="kokoro">Human voices — free, on-device</SelectItem>
               <SelectItem value="ai">Human AI voices (higher quality)</SelectItem>
             </SelectContent>
           </Select>
@@ -787,6 +791,20 @@ function PresenceSection() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CLARA_AI_VOICES.map((voice) => (
+                  <SelectItem key={voice.id} value={voice.id}>{voice.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : p.voiceMode === "kokoro" ? (
+          <Field label="Clara's voice">
+            <Select
+              value={p.kokoroVoice}
+              onValueChange={(v) => presencePrefsStore.update((c) => ({ ...c, kokoroVoice: v }))}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {KOKORO_VOICES.map((voice) => (
                   <SelectItem key={voice.id} value={voice.id}>{voice.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -817,10 +835,17 @@ function PresenceSection() {
         )}
         <Field label="Preview">
           <Button variant="secondary" className="w-full" onClick={() => previewVoice()}>
-            Hear Clara
+            {kokoroPct === null ? "Hear Clara" : `Preparing voice… ${kokoroPct}%`}
           </Button>
         </Field>
       </div>
+      {p.voiceMode === "kokoro" && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Free natural voices that run on your machine — no AI credits. The first line downloads
+          the voice model once (about 90&nbsp;MB); after that it works offline and instantly. If it
+          can't load, Clara falls back to a device voice.
+        </p>
+      )}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <Field label={`Speaking rate — ${p.rate.toFixed(2)}×`}>
