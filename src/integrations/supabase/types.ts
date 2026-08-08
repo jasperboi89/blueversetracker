@@ -245,6 +245,134 @@ export type Database = {
         }
         Relationships: []
       }
+      is_manual_pages: {
+        Row: {
+          created_at: string
+          id: string
+          manual_id: string
+          page_number: number
+          search_vector: unknown
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manual_id: string
+          page_number: number
+          search_vector?: unknown
+          text?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manual_id?: string
+          page_number?: number
+          search_vector?: unknown
+          text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "is_manual_pages_manual_id_fkey"
+            columns: ["manual_id"]
+            isOneToOne: false
+            referencedRelation: "is_manuals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      is_manuals: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+          page_count: number
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          page_count?: number
+          size_bytes?: number
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          page_count?: number
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      is_script_entries: {
+        Row: {
+          attachments: Json
+          created_at: string
+          example_html: string
+          id: string
+          is_archived: boolean
+          is_favorite: boolean
+          is_pinned: boolean
+          kind: string
+          reason_html: string
+          script_body: string
+          tags: string[]
+          title: string
+          updated_at: string
+          usage_html: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json
+          created_at?: string
+          example_html?: string
+          id?: string
+          is_archived?: boolean
+          is_favorite?: boolean
+          is_pinned?: boolean
+          kind?: string
+          reason_html?: string
+          script_body?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          usage_html?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json
+          created_at?: string
+          example_html?: string
+          id?: string
+          is_archived?: boolean
+          is_favorite?: boolean
+          is_pinned?: boolean
+          kind?: string
+          reason_html?: string
+          script_body?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          usage_html?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_folders: {
         Row: {
           color: string
@@ -525,6 +653,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      search_is_manual_pages: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          category: string
+          manual_id: string
+          manual_name: string
+          page_number: number
+          text: string
+        }[]
       }
     }
     Enums: {
