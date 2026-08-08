@@ -55,6 +55,7 @@ import {
 import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
 import { AccountLinker } from "@/components/freshdesk/AccountLinker";
 import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
+import { ChangeRecordsPanel } from "@/components/changes/ChangeRecordsPanel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { resolveFloating, setLayoutMode, usePaneLayout } from "@/lib/workspace/pane-layout-store";
@@ -372,6 +373,8 @@ function WorkspacePage() {
   );
 
   const resultBody = (
+    <div className="space-y-3">
+      <div>
     <div className="space-y-3">
       <div>
         <label className="text-xs uppercase tracking-wider text-muted-foreground">Status</label>
