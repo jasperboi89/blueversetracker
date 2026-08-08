@@ -30,6 +30,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  TerminalSquare,
   Upload,
   X,
 } from "lucide-react";
@@ -44,6 +45,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PrintableNote } from "@/components/knowledge/PrintableNote";
+import { IsScriptWorkspace } from "@/components/knowledge/is-scripts/IsScriptWorkspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
