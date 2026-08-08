@@ -603,6 +603,54 @@ export type Database = {
         }
         Relationships: []
       }
+      shift_handoffs: {
+        Row: {
+          created_at: string
+          escalations: string
+          id: string
+          notes: string
+          open_items: Json
+          published_at: string | null
+          shift_date: string
+          shift_key: string
+          status: string
+          summary: string
+          updated_at: string
+          user_id: string
+          watch_items: Json
+        }
+        Insert: {
+          created_at?: string
+          escalations?: string
+          id?: string
+          notes?: string
+          open_items?: Json
+          published_at?: string | null
+          shift_date?: string
+          shift_key?: string
+          status?: string
+          summary?: string
+          updated_at?: string
+          user_id: string
+          watch_items?: Json
+        }
+        Update: {
+          created_at?: string
+          escalations?: string
+          id?: string
+          notes?: string
+          open_items?: Json
+          published_at?: string | null
+          shift_date?: string
+          shift_key?: string
+          status?: string
+          summary?: string
+          updated_at?: string
+          user_id?: string
+          watch_items?: Json
+        }
+        Relationships: []
+      }
       ticket_access_log: {
         Row: {
           action: string
