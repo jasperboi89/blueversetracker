@@ -30,6 +30,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  TerminalSquare,
   Upload,
   X,
 } from "lucide-react";
@@ -44,6 +45,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PrintableNote } from "@/components/knowledge/PrintableNote";
+import { IsScriptWorkspace } from "@/components/knowledge/is-scripts/IsScriptWorkspace";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -225,6 +227,7 @@ function formatBytes(bytes: number) {
 
 export function KnowledgeVault() {
   const aiSettings = useAISettings();
+  const [section, setSection] = useState<"notes" | "is-scripts">("notes");
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [notes, setNotes] = useState<KnowledgeNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -925,7 +928,29 @@ export function KnowledgeVault() {
         </div>
       </header>
 
-      <div className="relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-12rem)] xl:grid-cols-[244px_350px_minmax(0,1fr)]">
+      <div className="flex flex-wrap items-center gap-2">
+        <SectionTab
+          active={section === "notes"}
+          icon={LibraryBig}
+          label="Notes"
+          onClick={() => setSection("notes")}
+        />
+        <SectionTab
+          active={section === "is-scripts"}
+          icon={TerminalSquare}
+          label="IS Script Work"
+          onClick={() => setSection("is-scripts")}
+        />
+      </div>
+
+      {section === "is-scripts" && <IsScriptWorkspace />}
+
+      <div
+        className={cn(
+          "relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-12rem)] xl:grid-cols-[244px_350px_minmax(0,1fr)]",
+          section !== "notes" && "hidden",
+        )}
+      >
         <aside className="glass-panel flex min-h-0 flex-col overflow-hidden p-3">
           <div className="mb-2 flex items-center justify-between px-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -2348,5 +2373,30 @@ function AttachmentsPanel({
         )}
       </div>
     </div>
+  );
+}
+
+function SectionTab({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: typeof FileText;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-muted-foreground transition hover:border-cyan-300/30 hover:text-foreground",
+        active && "border-cyan-300/45 bg-cyan-300/10 text-foreground",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
   );
 }
