@@ -77,6 +77,9 @@ function Home() {
           <LookupCards />
           <OverviewCards />
           <RecentlyCompleted />
+          <section className="glass-panel p-4">
+            <ShiftHandoffPanel />
+          </section>
         </>
       )}
       <ShiftSummaryButton />
