@@ -31,6 +31,7 @@ import {
   type AddWorkIssueClassification,
 } from "@/lib/additional-work-store";
 import { AddWorkSnipModal } from "@/components/additional-work/AddWorkSnipModal";
+import { DeleteWorkButton } from "@/components/additional-work/DeleteWorkButton";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -127,6 +128,12 @@ function WorkspacePage() {
                   <CheckCircle2 className="mr-1.5 h-4 w-4" /> Mark Completed
                 </Button>
               )}
+              <DeleteWorkButton
+                workId={w.id}
+                title={w.title}
+                onDeleted={() => nav({ to: "/additional-work" })}
+                label="Delete task"
+              />
             </div>
           </div>
         </div>

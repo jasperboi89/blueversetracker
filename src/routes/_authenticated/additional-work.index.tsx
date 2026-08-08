@@ -4,6 +4,7 @@ import { ClipboardList, Plus, CheckCircle2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAdditionalWorkModal";
 import { useAdditionalWork } from "@/lib/additional-work-store";
+import { DeleteWorkButton } from "@/components/additional-work/DeleteWorkButton";
 import { formatCentralShort } from "@/lib/shift";
 
 export const Route = createFileRoute("/_authenticated/additional-work/")({
@@ -157,6 +158,7 @@ function ActiveCard({ w }: { w: ReturnType<typeof useAdditionalWork>["items"][nu
               </Button>
             </Link>
           )}
+          <DeleteWorkButton workId={w.id} title={w.title} />
           <Link to="/additional-work/$workId/work" params={{ workId: w.id }}>
             <Button size="sm" className="text-xs"
               style={{ background: "linear-gradient(110deg, oklch(0.4 0.16 240 / 0.7), oklch(0.4 0.18 290 / 0.55))", border: "1px solid oklch(0.78 0.18 220 / 0.45)" }}
@@ -185,6 +187,7 @@ function CompletedCard({ w }: { w: ReturnType<typeof useAdditionalWork>["items"]
         <Link to="/additional-work/$workId/work" params={{ workId: w.id }}>
           <Button size="sm" variant="ghost" className="text-xs">Open Record</Button>
         </Link>
+        <DeleteWorkButton workId={w.id} title={w.title} />
       </div>
     </div>
   );
