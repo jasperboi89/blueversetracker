@@ -37,7 +37,8 @@ export const Route = createFileRoute("/_authenticated/accounts/$accountNumber")(
   component: AccountProfilePage,
 });
 
-type TimelineFilter = "all" | "freshdesk" | "dispatch" | "additional" | "notes" | "timelog";
+type TimelineFilter =
+  | "all" | "freshdesk" | "dispatch" | "additional" | "notes" | "timelog" | "changes";
 
 function AccountProfilePage() {
   const { accountNumber } = Route.useParams();
