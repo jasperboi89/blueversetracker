@@ -32,8 +32,8 @@ export function ShiftHandoffPanel() {
   const list = useServerFn(listShiftHandoffs);
   const save = useServerFn(saveShiftHandoff);
   const remove = useServerFn(deleteShiftHandoff);
-  const tickets = useTickets();
-  const work = useAdditionalWork();
+  const { tickets } = useTickets();
+  const { items: workItems } = useAdditionalWork();
 
   const query = useQuery({
     queryKey: ["shift-handoffs"],
@@ -107,7 +107,7 @@ export function ShiftHandoffPanel() {
         ),
       );
     }
-    for (const w of work) {
+    for (const w of workItems) {
       if (w.status !== "working") continue;
       seeded.push(newItem(w.title || "Untitled work", "additional work", w.whatNeedsDone ?? ""));
     }
