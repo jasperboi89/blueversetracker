@@ -55,6 +55,7 @@ import {
 import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
 import { AccountLinker } from "@/components/freshdesk/AccountLinker";
 import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
+import { ChangeRecordsPanel } from "@/components/changes/ChangeRecordsPanel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { resolveFloating, setLayoutMode, usePaneLayout } from "@/lib/workspace/pane-layout-store";
@@ -784,6 +785,17 @@ function WorkspacePage() {
       body: priorFixesBody,
     },
     { id: "changes", title: "Changes Made", chip: changesChip, body: changesBody },
+    {
+      id: "change-records",
+      title: "Change Records",
+      chip: "audit",
+      body: (
+        <ChangeRecordsPanel
+          ticketNumber={ticket.number}
+          {...(ticket.accountNumber ? { accountNumber: ticket.accountNumber } : {})}
+        />
+      ),
+    },
     { id: "result", title: "Result / Testing", chip: resultChip, body: resultBody },
     { id: "notes", title: "Notes", chip: noteCountChip, body: notesBody },
     { id: "snips", title: "Snips", chip: snipCountChip, body: snipsBody },

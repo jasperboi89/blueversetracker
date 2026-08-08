@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_change_records: {
+        Row: {
+          account_name: string
+          account_number: string
+          after_text: string
+          applied_at: string | null
+          before_text: string
+          change_type: string
+          checklist: Json
+          created_at: string
+          id: string
+          notes: string
+          requester: string
+          risk: string
+          rollback_note: string
+          status: string
+          tested_by: string
+          ticket_number: string
+          title: string
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+          work_ref: string
+        }
+        Insert: {
+          account_name?: string
+          account_number?: string
+          after_text?: string
+          applied_at?: string | null
+          before_text?: string
+          change_type?: string
+          checklist?: Json
+          created_at?: string
+          id?: string
+          notes?: string
+          requester?: string
+          risk?: string
+          rollback_note?: string
+          status?: string
+          tested_by?: string
+          ticket_number?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+          work_ref?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          after_text?: string
+          applied_at?: string | null
+          before_text?: string
+          change_type?: string
+          checklist?: Json
+          created_at?: string
+          id?: string
+          notes?: string
+          requester?: string
+          risk?: string
+          rollback_note?: string
+          status?: string
+          tested_by?: string
+          ticket_number?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+          work_ref?: string
+        }
+        Relationships: []
+      }
       achievements_unlocked: {
         Row: {
           achievement_id: string

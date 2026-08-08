@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
+import { ChangeRecordsPanel } from "@/components/changes/ChangeRecordsPanel";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accountsStore, useAccounts, type AccountTemplateType } from "@/lib/accounts-store";
@@ -36,7 +37,8 @@ export const Route = createFileRoute("/_authenticated/accounts/$accountNumber")(
   component: AccountProfilePage,
 });
 
-type TimelineFilter = "all" | "freshdesk" | "dispatch" | "additional" | "notes" | "timelog";
+type TimelineFilter =
+  | "all" | "freshdesk" | "dispatch" | "additional" | "notes" | "timelog" | "changes";
 
 function AccountProfilePage() {
   const { accountNumber } = Route.useParams();
@@ -307,16 +309,19 @@ function AccountProfilePage() {
               )}
             </div>
             <Tabs value={filter} onValueChange={(v) => setFilter(v as TimelineFilter)} className="mt-3">
-              <TabsList className="grid w-full grid-cols-6 bg-white/5">
+              <TabsList className="grid w-full grid-cols-7 bg-white/5">
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="freshdesk">Freshdesk</TabsTrigger>
                 <TabsTrigger value="dispatch">Dispatch</TabsTrigger>
                 <TabsTrigger value="additional">Add'l Work</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
                 <TabsTrigger value="timelog">Time</TabsTrigger>
+                <TabsTrigger value="changes">Changes</TabsTrigger>
               </TabsList>
               <TabsContent value={filter} className="mt-3 space-y-2">
-                {filtered.length === 0 ? (
+                {filter === "changes" ? (
+                  <ChangeRecordsPanel accountNumber={accountNumber} accountName={acct.name} />
+                ) : filtered.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No items.</p>
                 ) : filtered.map((i) => (
                   <div key={i.id} className="rounded-md border border-border/30 bg-white/[0.02] p-3">{i.node}</div>
