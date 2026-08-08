@@ -44,6 +44,7 @@ import { ticketsStore } from "@/lib/tickets-store";
 import { accountsStore } from "@/lib/accounts-store";
 import { dispatchStore } from "@/lib/dispatch-store";
 import { additionalWorkStore } from "@/lib/additional-work-store";
+import { DeleteWorkButton } from "@/components/additional-work/DeleteWorkButton";
 import { formatCentralExact } from "@/lib/shift";
 import { useQuery } from "@tanstack/react-query";
 import { adminGetAccessSummary } from "@/lib/auth/admin-users.functions";
@@ -789,6 +790,9 @@ function DataSection() {
   const { tickets } = useTickets();
   const { sessions } = useDispatch();
   const { items: work } = useAdditionalWork();
+  const completedWork = work
+    .filter((w) => w.status === "completed")
+    .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
   const { accounts } = useAccounts();
   const archived = nightPlanHistory.archived().length;
   const cleanup = nightPlanHistory.readyForCleanup().length;
@@ -823,6 +827,32 @@ function DataSection() {
         <Button className="mt-2" variant="ghost" size="sm" disabled={cleanup === 0} onClick={() => setCleanupOpen(true)}>
           Review Night Plan Cleanup
         </Button>
+      </div>
+
+      <div className="mt-4 rounded-md border border-border/40 p-3">
+        <div className="text-sm font-medium text-foreground">Completed Additional Work</div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Completed tasks can only be deleted here. Active tasks are deleted from the Additional
+          Work page.
+        </p>
+        {completedWork.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">No completed additional work.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-border/40">
+            {completedWork.map((w) => (
+              <li key={w.id} className="flex items-center gap-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm text-foreground">{w.title}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {w.accountNumber ? `${w.accountNumber} · ${w.accountName} · ` : ""}
+                    {w.completedAt ? new Date(w.completedAt).toLocaleString() : ""}
+                  </div>
+                </div>
+                <DeleteWorkButton workId={w.id} title={w.title} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="mt-4 rounded-md border border-border/40 p-3">
