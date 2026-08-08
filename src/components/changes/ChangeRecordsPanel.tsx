@@ -38,8 +38,7 @@ export function ChangeRecordsPanel({
     try {
       const result = await listChangeRecords({
         data: {
-          ...(accountNumber ? { accountNumber } : {}),
-          ...(!accountNumber && ticketNumber ? { ticketNumber } : {}),
+          ...(ticketNumber ? { ticketNumber } : accountNumber ? { accountNumber } : {}),
         },
       });
       setRecords(result.records);
