@@ -225,6 +225,7 @@ function formatBytes(bytes: number) {
 
 export function KnowledgeVault() {
   const aiSettings = useAISettings();
+  const [section, setSection] = useState<"notes" | "is-scripts">("notes");
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [notes, setNotes] = useState<KnowledgeNote[]>([]);
   const [loading, setLoading] = useState(true);
