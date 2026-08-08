@@ -375,8 +375,6 @@ function WorkspacePage() {
   const resultBody = (
     <div className="space-y-3">
       <div>
-    <div className="space-y-3">
-      <div>
         <label className="text-xs uppercase tracking-wider text-muted-foreground">Status</label>
         <Select
           value={session.resultStatus ?? ""}
