@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Volume2, VolumeX, X, ArrowUpRight, MessageSquare } from "lucide-react";
+import { Volume2, VolumeX, X, ArrowUpRight, MessageSquare, Sparkles } from "lucide-react";
 import avatarAsset from "@/assets/avatar-hologram.mp4.asset.json";
 import { usePresenceMessage, presenceDismiss, presenceSpeak } from "@/lib/presence/presence-store";
-import { presencePrefsStore, usePresencePrefs } from "@/lib/presence/presence-prefs-store";
+import {
+  presencePrefsStore,
+  usePresencePrefs,
+  type PresenceCorner,
+} from "@/lib/presence/presence-prefs-store";
 import { speak, stopSpeaking } from "@/lib/presence/speech";
 import { useEffectiveMotion } from "@/lib/settings/display-prefs-store";
 import { openCopilot } from "@/components/workspace/CopilotSheet";
@@ -17,10 +21,23 @@ const TONE_COLOR: Record<string, string> = {
   neutral: "var(--cyan-glow)",
 };
 
+const CORNER_CLASS: Record<PresenceCorner, string> = {
+  br: "bottom-3 right-3 flex-row items-end",
+  bl: "bottom-3 left-3 flex-row-reverse items-end",
+  tr: "top-16 right-3 flex-row items-start",
+  tl: "top-16 left-3 flex-row-reverse items-start",
+};
+
+function nearestCorner(x: number, y: number): PresenceCorner {
+  const right = x > window.innerWidth / 2;
+  const bottom = y > window.innerHeight / 2;
+  return bottom ? (right ? "br" : "bl") : right ? "tr" : "tl";
+}
+
 /**
- * Holographic companion. Idles quietly in the lower-right corner, brightens
- * and opens a speech bubble when it has something to say, and opens the
- * Copilot when tapped.
+ * Clara — the holographic companion. Idles quietly in a corner, brightens and
+ * opens a speech bubble when she has something to say, opens the Copilot when
+ * tapped, and collapses to a small pill when closed.
  */
 export function PresenceAvatar() {
   const prefs = usePresencePrefs();
@@ -30,7 +47,9 @@ export function PresenceAvatar() {
   const insights = useInsights();
   const alert = hasHighInsight(insights);
   const [videoOk, setVideoOk] = useState(true);
+  const [dragging, setDragging] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const dragState = useRef<{ moved: boolean } | null>(null);
 
   // Speak new messages aloud when voice is on.
   useEffect(() => {
@@ -48,6 +67,8 @@ export function PresenceAvatar() {
   const accent = TONE_COLOR[msg?.tone ?? "neutral"] ?? "var(--cyan-glow)";
   const size = Math.max(80, Math.min(220, prefs.size));
   const active = Boolean(msg);
+  const corner = prefs.corner ?? "br";
+  const hidden = prefs.hidden;
 
   function summon() {
     if (msg) {
@@ -60,15 +81,41 @@ export function PresenceAvatar() {
       tone: "neutral",
       text: alert
         ? "Something needs a look — open the Copilot and I'll walk you through it."
-        : "I'm here. Ask me anything about tonight's work.",
+        : "I'm Clara. Ask me anything about tonight's work.",
       ask: "What should I focus on right now?",
       force: true,
       ttlMs: 14_000,
     });
   }
 
+  // Collapsed: a small pill that pulses when Clara has something waiting.
+  if (hidden) {
+    return (
+      <div className={`pointer-events-none fixed z-[115] flex gap-2 ${CORNER_CLASS[corner]}`}>
+        <button
+          onClick={() => {
+            presencePrefsStore.update((c) => ({ ...c, hidden: false }));
+            if (!msg) summon();
+          }}
+          title={msg ? `Clara: ${msg.text}` : "Bring Clara back"}
+          aria-label={msg ? `Clara has a message: ${msg.text}` : "Bring Clara back"}
+          className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/50 backdrop-blur"
+          style={{
+            boxShadow: `0 0 ${msg || alert ? 22 : 10}px color-mix(in oklab, ${accent} 60%, transparent)`,
+            animation:
+              (msg || alert) && motion !== "reduced"
+                ? "pulse-glow 2s ease-in-out infinite"
+                : undefined,
+          }}
+        >
+          <Sparkles className="h-4 w-4" style={{ color: accent }} />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="pointer-events-none fixed bottom-3 right-3 z-[115] flex items-end gap-2">
+    <div className={`pointer-events-none fixed z-[115] flex gap-2 ${CORNER_CLASS[corner]}`}>
       {msg && (
         <div
           className="glass-panel pointer-events-auto mb-6 max-w-xs p-3 text-xs"
@@ -80,7 +127,12 @@ export function PresenceAvatar() {
           role="status"
         >
           <div className="flex items-start gap-2">
-            <p className="flex-1 leading-relaxed text-foreground">{msg.text}</p>
+            <div className="flex-1">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Clara
+              </p>
+              <p className="leading-relaxed text-foreground">{msg.text}</p>
+            </div>
             <button
               onClick={presenceDismiss}
               aria-label="Dismiss"
@@ -125,12 +177,54 @@ export function PresenceAvatar() {
       )}
 
       <button
-        onClick={summon}
-        title="Intel Copilot presence"
-        aria-label="Intel Copilot presence"
+        onClick={() => {
+          if (dragState.current?.moved) return;
+          summon();
+        }}
+        onPointerDown={(event) => {
+          dragState.current = { moved: false };
+          const startX = event.clientX;
+          const startY = event.clientY;
+          const move = (e: PointerEvent) => {
+            if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > 12) {
+              if (dragState.current) dragState.current.moved = true;
+              setDragging(true);
+            }
+          };
+          const up = (e: PointerEvent) => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            setDragging(false);
+            if (dragState.current?.moved) {
+              const next = nearestCorner(e.clientX, e.clientY);
+              presencePrefsStore.update((c) => ({ ...c, corner: next }));
+              setTimeout(() => { dragState.current = null; }, 0);
+            }
+          };
+          window.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", up);
+        }}
+        title="Clara — tap to talk, drag to move"
+        aria-label="Clara, your holographic assistant"
         className="pointer-events-auto relative grid place-items-center rounded-full"
-        style={{ width: size, height: size }}
+        style={{ width: size, height: size, cursor: dragging ? "grabbing" : "pointer" }}
       >
+        <span
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            presenceDismiss();
+            stopSpeaking();
+            presencePrefsStore.update((c) => ({ ...c, hidden: true }));
+          }}
+          role="button"
+          tabIndex={0}
+          title="Hide Clara (alerts keep coming)"
+          aria-label="Hide Clara"
+          className="absolute left-0 top-0 z-10 grid h-6 w-6 cursor-pointer place-items-center rounded-full border border-white/15 bg-black/60 text-muted-foreground transition hover:text-foreground"
+        >
+          <X className="h-3 w-3" />
+        </span>
         {/* Floor glow */}
         <span
           aria-hidden
