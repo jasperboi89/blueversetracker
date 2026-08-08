@@ -12,6 +12,8 @@ import { formatCentralShort } from "@/lib/shift";
 import { Button } from "@/components/ui/button";
 import { useRecurringRows } from "@/lib/reports/recurring-issues";
 import { useNightPlanHistory, nightPlanHistory } from "@/lib/reports/night-plan-history";
+import { useCoverageGaps } from "@/lib/coverage/coverage-store";
+import { formatHolidayDate } from "@/lib/coverage/holidays";
 import { useNavigate } from "@tanstack/react-router";
 import { alphaMix } from "@/lib/visual-style";
 
@@ -62,6 +64,7 @@ export function AlertCenter() {
     ? nightPlanHistory.readyForCleanup().length
     : 0;
   const activeRecurring = recurring.filter((r) => r.active);
+  const coverageGaps = useCoverageGaps();
 
   const dynamic: MockAlert[] = useMemo(() => {
     const out: MockAlert[] = [];
@@ -86,17 +89,38 @@ export function AlertCenter() {
     return out;
   }, [activeRecurring, cleanupCount]);
 
+  const coverageAlerts: MockAlert[] = useMemo(
+    () =>
+      coverageGaps.slice(0, 4).map((g) => ({
+        id: `cov-${g.id}`,
+        priority: (g.severity === "critical" ? "critical" : "warning") as AlertPriority,
+        title:
+          g.kind === "holiday"
+            ? `Account ${g.accountNumber} — ${g.label} coverage not confirmed`
+            : `Account ${g.accountNumber} — ${g.label}`,
+        detail: `${formatHolidayDate(g.date)}${g.accountName ? ` · ${g.accountName}` : ""} — ${
+          g.daysAway < 0
+            ? `${Math.abs(g.daysAway)} day(s) overdue`
+            : g.daysAway === 0
+              ? "today"
+              : `in ${g.daysAway} day(s)`
+        }. Confirm the holiday hours / on-call rotation with the client.`,
+        updatedMinutesAgo: 1,
+      })),
+    [coverageGaps],
+  );
+
   const seedAlerts: MockAlert[] = [];
   const visible = useMemo(
     () =>
-      [...dynamic, ...seedAlerts]
+      [...dynamic, ...coverageAlerts, ...seedAlerts]
         .filter((a) => !dismissed.has(a.id))
         .sort(
           (a, b) =>
             order.indexOf(a.priority) - order.indexOf(b.priority) ||
             a.updatedMinutesAgo - b.updatedMinutesAgo,
         ),
-    [dismissed, dynamic, seedAlerts],
+    [dismissed, dynamic, coverageAlerts, seedAlerts],
   );
 
   if (visible.length === 0 && dismissed.size === 0) return null;
