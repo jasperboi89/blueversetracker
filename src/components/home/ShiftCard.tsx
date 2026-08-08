@@ -25,33 +25,43 @@ export function ShiftCard() {
   const isNearEnd = status === "near-end";
   const [phase, setPhase] = useState<"idle" | "finalizing" | "celebrating">("idle");
 
-  // Trigger end-of-shift celebration once per shift
+  // Celebrate only at the moment the shift ends (the clock rolling past 6am
+  // with the app open) — never simply because the page loaded after 6am.
+  const prevStatus = useRef<string | null>(null);
   useEffect(() => {
+    const was = prevStatus.current;
+    prevStatus.current = status;
     if (status !== "complete") return;
+
     const sk = getShiftKey(now);
+    // First render already past the end of shift: mark it seen, play nothing.
+    if (was === null) {
+      if (typeof window !== "undefined") localStorage.setItem(CELEB_KEY, sk);
+      return;
+    }
+    if (was === "complete") return;
     const stored = typeof window !== "undefined" ? localStorage.getItem(CELEB_KEY) : null;
     if (stored === sk) return;
+    // Record immediately so a refresh mid-animation can't replay it.
+    if (typeof window !== "undefined") localStorage.setItem(CELEB_KEY, sk);
+
     if (theme === "quantum-bloom") {
       triggerCelebration({
         kind: "shift",
         label: "Shift complete",
         context: { shiftKey: sk },
       });
-      if (typeof window !== "undefined") localStorage.setItem(CELEB_KEY, sk);
       return;
     }
     setPhase("finalizing");
     const t1 = setTimeout(() => setPhase("celebrating"), 3000);
-    const t2 = setTimeout(() => {
-      setPhase("idle");
-      if (typeof window !== "undefined") localStorage.setItem(CELEB_KEY, sk);
-    }, 13_000);
+    const t2 = setTimeout(() => setPhase("idle"), 13_000);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status === "complete", theme]);
+  }, [status, theme]);
 
   const ringSize = 96;
   const stroke = 8;
