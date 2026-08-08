@@ -164,24 +164,25 @@ export const updateChangeRecord = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => UpdateSchema.parse(input))
   .handler(async ({ context, data }) => {
     const { id, ...c } = data;
-    const patch: Record<string, unknown> = {};
-    if (c.accountNumber !== undefined) patch.account_number = c.accountNumber;
-    if (c.accountName !== undefined) patch.account_name = c.accountName;
-    if (c.title !== undefined) patch.title = c.title;
-    if (c.changeType !== undefined) patch.change_type = c.changeType;
-    if (c.beforeText !== undefined) patch.before_text = c.beforeText;
-    if (c.afterText !== undefined) patch.after_text = c.afterText;
-    if (c.requester !== undefined) patch.requester = c.requester;
-    if (c.risk !== undefined) patch.risk = c.risk;
-    if (c.status !== undefined) patch.status = c.status;
-    if (c.rollbackNote !== undefined) patch.rollback_note = c.rollbackNote;
-    if (c.checklist !== undefined) patch.checklist = c.checklist;
-    if (c.ticketNumber !== undefined) patch.ticket_number = c.ticketNumber;
-    if (c.workRef !== undefined) patch.work_ref = c.workRef;
-    if (c.testedBy !== undefined) patch.tested_by = c.testedBy;
-    if (c.notes !== undefined) patch.notes = c.notes;
-    if (c.verifiedAt !== undefined) patch.verified_at = c.verifiedAt;
-    if (c.appliedAt !== undefined) patch.applied_at = c.appliedAt;
+    const patch = {
+      ...(c.accountNumber !== undefined ? { account_number: c.accountNumber } : {}),
+      ...(c.accountName !== undefined ? { account_name: c.accountName } : {}),
+      ...(c.title !== undefined ? { title: c.title } : {}),
+      ...(c.changeType !== undefined ? { change_type: c.changeType } : {}),
+      ...(c.beforeText !== undefined ? { before_text: c.beforeText } : {}),
+      ...(c.afterText !== undefined ? { after_text: c.afterText } : {}),
+      ...(c.requester !== undefined ? { requester: c.requester } : {}),
+      ...(c.risk !== undefined ? { risk: c.risk } : {}),
+      ...(c.status !== undefined ? { status: c.status } : {}),
+      ...(c.rollbackNote !== undefined ? { rollback_note: c.rollbackNote } : {}),
+      ...(c.checklist !== undefined ? { checklist: c.checklist } : {}),
+      ...(c.ticketNumber !== undefined ? { ticket_number: c.ticketNumber } : {}),
+      ...(c.workRef !== undefined ? { work_ref: c.workRef } : {}),
+      ...(c.testedBy !== undefined ? { tested_by: c.testedBy } : {}),
+      ...(c.notes !== undefined ? { notes: c.notes } : {}),
+      ...(c.verifiedAt !== undefined ? { verified_at: c.verifiedAt } : {}),
+      ...(c.appliedAt !== undefined ? { applied_at: c.appliedAt } : {}),
+    };
 
     const { data: row, error } = await context.supabase
       .from("account_change_records")
