@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -34,7 +34,11 @@ import {
   usePresencePrefs,
   presencePrefsStore,
   type CheckInFrequency,
+  type VoiceMode,
+  type PresenceCorner,
 } from "@/lib/presence/presence-prefs-store";
+import { listDeviceVoices, onVoicesChanged, previewVoice } from "@/lib/presence/speech";
+import { CLARA_AI_VOICES } from "@/lib/presence/tts.functions";
 import { nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useTickets } from "@/lib/tickets-store";
 import { useAccounts } from "@/lib/accounts-store";
