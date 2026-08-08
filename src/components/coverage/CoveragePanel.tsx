@@ -16,9 +16,9 @@ const SEV_COLOR = {
 
 /** Holiday & on-call coverage: what still needs confirming before the day arrives. */
 export function CoveragePanel() {
-  const { accounts: watched } = useCoverage();
+  const { accounts: watched, confirmations } = useCoverage();
   const gaps = useCoverageGaps();
-  const allAccounts = useAccounts();
+  const { accounts: allAccounts } = useAccounts();
   const [adding, setAdding] = useState(false);
   const [num, setNum] = useState("");
   const [name, setName] = useState("");
@@ -28,7 +28,7 @@ export function CoveragePanel() {
   const add = () => {
     const trimmed = num.trim();
     if (!trimmed) return;
-    const match = allAccounts?.find?.((a: { number: string }) => a.number === trimmed);
+    const match = allAccounts.find((a) => a.number === trimmed);
     coverageActions.watch(trimmed, name.trim() || match?.name || "");
     setNum("");
     setName("");
@@ -129,7 +129,7 @@ export function CoveragePanel() {
           <div className="space-y-2 pt-1">
             {watched.map((a) => {
               const confirmedCount = holidays.filter((h) =>
-                useConfirmed(a.number, h.date),
+                confirmations.some((c) => c.id === `${a.number}:${h.date}`),
               ).length;
               return (
                 <div
@@ -171,9 +171,4 @@ export function CoveragePanel() {
       )}
     </div>
   );
-}
-
-function useConfirmed(accountNumber: string, date: string): boolean {
-  const { confirmations } = useCoverage();
-  return confirmations.some((c) => c.id === `${accountNumber}:${date}`);
 }
