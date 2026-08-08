@@ -6,6 +6,7 @@ import {
   Loader2,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   Upload,
   X,
@@ -25,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractPdfPages } from "./pdf-extract";
 import {
   deleteIsManual,
+  explainManualPassage,
   getIsManualUrl,
   listIsManuals,
   MANUAL_CATEGORIES,
@@ -32,9 +34,11 @@ import {
   searchIsManuals,
   updateIsManual,
   type IsManual,
+  type ManualExplanation,
   type ManualCategory,
   type ManualHit,
 } from "@/lib/is-scripts/manuals.functions";
+import { ManualExplainPanel } from "./ManualExplainPanel";
 
 const CATEGORY_LABEL: Record<ManualCategory, string> = {
   supervisor: "IS Supervisor",
@@ -57,8 +61,11 @@ function snippet(text: string, query: string) {
 
 export function IsManualsPane({
   onSaveAsEntry,
+  entryContext,
 }: {
   onSaveAsEntry: (seed: { title: string; usageHtml: string }) => void;
+  /** Plain-text summary of the script entry currently open, if any. */
+  entryContext?: string;
 }) {
   const [manuals, setManuals] = useState<IsManual[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +74,12 @@ export function IsManualsPane({
   const [hits, setHits] = useState<ManualHit[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [viewer, setViewer] = useState<{ url: string; name: string; page: number } | null>(null);
+  const [explain, setExplain] = useState<{
+    title: string;
+    loading: boolean;
+    error: string | null;
+    explanation: ManualExplanation | null;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -157,13 +170,49 @@ export function IsManualsPane({
     }
   };
 
+  const runExplain = async (passages: ManualHit[], title: string) => {
+    setExplain({ title, loading: true, error: null, explanation: null });
+    try {
+      const result = await explainManualPassage({
+        data: {
+          query: query.trim() || title,
+          passages: passages.slice(0, 6).map((hit) => ({
+            manualName: hit.manualName,
+            pageNumber: hit.pageNumber,
+            text: hit.text.slice(0, 8000),
+          })),
+          ...(entryContext ? { entryContext: entryContext.slice(0, 4000) } : {}),
+        },
+      });
+      if (!result.ok) {
+        setExplain({ title, loading: false, error: result.error, explanation: null });
+        return;
+      }
+      setExplain({ title, loading: false, error: null, explanation: result.explanation });
+    } catch (err) {
+      setExplain({
+        title,
+        loading: false,
+        error: err instanceof Error ? err.message : "Could not explain that passage.",
+        explanation: null,
+      });
+    }
+  };
+
   const totalPages = useMemo(
     () => manuals.reduce((sum, manual) => sum + manual.pageCount, 0),
     [manuals],
   );
 
   return (
-    <div className="grid min-h-[640px] gap-3 xl:h-[calc(100vh-16rem)] xl:grid-cols-[330px_minmax(0,1fr)]">
+    <div
+      className={cn(
+        "grid min-h-[640px] gap-3 xl:h-[calc(100vh-16rem)]",
+        explain
+          ? "xl:grid-cols-[300px_minmax(0,1fr)_360px]"
+          : "xl:grid-cols-[330px_minmax(0,1fr)]",
+      )}
+    >
       <aside className="glass-panel flex min-h-0 flex-col overflow-hidden p-3">
         <div className="flex items-center justify-between px-1">
           <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -316,6 +365,15 @@ export function IsManualsPane({
           <Button className="h-10" onClick={() => void runSearch()} disabled={searching}>
             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
           </Button>
+          {hits && hits.length > 0 && (
+            <Button
+              variant="secondary"
+              className="h-10"
+              onClick={() => void runExplain(hits.slice(0, 4), `“${query.trim()}” — top results`)}
+            >
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Explain results
+            </Button>
+          )}
         </div>
 
         <ScrollArea className="mt-3 min-h-0 flex-1 pr-2">
@@ -357,6 +415,19 @@ export function IsManualsPane({
                         Open page
                       </Button>
                       <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[11px] text-violet-200"
+                        onClick={() =>
+                          void runExplain(
+                            [hit],
+                            `${hit.manualName} — page ${hit.pageNumber}`,
+                          )
+                        }
+                      >
+                        <Sparkles className="mr-1 h-3 w-3" /> Explain for my script
+                      </Button>
+                      <Button
                         variant="secondary"
                         size="sm"
                         className="h-7 px-2 text-[11px]"
@@ -380,6 +451,26 @@ export function IsManualsPane({
           )}
         </ScrollArea>
       </section>
+
+      {explain && (
+        <ManualExplainPanel
+          title={explain.title}
+          loading={explain.loading}
+          error={explain.error}
+          explanation={explain.explanation}
+          onClose={() => setExplain(null)}
+          onSaveAsEntry={(explanation) =>
+            onSaveAsEntry({
+              title: explain.title,
+              usageHtml: `<p><strong>${explain.title}</strong></p><p>${explanation.summary}</p>${
+                explanation.steps.length
+                  ? `<ol>${explanation.steps.map((s) => `<li>${s}</li>`).join("")}</ol>`
+                  : ""
+              }`,
+            })
+          }
+        />
+      )}
 
       {viewer && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-6">
