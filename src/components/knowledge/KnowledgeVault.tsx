@@ -926,7 +926,29 @@ export function KnowledgeVault() {
         </div>
       </header>
 
-      <div className="relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-12rem)] xl:grid-cols-[244px_350px_minmax(0,1fr)]">
+      <div className="flex flex-wrap items-center gap-2">
+        <SectionTab
+          active={section === "notes"}
+          icon={LibraryBig}
+          label="Notes"
+          onClick={() => setSection("notes")}
+        />
+        <SectionTab
+          active={section === "is-scripts"}
+          icon={TerminalSquare}
+          label="IS Script Work"
+          onClick={() => setSection("is-scripts")}
+        />
+      </div>
+
+      {section === "is-scripts" && <IsScriptWorkspace />}
+
+      <div
+        className={cn(
+          "relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-12rem)] xl:grid-cols-[244px_350px_minmax(0,1fr)]",
+          section !== "notes" && "hidden",
+        )}
+      >
         <aside className="glass-panel flex min-h-0 flex-col overflow-hidden p-3">
           <div className="mb-2 flex items-center justify-between px-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
