@@ -2,7 +2,7 @@ import { createPersistedStore, useStoreValue } from "@/lib/settings/_persist";
 
 export type CheckInFrequency = "off" | "relaxed" | "normal" | "attentive";
 export type PresenceCorner = "br" | "bl" | "tr" | "tl";
-export type VoiceMode = "device" | "ai";
+export type VoiceMode = "device" | "kokoro" | "ai";
 
 export interface PresencePrefs {
   /** Master switch for the holographic avatar. */
@@ -17,6 +17,8 @@ export interface PresencePrefs {
   deviceVoiceUri: string;
   /** Selected AI gateway voice id. */
   aiVoice: string;
+  /** Selected on-device Kokoro voice id. */
+  kokoroVoice: string;
   /** Speaking rate 0.6–1.4. */
   rate: number;
   /** Pitch 0.6–1.6 (device voices only). */
@@ -38,6 +40,7 @@ export const DEFAULT_PRESENCE_PREFS: PresencePrefs = {
   voiceMode: "device",
   deviceVoiceUri: "",
   aiVoice: "shimmer",
+  kokoroVoice: "af_heart",
   rate: 1.02,
   pitch: 1.05,
   corner: "br",
