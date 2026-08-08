@@ -183,3 +183,76 @@ export const getIsManualUrl = createServerFn({ method: "POST" })
     if (signError || !signed) throw new Error(signError?.message ?? "Could not open the manual.");
     return { url: signed.signedUrl };
   });
+
+export interface ManualExplanation {
+  summary: string;
+  steps: string[];
+  snippet: string;
+  cautions: string[];
+  sources: string[];
+}
+
+const ExplainSchema = z.object({
+  query: z.string().trim().min(1).max(200),
+  passages: z
+    .array(
+      z.object({
+        manualName: z.string().max(200),
+        pageNumber: z.number().int().min(1),
+        text: z.string().max(8000),
+      }),
+    )
+    .min(1)
+    .max(6),
+  entryContext: z.string().max(4000).optional(),
+});
+
+/**
+ * Summarize manual passages and explain, concretely, how to fold them into an
+ * IS script. Returns a structured answer the UI renders as sections.
+ */
+export const explainManualPassage = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) => ExplainSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { aiComplete } = await import("@/lib/ai/ai-client.server");
+    const passages = data.passages
+      .map((p) => `--- ${p.manualName}, page ${p.pageNumber} ---\n${p.text.slice(0, 6000)}`)
+      .join("\n\n");
+    const res = await aiComplete({
+      system: [
+        "You help a support/programming operator apply IS (Information Systems) manual content to their scripts.",
+        "Use ONLY the supplied manual passages. Never invent fields, commands, or syntax.",
+        "Return json with keys: summary (string, 2-4 sentences plain language),",
+        "steps (array of short imperative strings, ordered),",
+        "snippet (string: concrete script/pseudo-script lines drawn from the passages; empty string if the passages don't support one),",
+        "cautions (array of short strings; empty array if none),",
+        "sources (array of strings like 'Manual name, page N').",
+      ].join("\n"),
+      prompt: [
+        `Operator searched for: ${data.query}`,
+        data.entryContext ? `They are editing this script entry:\n${data.entryContext}` : "",
+        `Manual passages:\n${passages}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      json: true,
+      tier: "flagship",
+    });
+    if (!res.ok) return { ok: false as const, error: res.error ?? "AI call failed." };
+    try {
+      const parsed = JSON.parse(res.text ?? "{}") as Partial<ManualExplanation>;
+      const explanation: ManualExplanation = {
+        summary: typeof parsed.summary === "string" ? parsed.summary : "",
+        steps: Array.isArray(parsed.steps) ? parsed.steps.map(String).slice(0, 20) : [],
+        snippet: typeof parsed.snippet === "string" ? parsed.snippet : "",
+        cautions: Array.isArray(parsed.cautions) ? parsed.cautions.map(String).slice(0, 10) : [],
+        sources: Array.isArray(parsed.sources)
+          ? parsed.sources.map(String).slice(0, 10)
+          : data.passages.map((p) => `${p.manualName}, page ${p.pageNumber}`),
+      };
+      return { ok: true as const, explanation };
+    } catch {
+      return { ok: false as const, error: "The AI response could not be read. Try again." };
+    }
+  });
