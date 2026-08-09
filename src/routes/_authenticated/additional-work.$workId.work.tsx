@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { setActiveWork, leaveActiveWork } from "@/lib/workspace/active-work-store";
 import {
@@ -31,6 +31,9 @@ import {
   type AddWorkIssueClassification,
 } from "@/lib/additional-work-store";
 import { AddWorkSnipModal } from "@/components/additional-work/AddWorkSnipModal";
+import { SubjectBuilder } from "@/components/additional-work/SubjectBuilder";
+import { parseSubject, withAccountPrefix } from "@/lib/additional-work/subject";
+import { htmlToPlainText } from "@/lib/rich-text";
 import { DeleteWorkButton } from "@/components/additional-work/DeleteWorkButton";
 import { formatCentralShort } from "@/lib/shift";
 import { toast } from "sonner";
@@ -190,11 +193,36 @@ function WorkDetailsSection({ workId }: { workId: string }) {
     toast.success("Details saved.");
   };
 
+  // Keep "<number> · <name> — " at the front of the subject as the account changes.
+  const prevAccount = useRef({ number: acctNum, name: acctName });
+  useEffect(() => {
+    const prev = prevAccount.current;
+    prevAccount.current = { number: acctNum, name: acctName };
+    if (prev.number === acctNum && prev.name === acctName) return;
+    setTitle((t) => {
+      const p = parseSubject(t, { accountNumber: prev.number, accountName: prev.name });
+      if (!p.label && !p.body) return t;
+      return withAccountPrefix(`${p.label}${p.body}`, { accountNumber: acctNum, accountName: acctName });
+    });
+  }, [acctNum, acctName]);
+
   return (
     <Collapsible title="Work Details">
       <div className="space-y-3">
         <Field label="Work Title">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={save} />
+          <div className="mt-1.5">
+            <SubjectBuilder
+              value={title}
+              onChange={(v) => {
+                setTitle(v);
+                additionalWorkStore.update(workId, { title: v.trim() || w.title });
+              }}
+              accountNumber={acctNum.trim() || undefined}
+              accountName={acctName || undefined}
+              describeText={htmlToPlainText(need)}
+            />
+          </div>
         </Field>
         <div className="grid gap-2 sm:grid-cols-2">
           <Field label="Account Number (optional)">
