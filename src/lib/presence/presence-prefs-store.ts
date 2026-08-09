@@ -25,6 +25,8 @@ export interface PresencePrefs {
   pitch: number;
   /** Screen corner she docks to. */
   corner: PresenceCorner;
+  /** Free position as viewport fractions (0–1) of her top-left. */
+  pos?: { x: number; y: number };
   /** How often the avatar checks in during an active shift. */
   checkIn: CheckInFrequency;
   /** Avatar size in px (video square edge). */
@@ -44,6 +46,7 @@ export const DEFAULT_PRESENCE_PREFS: PresencePrefs = {
   rate: 1.02,
   pitch: 1.05,
   corner: "br",
+  pos: undefined,
   checkIn: "relaxed",
   size: 132,
   opacity: 0.75,
