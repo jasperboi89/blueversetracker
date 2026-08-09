@@ -26,12 +26,9 @@ export function stripAccountPrefix(value: string, account: SubjectAccount = {}):
   let v = value ?? "";
   const current = accountPrefix(account);
   if (current && v.startsWith(current)) return v.slice(current.length);
-  // Stale prefix from a previously selected account: "<num> · <name> — " or "<num> — "
-  v = v.replace(/^\s*[^—·]{1,60}(?:\s·\s[^—]{1,80})?\s—\s(?=\S)/, (m) =>
-    // only treat as a prefix when it looks like an account head, not a starter label
-    SUBJECT_STARTERS.some((s) => m.startsWith(s)) ? m : "",
-  );
-  return v;
+  // Stale prefix from a previously selected account. Only strip heads that look
+  // like an account: "<number> · <name> — " or a bare "<number> — ".
+  return v.replace(/^\s*[A-Za-z0-9-]{1,20}(?:\s·\s[^—]{1,80})?\s—\s(?=\S)/, "");
 }
 
 /** Split the non-prefix portion into a starter label and the remaining body. */
