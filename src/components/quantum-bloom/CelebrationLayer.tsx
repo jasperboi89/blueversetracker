@@ -7,6 +7,7 @@ const DURATIONS: Record<CelebrationEvent["kind"], number> = {
   dispatch: 2200,
   night_plan: 2600,
   shift: 3500,
+  milestone: 1800,
   cosmic: 1500,
 };
 

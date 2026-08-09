@@ -25,7 +25,7 @@ export function MilestoneWatcher() {
       const crossedFive = Math.floor(completed / 5) > Math.floor(prevCompleted.current / 5);
       if (crossedFive) {
         triggerCelebration({
-          kind: "shift",
+          kind: "milestone",
           label: `${completed} tickets completed this shift`,
           context: { milestone: "nth-complete", count: completed },
         });
@@ -41,7 +41,7 @@ export function MilestoneWatcher() {
     }
     if (prevOverdue.current > 0 && overdue === 0) {
       triggerCelebration({
-        kind: "shift",
+        kind: "milestone",
         label: "All overdue tickets cleared",
         context: { milestone: "overdue-cleared" },
       });
