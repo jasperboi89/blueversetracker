@@ -101,6 +101,27 @@ export function CelebrationLayer() {
     );
   }
 
+  if (active.kind === "milestone") {
+    return (
+      <div className="pointer-events-none fixed inset-0 z-[80] grid place-items-center" aria-hidden>
+        <div
+          className="absolute h-40 w-40 rounded-full"
+          style={{
+            border: "2px solid var(--qb-phase-accent, var(--cyan-glow))",
+            boxShadow: "0 0 60px var(--qb-phase-accent, var(--cyan-glow))",
+            animation: "qb-spectral-wave 1.8s ease-out forwards",
+          }}
+        />
+        <div
+          className="crystal-glass relative px-6 py-3 text-sm font-medium text-foreground"
+          style={{ animation: "qb-bloom-pulse 1.6s ease-out forwards" }}
+        >
+          {active.label}
+        </div>
+      </div>
+    );
+  }
+
   // shift
   return (
     <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden" aria-hidden>
