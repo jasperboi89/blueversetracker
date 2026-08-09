@@ -364,6 +364,68 @@ html[data-theme="quantum-bloom"] .glass-panel {
     transform: translateY(-4px);
   }
 }
+@keyframes auth-card-in {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) translateY(46px) scale(0.96) rotateX(9deg);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) translateY(0) scale(1) rotateX(0deg);
+    filter: blur(0);
+  }
+}
+@keyframes auth-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes auth-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(130%) skewX(-18deg);
+  }
+}
+@keyframes auth-aura-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card-in,
+  .auth-stagger,
+  .auth-aura {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  .auth-sweep {
+    display: none !important;
+  }
+}
 @keyframes pulse-glow {
   0%,
   100% {
