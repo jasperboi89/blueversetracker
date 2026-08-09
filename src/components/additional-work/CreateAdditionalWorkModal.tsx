@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { additionalWorkStore, type AddWorkIssueClassification } from "@/lib/addi
 import { useDropdownGroup } from "@/lib/settings/dropdowns-store";
 import { rememberSubject } from "@/lib/settings/subject-presets-store";
 import { SubjectBuilder } from "@/components/additional-work/SubjectBuilder";
+import { parseSubject, withAccountPrefix } from "@/lib/additional-work/subject";
 import { htmlToPlainText } from "@/lib/rich-text";
 import { toast } from "sonner";
 
@@ -36,6 +37,22 @@ export function CreateAdditionalWorkModal({
     return accountsStore.search(q, { includeArchived: true }).slice(0, 5);
   }, [acctNum, acctName]);
 
+  // Keep "<number> · <name> — " at the front of the subject as the account changes.
+  const prevAccount = useRef({ number: acctNum, name: acctName });
+  useEffect(() => {
+    const prev = prevAccount.current;
+    prevAccount.current = { number: acctNum, name: acctName };
+    if (prev.number === acctNum && prev.name === acctName) return;
+    setTitle((t) => {
+      const rest = parseSubject(t, { accountNumber: prev.number, accountName: prev.name });
+      if (!rest.label && !rest.body) return t;
+      return withAccountPrefix(
+        `${rest.label}${rest.body}`,
+        { accountNumber: acctNum, accountName: acctName },
+      );
+    });
+  }, [acctNum, acctName]);
+
   const reset = () => {
     setTitle(""); setAcctNum(prefillAccount?.number ?? ""); setAcctName(prefillAccount?.name ?? "");
     setNeed(""); setNotes(""); setClassification(""); setProgNotes("");
@@ -55,7 +72,11 @@ export function CreateAdditionalWorkModal({
       programmingStatusNotes: progNotes.trim(),
       issueClassification: classification || undefined,
     });
-    rememberSubject(title.trim(), acctNum.trim() || undefined);
+    const parts = parseSubject(title.trim(), {
+      accountNumber: acctNum.trim(),
+      accountName: acctName.trim(),
+    });
+    rememberSubject(`${parts.label}${parts.body}`.trim(), acctNum.trim() || undefined);
     toast.success("Additional Work created.");
     reset();
     onOpenChange(false);
