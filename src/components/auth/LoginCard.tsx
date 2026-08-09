@@ -74,13 +74,28 @@ export function LoginCard({ next }: { next?: string } = {}) {
 
   return (
     <div
-      className="glass-panel relative w-full max-w-md rounded-2xl px-6 py-7 sm:px-8 sm:py-8"
+      className="auth-card-in glass-panel relative w-full max-w-md overflow-hidden rounded-2xl px-6 py-7 sm:px-8 sm:py-8"
       style={{
         boxShadow:
           "0 0 60px oklch(0.55 0.2 240 / 0.18), inset 0 1px 0 oklch(1 0 0 / 0.08)",
+        animation:
+          "auth-card-in 1100ms cubic-bezier(0.16, 1, 0.3, 1) both, float-y 9s ease-in-out 1400ms infinite",
+        transformStyle: "preserve-3d",
       }}
     >
-      <div className="flex flex-col items-center text-center">
+      <span
+        aria-hidden
+        className="auth-sweep pointer-events-none absolute inset-y-0 -left-1/3 w-1/2"
+        style={{
+          background:
+            "linear-gradient(100deg, transparent, oklch(1 0 0 / 0.14), transparent)",
+          animation: "auth-sweep 1500ms 500ms ease-out both",
+        }}
+      />
+      <div
+        className="auth-stagger flex flex-col items-center text-center"
+        style={{ animation: "auth-stagger-in 700ms 450ms ease-out both" }}
+      >
         <ShieldIcon3D />
         <h1 className="mt-4 text-xl font-semibold tracking-wide text-foreground">
           Account Intel Hub
@@ -100,14 +115,21 @@ export function LoginCard({ next }: { next?: string } = {}) {
         </div>
       </div>
 
-      <p className="mt-5 text-[12px] leading-relaxed text-muted-foreground">
+      <p
+        className="auth-stagger mt-5 text-[12px] leading-relaxed text-muted-foreground"
+        style={{ animation: "auth-stagger-in 700ms 600ms ease-out both" }}
+      >
         <span className="font-medium text-foreground">Authorized access only.</span>{" "}
         This system may contain confidential operational and protected information.
         Access is restricted to approved personnel only.
       </p>
 
       {mode === "signin" ? (
-        <form onSubmit={handleSignIn} className="mt-5 flex flex-col gap-3">
+        <form
+          onSubmit={handleSignIn}
+          className="auth-stagger mt-5 flex flex-col gap-3"
+          style={{ animation: "auth-stagger-in 700ms 720ms ease-out both" }}
+        >
           <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
             Email
             <Input
@@ -143,7 +165,11 @@ export function LoginCard({ next }: { next?: string } = {}) {
           </button>
         </form>
       ) : (
-        <form onSubmit={handleForgot} className="mt-5 flex flex-col gap-3">
+        <form
+          onSubmit={handleForgot}
+          className="auth-stagger mt-5 flex flex-col gap-3"
+          style={{ animation: "auth-stagger-in 500ms ease-out both" }}
+        >
           <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
             Email
             <Input
@@ -169,7 +195,10 @@ export function LoginCard({ next }: { next?: string } = {}) {
         </form>
       )}
 
-      <div className="mt-5 border-t border-border/40 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground/80">
+      <div
+        className="auth-stagger mt-5 border-t border-border/40 pt-3 text-center text-[11px] leading-relaxed text-muted-foreground/80"
+        style={{ animation: "auth-stagger-in 700ms 840ms ease-out both" }}
+      >
         By signing in, you agree to use this system only for authorized work purposes.
       </div>
     </div>
