@@ -50,8 +50,20 @@ function AuthPage() {
   if (checking) return null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <LoginCard next={safeNext} />
+    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
+      <div
+        aria-hidden
+        className="auth-aura pointer-events-none absolute left-1/2 top-1/2 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.6 0.2 250 / 0.22), oklch(0.6 0.2 300 / 0.1) 45%, transparent 70%)",
+          filter: "blur(50px)",
+          animation: "auth-aura-in 1400ms ease-out both",
+        }}
+      />
+      <div className="relative w-full max-w-md" style={{ perspective: "1200px" }}>
+        <LoginCard next={safeNext} />
+      </div>
     </div>
   );
 }
