@@ -157,7 +157,7 @@ export function ShiftCard() {
         </div>
       </div>
 
-      {phase === "finalizing" && (
+      {phase === "finalizing" && status === "complete" && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-background/70 backdrop-blur-sm">
           <div className="glass-panel px-8 py-6 text-center" style={{ boxShadow: "var(--shadow-glow-cyan)" }}>
             <div className="text-lg font-medium">Finalizing shift…</div>
@@ -177,7 +177,7 @@ export function ShiftCard() {
           </div>
         </div>
       )}
-      {phase === "celebrating" && (
+      {phase === "celebrating" && status === "complete" && (
         <CelebrationOverlay
           title="Shift Complete"
           subtitle={`BlueVerse systems wrapped.\nNice work, Luke.`}

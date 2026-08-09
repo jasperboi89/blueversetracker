@@ -1,6 +1,6 @@
 import { themeStore } from "@/lib/settings/theme-store";
 
-export type CelebrationKind = "ticket" | "dispatch" | "night_plan" | "shift" | "cosmic";
+export type CelebrationKind = "ticket" | "dispatch" | "night_plan" | "shift" | "milestone" | "cosmic";
 
 export interface CelebrationEvent {
   id: string;
