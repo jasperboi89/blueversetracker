@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Volume2, VolumeX, X, ArrowUpRight, MessageSquare, Sparkles } from "lucide-react";
-import avatarAsset from "@/assets/avatar-hologram.mp4.asset.json";
+import claraAsset from "@/assets/clara-avatar.png.asset.json";
 import { usePresenceMessage, presenceDismiss, presenceSpeak } from "@/lib/presence/presence-store";
 import {
   presencePrefsStore,
@@ -21,23 +21,25 @@ const TONE_COLOR: Record<string, string> = {
   neutral: "var(--cyan-glow)",
 };
 
-const CORNER_CLASS: Record<PresenceCorner, string> = {
-  br: "bottom-3 right-3 flex-row items-end",
-  bl: "bottom-3 left-3 flex-row-reverse items-end",
-  tr: "top-16 right-3 flex-row items-start",
-  tl: "top-16 left-3 flex-row-reverse items-start",
+/** Portrait aspect (height / width) of the cutout. */
+const ASPECT = 1.31;
+
+/** Fallback fractional position for legacy corner prefs. */
+const CORNER_POS: Record<PresenceCorner, { x: number; y: number }> = {
+  br: { x: 0.82, y: 0.58 },
+  bl: { x: 0.02, y: 0.58 },
+  tr: { x: 0.82, y: 0.1 },
+  tl: { x: 0.02, y: 0.1 },
 };
 
-function nearestCorner(x: number, y: number): PresenceCorner {
-  const right = x > window.innerWidth / 2;
-  const bottom = y > window.innerHeight / 2;
-  return bottom ? (right ? "br" : "bl") : right ? "tr" : "tl";
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
 }
 
 /**
- * Clara — the holographic companion. Idles quietly in a corner, brightens and
- * opens a speech bubble when she has something to say, opens the Copilot when
- * tapped, and collapses to a small pill when closed.
+ * Clara — the holographic companion. A transparent cutout portrait that can be
+ * dragged anywhere on screen, brightens with a speech bubble when she has
+ * something to say, opens the Copilot when tapped, and collapses to a pill.
  */
 export function PresenceAvatar() {
   const prefs = usePresencePrefs();
@@ -46,9 +48,9 @@ export function PresenceAvatar() {
   const navigate = useNavigate();
   const insights = useInsights();
   const alert = hasHighInsight(insights);
-  const [videoOk, setVideoOk] = useState(true);
+  const [imgOk, setImgOk] = useState(true);
   const [dragging, setDragging] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const dragState = useRef<{ moved: boolean } | null>(null);
 
   // Speak new messages aloud when voice is on.
@@ -65,10 +67,17 @@ export function PresenceAvatar() {
   if (!prefs.enabled) return null;
 
   const accent = TONE_COLOR[msg?.tone ?? "neutral"] ?? "var(--cyan-glow)";
-  const size = Math.max(80, Math.min(220, prefs.size));
+  const width = Math.max(80, Math.min(260, prefs.size));
+  const height = width * ASPECT;
   const active = Boolean(msg);
-  const corner = prefs.corner ?? "br";
   const hidden = prefs.hidden;
+
+  const frac = prefs.pos ?? CORNER_POS[prefs.corner ?? "br"];
+  const vw = typeof window === "undefined" ? 1280 : window.innerWidth;
+  const vh = typeof window === "undefined" ? 800 : window.innerHeight;
+  const left = drag ? drag.x : clamp(frac.x * vw, 4, Math.max(4, vw - width - 4));
+  const top = drag ? drag.y : clamp(frac.y * vh, 56, Math.max(56, vh - height - 4));
+  const bubbleOnLeft = left + width / 2 > vw / 2;
 
   function summon() {
     if (msg) {
@@ -88,10 +97,51 @@ export function PresenceAvatar() {
     });
   }
 
+  function startDrag(event: React.PointerEvent) {
+    dragState.current = { moved: false };
+    const offsetX = event.clientX - left;
+    const offsetY = event.clientY - top;
+    const move = (e: PointerEvent) => {
+      if (
+        !dragState.current?.moved &&
+        Math.abs(e.clientX - (left + offsetX)) + Math.abs(e.clientY - (top + offsetY)) <= 8
+      )
+        return;
+      if (dragState.current) dragState.current.moved = true;
+      setDragging(true);
+      setDrag({
+        x: clamp(e.clientX - offsetX, 4, window.innerWidth - width - 4),
+        y: clamp(e.clientY - offsetY, 56, window.innerHeight - height - 4),
+      });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setDragging(false);
+      setDrag((cur) => {
+        if (cur && dragState.current?.moved) {
+          presencePrefsStore.update((c) => ({
+            ...c,
+            pos: { x: cur.x / window.innerWidth, y: cur.y / window.innerHeight },
+          }));
+        }
+        return null;
+      });
+      setTimeout(() => {
+        dragState.current = null;
+      }, 0);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   // Collapsed: a small pill that pulses when Clara has something waiting.
   if (hidden) {
     return (
-      <div className={`pointer-events-none fixed z-[115] flex gap-2 ${CORNER_CLASS[corner]}`}>
+      <div
+        className="pointer-events-none fixed z-[115]"
+        style={{ left: clamp(left, 4, vw - 44), top: clamp(top + height - 40, 56, vh - 44) }}
+      >
         <button
           onClick={() => {
             presencePrefsStore.update((c) => ({ ...c, hidden: false }));
@@ -115,11 +165,23 @@ export function PresenceAvatar() {
   }
 
   return (
-    <div className={`pointer-events-none fixed z-[115] flex gap-2 ${CORNER_CLASS[corner]}`}>
+    <div
+      className="pointer-events-none fixed z-[115]"
+      style={{
+        left,
+        top,
+        width,
+        height,
+        transition: dragging ? "none" : "left 220ms ease, top 220ms ease",
+      }}
+    >
       {msg && (
         <div
-          className="glass-panel pointer-events-auto mb-6 max-w-xs p-3 text-xs"
+          className="glass-panel pointer-events-auto absolute max-w-xs p-3 text-xs"
           style={{
+            top: 0,
+            [bubbleOnLeft ? "right" : "left"]: width + 10,
+            width: 260,
             animation: motion === "reduced" ? undefined : "fade-in 0.28s ease-out",
             boxShadow: `0 0 24px color-mix(in oklab, ${accent} 35%, transparent)`,
             borderColor: `color-mix(in oklab, ${accent} 40%, transparent)`,
@@ -164,9 +226,7 @@ export function PresenceAvatar() {
               <MessageSquare className="h-3 w-3" /> Ask
             </button>
             <button
-              onClick={() =>
-                presencePrefsStore.update((c) => ({ ...c, voice: !c.voice }))
-              }
+              onClick={() => presencePrefsStore.update((c) => ({ ...c, voice: !c.voice }))}
               title={prefs.voice ? "Mute voice" : "Speak messages aloud"}
               className="ml-auto inline-flex items-center rounded-md border border-border/50 p-1 text-muted-foreground transition hover:text-foreground"
             >
@@ -181,33 +241,11 @@ export function PresenceAvatar() {
           if (dragState.current?.moved) return;
           summon();
         }}
-        onPointerDown={(event) => {
-          dragState.current = { moved: false };
-          const startX = event.clientX;
-          const startY = event.clientY;
-          const move = (e: PointerEvent) => {
-            if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > 12) {
-              if (dragState.current) dragState.current.moved = true;
-              setDragging(true);
-            }
-          };
-          const up = (e: PointerEvent) => {
-            window.removeEventListener("pointermove", move);
-            window.removeEventListener("pointerup", up);
-            setDragging(false);
-            if (dragState.current?.moved) {
-              const next = nearestCorner(e.clientX, e.clientY);
-              presencePrefsStore.update((c) => ({ ...c, corner: next }));
-              setTimeout(() => { dragState.current = null; }, 0);
-            }
-          };
-          window.addEventListener("pointermove", move);
-          window.addEventListener("pointerup", up);
-        }}
+        onPointerDown={startDrag}
         title="Clara — tap to talk, drag to move"
         aria-label="Clara, your holographic assistant"
-        className="pointer-events-auto relative grid place-items-center rounded-full"
-        style={{ width: size, height: size, cursor: dragging ? "grabbing" : "pointer" }}
+        className="pointer-events-auto relative grid h-full w-full place-items-end bg-transparent"
+        style={{ cursor: dragging ? "grabbing" : "pointer", touchAction: "none" }}
       >
         <span
           onPointerDown={(e) => e.stopPropagation()}
@@ -221,44 +259,49 @@ export function PresenceAvatar() {
           tabIndex={0}
           title="Hide Clara (alerts keep coming)"
           aria-label="Hide Clara"
-          className="absolute left-0 top-0 z-10 grid h-6 w-6 cursor-pointer place-items-center rounded-full border border-white/15 bg-black/60 text-muted-foreground transition hover:text-foreground"
+          className="absolute left-0 top-0 z-10 grid h-6 w-6 cursor-pointer place-items-center rounded-full border border-white/15 bg-black/60 text-muted-foreground opacity-0 transition hover:text-foreground focus:opacity-100 group-hover:opacity-100"
+          style={{ opacity: active ? 1 : undefined }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = active ? "1" : "0")}
         >
           <X className="h-3 w-3" />
         </span>
+
         {/* Floor glow */}
         <span
           aria-hidden
-          className="absolute bottom-1 h-3 rounded-[50%]"
+          className="absolute -bottom-1 left-1/2 h-3 -translate-x-1/2 rounded-[50%]"
           style={{
-            width: size * 0.6,
+            width: width * 0.55,
             background: `radial-gradient(ellipse at center, ${accent} 0%, transparent 70%)`,
-            opacity: active ? 0.75 : 0.35,
-            filter: "blur(3px)",
+            opacity: active ? 0.7 : 0.3,
+            filter: "blur(4px)",
           }}
         />
-        {videoOk ? (
-          <video
-            ref={videoRef}
-            src={avatarAsset.url}
-            autoPlay
-            muted
-            loop
-            playsInline
-            onError={() => setVideoOk(false)}
-            className="h-full w-full rounded-full object-cover"
+
+        {imgOk ? (
+          <img
+            src={claraAsset.url}
+            alt=""
+            draggable={false}
+            onError={() => setImgOk(false)}
+            className="h-full w-full select-none object-contain"
             style={{
-              mixBlendMode: "screen",
-              opacity: active ? 1 : Math.max(0.2, Math.min(1, prefs.opacity)),
-              filter: `drop-shadow(0 0 18px color-mix(in oklab, ${accent} 55%, transparent)) saturate(1.15)`,
+              opacity: active ? 1 : Math.max(0.35, Math.min(1, prefs.opacity)),
+              filter: `drop-shadow(0 0 10px color-mix(in oklab, ${accent} 55%, transparent)) drop-shadow(0 0 26px color-mix(in oklab, ${accent} 30%, transparent)) saturate(1.05)`,
               transition: "opacity 400ms ease",
               animation:
                 motion === "reduced" ? undefined : "presence-float 6s ease-in-out infinite",
+              maskImage:
+                "linear-gradient(to bottom, black 0%, black 86%, transparent 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to bottom, black 0%, black 86%, transparent 100%)",
             }}
           />
         ) : (
           <span
             aria-hidden
-            className="h-2/3 w-2/3 rounded-full"
+            className="mx-auto mb-4 h-2/3 w-2/3 rounded-full"
             style={{
               background: `radial-gradient(circle at 40% 35%, ${accent} 0%, transparent 70%)`,
               boxShadow: `0 0 34px ${accent}`,
@@ -268,17 +311,7 @@ export function PresenceAvatar() {
             }}
           />
         )}
-        {/* Scanlines */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-full"
-          style={{
-            background:
-              "repeating-linear-gradient(180deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 4px)",
-            opacity: 0.5,
-            mixBlendMode: "overlay",
-          }}
-        />
+
         {alert && !active && (
           <span
             className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold"
