@@ -25,11 +25,11 @@ const buffer: RoutingTelemetryEntry[] = [];
 const FORBIDDEN = new Set(["prompt", "system", "input", "text", "response", "content", "messages"]);
 
 export function recordRouting(entry: RoutingTelemetryEntry) {
-  const clean: RoutingTelemetryEntry = { ...entry };
+  const clean = { ...entry } as unknown as Record<string, unknown>;
   for (const key of Object.keys(clean)) {
-    if (FORBIDDEN.has(key)) delete (clean as Record<string, unknown>)[key];
+    if (FORBIDDEN.has(key)) delete clean[key];
   }
-  buffer.push(clean);
+  buffer.push(clean as unknown as RoutingTelemetryEntry);
   if (buffer.length > MAX_ENTRIES) buffer.splice(0, buffer.length - MAX_ENTRIES);
 }
 
