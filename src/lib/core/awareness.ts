@@ -119,12 +119,13 @@ export interface AwarenessSnapshot {
 /* ------------------------------------------------------------------ */
 
 export const AWARENESS_THRESHOLDS = {
-  /** Tracked work duration ladder. */
+  /** Tracked work duration ladder. 2+ hours stays warning; critical is reserved for compound operational risk. */
   longWorkInfoMs: 20 * 60 * 1000,
   longWorkWarnMs: 45 * 60 * 1000,
-  longWorkCriticalMs: 120 * 60 * 1000,
+  longWorkVeryLongMs: 120 * 60 * 1000,
   /** Waiting tickets idle beyond this are stale (matches the existing rule). */
   staleWaitingMs: 2 * 24 * 60 * 60 * 1000,
+
   /** "Near shift end" for Must items / handoff — the last ~20% of the window. */
   shiftEndProgress: 0.8,
   /** Most stale-waiting tickets surfaced at once (anti-spam). */
