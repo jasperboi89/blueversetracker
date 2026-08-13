@@ -136,5 +136,6 @@ export const TOOL_LABEL: Record<string, string> = {
   get_night_plan: "Checking night plan",
   get_dispatches: "Checking dispatches",
   get_work_time: "Reading work time",
+  search_operational_knowledge: "Searching prior work",
   propose_action: "Preparing an action",
 };

@@ -7,6 +7,7 @@ import { InsightToaster } from "@/components/workspace/InsightToaster";
 import { AssignedInboxPoller } from "@/components/assigned-inbox/AssignedInboxPoller";
 import { UnlockToast } from "@/components/achievements/UnlockToast";
 import { AchievementsWatcher } from "@/components/achievements/AchievementsWatcher";
+import { RetrievalSyncWatcher } from "@/components/retrieval/RetrievalSyncWatcher";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -61,6 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <AssignedInboxPoller />
         <UnlockToast />
         <AchievementsWatcher />
+        <RetrievalSyncWatcher />
       </div>
     </SidebarProvider>
   );
