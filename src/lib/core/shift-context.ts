@@ -180,12 +180,22 @@ export function reduceShiftContext(
       };
     }
     case "timer.started":
+    case "work.opened":
     case "work.started": {
       const id = event.workItemId ?? event.ticketId ?? event.dispatchId;
       if (!id) return ctx;
+      const started = event.type !== "work.opened";
       return {
         ...ctx,
-        activeWorkItem: { id, title: label || undefined, startedAt: event.timestamp },
+        activeWorkItem: {
+          id,
+          title: label || undefined,
+          startedAt: started
+            ? event.timestamp
+            : ctx.activeWorkItem?.id === id
+              ? ctx.activeWorkItem.startedAt
+              : undefined,
+        },
         activeAccount: event.accountId
           ? { id: event.accountId, name: str(event.metadata?.["accountName"]) }
           : ctx.activeAccount,
@@ -216,6 +226,12 @@ export function reduceShiftContext(
     case "night_plan.item_added":
     case "night_plan.item_completed": {
       const id = str(event.metadata?.["itemId"]) ?? event.id;
+      const complete = event.type === "night_plan.item_completed";
+      const existing = ctx.recentActivity.find(
+        (a) => a.kind === "night_plan" && a.id === id,
+      );
+      // Idempotent: a repeated completion must not add a second history row.
+      if (complete && existing?.complete) return ctx;
       return {
         ...ctx,
         recentActivity: pushActivity(ctx.recentActivity, {
@@ -223,7 +239,7 @@ export function reduceShiftContext(
           kind: "night_plan",
           label: label || "Night plan item",
           at: event.timestamp,
-          complete: event.type === "night_plan.item_completed",
+          complete,
         }),
       };
     }
