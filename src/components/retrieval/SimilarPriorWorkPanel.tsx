@@ -16,12 +16,25 @@ interface Props {
   autoRun?: boolean;
 }
 
+/** Plain-language match reasons — never a raw similarity number. */
+const MATCH_LABEL: Record<string, string> = {
+  exact: "Exact identifier",
+  lexical: "Keyword match",
+  semantic: "Similar wording",
+  account: "Same account",
+  confidence: "Verified work",
+  source: "Trusted source",
+  recency: "Recent",
+  historical: "Historical",
+};
+
 function MatchTags({ result }: { result: RetrievalResult }) {
   return (
-    <span className="flex flex-wrap items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground/80">
+    <span className="flex flex-wrap items-center gap-1 text-[10px] tracking-wide text-muted-foreground">
+      <span className="sr-only">Matched because:</span>
       {result.matchedBy.map((m) => (
         <span key={m} className="rounded border border-border/40 px-1 py-px">
-          {m}
+          {MATCH_LABEL[m] ?? m}
         </span>
       ))}
     </span>
@@ -69,6 +82,7 @@ export function SimilarPriorWorkPanel({ query, accountNumber, autoRun = true }: 
           size="sm"
           variant="ghost"
           className="ml-auto h-7 px-2"
+          aria-label="Refresh similar prior work"
           onClick={() => void run()}
           disabled={loading}
         >
@@ -99,15 +113,27 @@ export function SimilarPriorWorkPanel({ query, accountNumber, autoRun = true }: 
                 {SOURCE_TYPE_LABEL[r.sourceType]}
               </span>
               {r.confidence === "verified" && (
-                <span className="flex items-center gap-1 text-[10px] text-emerald-300/90">
-                  <ShieldCheck className="h-3 w-3" /> verified
+                <span
+                  className="flex items-center gap-1 rounded border border-border/40 px-1 py-px text-[10px]"
+                  style={{ color: "var(--green-glow)" }}
+                >
+                  <ShieldCheck className="h-3 w-3" aria-hidden /> Verified
                 </span>
               )}
-              {r.sourceStatus === "superseded" && (
-                <span className="text-[10px] text-amber-300/80">superseded</span>
+              {(r.sourceStatus === "superseded" || r.sourceStatus === "archived") && (
+                <span
+                  className="rounded border border-border/40 px-1 py-px text-[10px]"
+                  style={{ color: "var(--amber-glow)" }}
+                >
+                  Historical · {r.sourceStatus}
+                </span>
               )}
               {r.accountNumber && (
-                <span className="text-[10px] text-muted-foreground">acct {r.accountNumber}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {accountNumber && r.accountNumber === accountNumber
+                    ? `Same account · ${r.accountNumber}`
+                    : `Acct ${r.accountNumber}`}
+                </span>
               )}
               {r.sourceUpdatedAt && (
                 <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
