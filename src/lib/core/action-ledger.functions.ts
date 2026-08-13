@@ -17,6 +17,15 @@ const ACTION_TYPES = [
 
 const ORIGINS = ["copilot", "operator", "awareness", "system"] as const;
 
+/**
+ * A reservation is a lease, not a permanent lock. If a client dies between
+ * reserve and finalize, the row stays "executing"; once the lease expires the
+ * next attempt is told the outcome is UNCERTAIN (not "already applied", not
+ * "safe to rerun"), because the client mutation and this server row are two
+ * separate writes and cannot be one atomic transaction.
+ */
+const LEASE_MS = 90_000;
+
 const SNAPSHOT_KEYS = [
   "classification",
   "status",
@@ -96,15 +105,50 @@ export const reserveAction = createServerFn({ method: "POST" })
       if (error.code === "23505") {
         const { data: prior } = await supabase
           .from("action_ledger")
-          .select("id, status, executed_at")
+          .select("id, status, created_at, executed_at")
           .eq("operator_user_id", userId)
           .eq("idempotency_key", data.idempotencyKey)
           .maybeSingle();
-        return {
-          outcome: "duplicate" as const,
-          recordId: prior?.id ?? null,
-          priorStatus: (prior?.status as string | null) ?? null,
-        };
+        const priorStatus = (prior?.status as string | null) ?? null;
+        const recordId = (prior?.id as string | null) ?? null;
+
+        // Known success: the only case that may report a clean duplicate.
+        if (priorStatus === "success") {
+          return { outcome: "duplicate_success" as const, recordId, priorStatus };
+        }
+
+        // Known failure: nothing was applied, so hand the key back for a retry.
+        if (priorStatus === "failed" && recordId) {
+          await supabase
+            .from("action_ledger")
+            .update({ status: "executing", executed_at: new Date().toISOString(), error: null } as never)
+            .eq("id", recordId)
+            .eq("operator_user_id", userId);
+          return { outcome: "retry" as const, recordId, priorStatus };
+        }
+
+        if (priorStatus === "executing") {
+          const anchor = Date.parse(
+            (prior?.executed_at as string | null) ?? (prior?.created_at as string) ?? "",
+          );
+          const fresh = Number.isFinite(anchor) && Date.now() - anchor < LEASE_MS;
+          // Still inside the lease: another attempt owns it right now.
+          if (fresh) return { outcome: "in_flight" as const, recordId, priorStatus };
+          if (recordId) {
+            await supabase
+              .from("action_ledger")
+              .update({
+                status: "uncertain",
+                error: "Reservation lease expired before the outcome was recorded.",
+              } as never)
+              .eq("id", recordId)
+              .eq("operator_user_id", userId);
+          }
+          return { outcome: "uncertain" as const, recordId, priorStatus };
+        }
+
+        // Already marked uncertain — needs an operator decision, not a rerun.
+        return { outcome: "uncertain" as const, recordId, priorStatus };
       }
       throw new Error(error.message);
     }
