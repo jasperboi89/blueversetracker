@@ -144,7 +144,16 @@ export function FocusPanel({
       </Section>
 
       <Section title="Next work" empty="Nothing queued">
-        {focus.next.map(row)}
+        {focus.next.map((item) => (
+          <div
+            key={item.id}
+            className="focus-next rounded-md border border-border/30 p-2"
+          >
+            <p className="text-xs font-medium text-foreground">{item.label}</p>
+            {item.detail && <p className="text-[11px] text-muted-foreground">{item.detail}</p>}
+            <ActionButtons actions={item.actions} onNavigate={go} onDone={onClose} />
+          </div>
+        ))}
       </Section>
 
       <Section title="Items to watch" empty="Nothing needs attention">

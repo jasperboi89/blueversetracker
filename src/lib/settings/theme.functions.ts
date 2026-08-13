@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { ThemeName } from "./theme-store";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const setSchema = z
   .object({
-    theme: z.enum(["blueverse", "quantum-bloom"]).optional(),
+    theme: z.enum(["blueverse", "quantum-bloom", "holoquiet"]).optional(),
     qbFirstEntryCompleted: z.boolean().optional(),
   })
   .strict();
@@ -27,12 +28,12 @@ export const getThemePrefs = createServerFn({ method: "GET" })
         .single();
       if (ins.error) throw new Error(ins.error.message);
       return {
-        theme: ins.data.theme as "blueverse" | "quantum-bloom",
+        theme: ins.data.theme as ThemeName,
         qbFirstEntryCompleted: ins.data.qb_first_entry_completed,
       };
     }
     return {
-      theme: data.theme as "blueverse" | "quantum-bloom",
+      theme: data.theme as ThemeName,
       qbFirstEntryCompleted: data.qb_first_entry_completed,
     };
   });

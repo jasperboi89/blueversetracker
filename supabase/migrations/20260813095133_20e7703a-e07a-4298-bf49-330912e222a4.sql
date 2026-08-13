@@ -1,0 +1,2 @@
+ALTER TABLE public.user_theme_prefs DROP CONSTRAINT IF EXISTS user_theme_prefs_theme_check;
+ALTER TABLE public.user_theme_prefs ADD CONSTRAINT user_theme_prefs_theme_check CHECK (theme = ANY (ARRAY['blueverse'::text, 'quantum-bloom'::text, 'holoquiet'::text]));
