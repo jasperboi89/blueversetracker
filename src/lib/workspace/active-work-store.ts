@@ -83,6 +83,14 @@ export function setActiveWork(input: {
 }) {
   activeWorkStore.update((s) => {
     if (s.current?.id === input.id) {
+      // Re-entering the same item is a view, not a new tracked start.
+      eventSpine.emit({
+        type: "work.opened",
+        source: "active-work",
+        accountId: input.accountNumber || undefined,
+        ...correlate(input),
+        metadata: { label: input.label, kind: input.kind },
+      });
       // Same item re-opened — keep timing, just refresh label/route.
       return {
         ...s,
@@ -98,6 +106,9 @@ export function setActiveWork(input: {
     }
     const banked = bankAndLog(s); // bank + log the outgoing item, if any
     const now = Date.now();
+    // Tracking genuinely begins here (and only here) — routes emit
+    // "*.opened" on mount and never "work.started", so there is exactly one
+    // emitter for the started/timer transition.
     eventSpine.emit({
       type: "work.started",
       source: "active-work",
