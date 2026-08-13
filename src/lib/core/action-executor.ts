@@ -19,6 +19,18 @@ import {
   type LedgerSnapshot,
 } from "./actions";
 
+export type ReserveOutcome =
+  /** This caller owns the execution. */
+  | "reserved"
+  /** Prior attempt failed cleanly; the key was handed back for a safe retry. */
+  | "retry"
+  /** Prior attempt is proven to have succeeded. */
+  | "duplicate_success"
+  /** Another attempt holds a live lease right now. */
+  | "in_flight"
+  /** The ledger cannot prove whether the mutation ran. */
+  | "uncertain";
+
 export interface LedgerPort {
   reserve: (input: {
     actionId: string;
@@ -28,7 +40,7 @@ export interface LedgerPort {
     entityType?: string;
     entityId?: string;
     proposalId?: string;
-  }) => Promise<{ outcome: "reserved" | "duplicate"; priorStatus: string | null }>;
+  }) => Promise<{ outcome: ReserveOutcome; priorStatus: string | null }>;
   finalize: (input: {
     idempotencyKey: string;
     status: "success" | "failed";
@@ -102,7 +114,7 @@ export async function executeAction(
 
   // The server owns authentication + the idempotency claim. Nothing mutates
   // until the key is granted.
-  let claim: { outcome: "reserved" | "duplicate"; priorStatus: string | null };
+  let claim: { outcome: ReserveOutcome; priorStatus: string | null };
   try {
     claim = await ledger.reserve({
       actionId: action.id,
@@ -120,16 +132,26 @@ export async function executeAction(
     };
   }
 
-  if (claim.outcome === "duplicate") {
+  // Only a PROVEN prior success reports a clean duplicate.
+  if (claim.outcome === "duplicate_success") {
+    return { actionId, status: "duplicate", message: "This action has already been applied." };
+  }
+  if (claim.outcome === "in_flight") {
     return {
       actionId,
-      status: "duplicate",
-      message:
-        claim.priorStatus === "failed"
-          ? "This action was already attempted and failed."
-          : "This action has already been applied.",
+      status: "rejected",
+      message: "This action is already running — give it a moment before retrying.",
     };
   }
+  if (claim.outcome === "uncertain") {
+    return {
+      actionId,
+      status: "uncertain",
+      message:
+        "A previous attempt didn't finish recording, so it isn't clear whether it applied. Check the current state before applying again.",
+    };
+  }
+  // "reserved" or "retry" — both mean: nothing has been applied, run it now.
 
   let outcome;
   try {
@@ -142,6 +164,7 @@ export async function executeAction(
   }
 
   const executedAt = new Date().toISOString();
+  let ledgerSynced = true;
   try {
     await ledger.finalize({
       idempotencyKey: action.idempotencyKey,
@@ -153,12 +176,34 @@ export async function executeAction(
       ...(outcome.ok ? {} : { error: outcome.message.slice(0, 300) }),
     });
   } catch (err) {
-    console.warn("[action-executor] ledger finalize failed", err);
+    // One retry, then stop. The mutation already landed locally; we must not
+    // re-run it. The row stays "executing" and its lease will later resolve to
+    // "uncertain", which is the honest state — not a silent success.
+    try {
+      await ledger.finalize({
+        idempotencyKey: action.idempotencyKey,
+        status: outcome.ok ? "success" : "failed",
+        before: sanitizeSnapshot(outcome.before),
+        after: sanitizeSnapshot(outcome.after),
+        ...(outcome.ok ? {} : { error: outcome.message.slice(0, 300) }),
+      });
+    } catch (retryErr) {
+      ledgerSynced = false;
+      console.warn("[action-executor] ledger finalize failed", err, retryErr);
+    }
   }
 
   return outcome.ok
-    ? { actionId, status: "success", executedAt, message: outcome.message }
-    : { actionId, status: "failed", executedAt, message: outcome.message };
+    ? {
+        actionId,
+        status: "success",
+        executedAt,
+        ledgerSynced,
+        message: ledgerSynced
+          ? outcome.message
+          : `${outcome.message} (Applied, but the audit record couldn't be saved.)`,
+      }
+    : { actionId, status: "failed", executedAt, ledgerSynced, message: outcome.message };
 }
 
 export function describeProposedAction(action: AnyProposedAction): string {
