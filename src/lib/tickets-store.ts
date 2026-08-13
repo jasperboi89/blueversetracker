@@ -812,6 +812,15 @@ export const ticketsStore = {
     };
     persist();
     if (prev && prev.status !== "completed") {
+      void import("./core/event-spine").then(({ eventSpine }) =>
+        eventSpine.emit({
+          type: "ticket.completed",
+          source: "tickets-store",
+          ticketId,
+          accountId: prev.accountNumber || undefined,
+          metadata: { label: `Ticket #${prev.number}`, classification },
+        }),
+      );
       void import("./quantum-bloom/celebration-bus").then(({ triggerCelebration }) => {
         triggerCelebration({
           kind: "ticket",
@@ -838,6 +847,7 @@ export const ticketsStore = {
   },
   setIssueClassification(ticketId: string, classification: IssueClassification | null) {
     ensureLoaded();
+    const before = state.tickets.find((t) => t.id === ticketId);
     state = {
       ...state,
       tickets: state.tickets.map((t) =>
@@ -847,6 +857,18 @@ export const ticketsStore = {
       ),
     };
     persist();
+    void import("./core/event-spine").then(({ eventSpine }) =>
+      eventSpine.emit({
+        type: "ticket.status_changed",
+        source: "tickets-store",
+        ticketId,
+        accountId: before?.accountNumber || undefined,
+        metadata: {
+          label: before ? `Ticket #${before.number}` : undefined,
+          classification: classification ?? null,
+        },
+      }),
+    );
   },
   /**
    * Manually set an account number on a ticket. Validates numeric (3-8 digits),
@@ -1059,6 +1081,15 @@ export const ticketsStore = {
     };
     void import("./workspace/activity-store").then(({ recordActivity }) =>
       recordActivity("ticket_pull", `#${t.number}`),
+    );
+    void import("./core/event-spine").then(({ eventSpine }) =>
+      eventSpine.emit({
+        type: "ticket.pulled",
+        source: "tickets-store",
+        ticketId: t.id,
+        accountId: t.accountNumber || undefined,
+        metadata: { label: `Ticket #${t.number}`, subject: t.details?.subject },
+      }),
     );
     // Seed synchronously with the regex Request/Background fallback so the
     // operator sees something immediately, then upgrade to the AI structured

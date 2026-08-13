@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { setActiveWork, leaveActiveWork } from "@/lib/workspace/active-work-store";
+import { eventSpine } from "@/lib/core/event-spine";
 import { InlineWorkTimer } from "@/components/workspace/InlineWorkTimer";
 import { Archive, ArrowLeft, Building2, CheckCircle2, ExternalLink, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,16 @@ function Workspace() {
 
   useEffect(() => {
     if (!session) return;
+    eventSpine.emit({
+      type: "dispatch.started",
+      source: "route",
+      dispatchId: sessionId,
+      accountId: session.accountNumber || undefined,
+      metadata: {
+        label: `Dispatch ${session.accountNumber || session.accountName || ""}`.trim(),
+        accountName: session.accountName,
+      },
+    });
     setActiveWork({
       kind: "dispatch",
       id: sessionId,

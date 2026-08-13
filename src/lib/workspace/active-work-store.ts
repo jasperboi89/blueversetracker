@@ -1,6 +1,14 @@
 import { createPersistedStore, useStoreValue } from "@/lib/settings/_persist";
 import { attachCloudSync } from "@/lib/cloud-sync/blob-sync";
 import { logWorkSession } from "@/lib/workspace/work-log-store";
+import { eventSpine } from "@/lib/core/event-spine";
+
+/** Map a work kind onto the Event Spine's correlation field. */
+function correlate(w: { kind: ActiveKind; id: string }) {
+  if (w.kind === "ticket") return { ticketId: w.id };
+  if (w.kind === "dispatch") return { dispatchId: w.id };
+  return { workItemId: w.id };
+}
 
 export type ActiveKind = "ticket" | "dispatch" | "additional";
 
@@ -90,6 +98,20 @@ export function setActiveWork(input: {
     }
     const banked = bankAndLog(s); // bank + log the outgoing item, if any
     const now = Date.now();
+    eventSpine.emit({
+      type: "work.started",
+      source: "active-work",
+      accountId: input.accountNumber || undefined,
+      ...correlate(input),
+      metadata: { label: input.label, accountName: input.accountName, kind: input.kind },
+    });
+    eventSpine.emit({
+      type: "timer.started",
+      source: "active-work",
+      accountId: input.accountNumber || undefined,
+      ...correlate(input),
+      metadata: { label: input.label },
+    });
     return {
       ...banked,
       current: {
@@ -106,6 +128,13 @@ export function setActiveWork(input: {
 export function pauseActive() {
   activeWorkStore.update((s) => {
     if (!s.current?.running) return s;
+    eventSpine.emit({
+      type: "work.paused",
+      source: "active-work",
+      accountId: s.current.accountNumber || undefined,
+      ...correlate(s.current),
+      metadata: { label: s.current.label },
+    });
     return {
       ...s,
       current: { ...s.current, accumulatedMs: elapsedMs(s.current), running: false },
@@ -116,6 +145,13 @@ export function pauseActive() {
 export function resumeActive() {
   activeWorkStore.update((s) => {
     if (!s.current || s.current.running) return s;
+    eventSpine.emit({
+      type: "timer.started",
+      source: "active-work",
+      accountId: s.current.accountNumber || undefined,
+      ...correlate(s.current),
+      metadata: { label: s.current.label, resumed: true },
+    });
     return { ...s, current: { ...s.current, startedAt: Date.now(), running: true } };
   });
 }
@@ -167,6 +203,13 @@ function bankAndLog(state: ActiveWorkState): ActiveWorkState {
   if (!cur) return state;
   const endedAt = Date.now();
   const durationMs = elapsedMs(cur, endedAt);
+  eventSpine.emit({
+    type: "timer.stopped",
+    source: "active-work",
+    accountId: cur.accountNumber || undefined,
+    ...correlate(cur),
+    metadata: { label: cur.label, durationMs },
+  });
   logWorkSession({
     kind: cur.kind,
     workId: cur.id,

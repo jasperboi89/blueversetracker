@@ -9,6 +9,7 @@ import { GlobalSnipPaste } from "@/components/workspace/GlobalSnipPaste";
 import { CopilotSheet } from "@/components/workspace/CopilotSheet";
 import { CopilotLauncher } from "@/components/workspace/CopilotLauncher";
 import { MilestoneWatcher } from "@/components/workspace/MilestoneWatcher";
+import { ShiftContextWatcher } from "@/components/workspace/ShiftContextWatcher";
 import { recordActivity } from "@/lib/workspace/activity-store";
 import { useThemeSync } from "@/hooks/use-theme-sync";
 import { useTuningSync } from "@/hooks/use-tuning-sync";
@@ -47,6 +48,7 @@ function AuthorizedShell() {
       <CopilotSheet />
       <CopilotLauncher />
       <MilestoneWatcher />
+      <ShiftContextWatcher />
     </>
   );
 }
