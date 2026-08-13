@@ -66,7 +66,7 @@ export const defaultAccountContextPorts: AccountContextPorts = {
     ticketsStore.getState().tickets.filter((t) => t.accountNumber === num),
   work: (num) => ({
     logged: workLogStore.get().entries.filter((w) => w.accountNumber === num),
-    additional: additionalWorkStore.get().items.filter((w) => w.accountNumber === num),
+    additional: additionalWorkStore.byAccount(num),
   }),
   changes: async (num) => {
     const rows = await listChangeRecords({ data: { accountNumber: num, limit: 50 } });
@@ -87,7 +87,7 @@ export const defaultAccountContextPorts: AccountContextPorts = {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   },
   dispatch: (num) =>
-    dispatchStore.get().sessions.filter((s) => s.accountNumber === num),
+    dispatchStore.getState().sessions.filter((s) => s.accountNumber === num),
   recurring: (num) =>
     isAccountActiveRecurring(num) ?? getRecurringRows().find((r) => r.accountNumber === num),
   awareness: (num) =>
