@@ -45,7 +45,10 @@ export function ActiveWorkDock() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[120] flex justify-center px-3 pb-3">
-      <div className="glass-panel pointer-events-auto flex items-center gap-3 rounded-full px-3 py-1.5 text-xs shadow-lg">
+      <div
+        data-focus-field="active"
+        className="glass-panel pointer-events-auto flex items-center gap-3 rounded-full px-3 py-1.5 text-xs shadow-lg"
+      >
         <span className="flex items-center gap-1.5 text-muted-foreground">
           <Timer className="h-3.5 w-3.5" style={{ color: "var(--cyan-glow)" }} />
           <span className="uppercase tracking-wider">{KIND_LABEL[current.kind]}</span>

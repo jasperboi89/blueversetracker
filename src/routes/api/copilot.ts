@@ -33,6 +33,7 @@ const Body = z.object({
   style: z.string().max(600).optional(),
   pageContext: z.string().max(600).optional(),
   profile: z.string().max(2000).optional(),
+  focus: z.string().max(1200).optional(),
   nowIso: z.string().max(40).optional(),
 });
 
@@ -134,6 +135,7 @@ export const Route = createFileRoute("/api/copilot")({
           body.nowIso ? `Current time (ISO): ${body.nowIso}.` : "",
           body.pageContext ? `The operator is currently viewing: ${body.pageContext}.` : "",
           body.profile ? `Operator profile (learned patterns):\n${body.profile}` : "",
+          body.focus ? `Deterministic focus state (already computed by the portal — trust it, do not re-derive):\n${body.focus}` : "",
           body.signals ? `Detected signals from the Hub:\n${body.signals}` : "",
           body.style ?? "",
         ]

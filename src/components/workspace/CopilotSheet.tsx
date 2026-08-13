@@ -36,6 +36,8 @@ import { activitySummary } from "@/lib/workspace/activity-store";
 import { htmlToPlainText } from "@/lib/rich-text";
 import { useInsights, type InsightSeverity } from "@/lib/ai/awareness";
 import { streamCopilot, TOOL_LABEL } from "@/lib/ai/copilot-stream";
+import { toCopilotFocusContext } from "@/lib/core/focus-workspace";
+import { useFocusWorkspace } from "@/lib/core/use-focus-workspace";
 import { copilotThreads, useCopilotThreads } from "@/lib/ai/copilot-threads-store";
 import { describeAction, toProposedAction } from "@/lib/ai/copilot-actions";
 import { executeAction } from "@/lib/core/action-executor";
@@ -138,6 +140,7 @@ export function CopilotSheet() {
   const ai = useAISettings();
   const navigate = useNavigate();
   const insights = useInsights();
+  const focus = useFocusWorkspace();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const threadState = useCopilotThreads();
   const [open, setOpen] = useState(false);
@@ -212,6 +215,7 @@ export function CopilotSheet() {
         style: aiStyleHint(ai),
         pageContext: pageLabel(path),
         profile: threadState.profile || undefined,
+        focus: toCopilotFocusContext(focus),
       },
       {
         onDelta: (t) => setLiveText((prev) => prev + t),

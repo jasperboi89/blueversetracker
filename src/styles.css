@@ -908,3 +908,45 @@ html[data-qb-sanctuary="on"] header.sticky:hover {
   background: rgb(255 255 255 / 0.07);
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Focus Workspace (Phase 9) — semantic operational states.            */
+/* Theme-agnostic: everything resolves through existing tokens so      */
+/* BlueVerse / Quantum Bloom keep working and a future visual language */
+/* can restyle these classes without touching the Focus architecture.  */
+/* ------------------------------------------------------------------ */
+.focus-current {
+  border-color: color-mix(in oklab, var(--cyan-glow) 45%, transparent);
+  background: color-mix(in oklab, var(--cyan-glow) 7%, transparent);
+}
+.focus-watch--critical {
+  border-color: color-mix(in oklab, var(--destructive) 55%, transparent);
+  background: color-mix(in oklab, var(--destructive) 8%, transparent);
+}
+.focus-watch--warning {
+  border-color: color-mix(in oklab, var(--amber-glow, var(--primary)) 45%, transparent);
+  background: color-mix(in oklab, var(--amber-glow, var(--primary)) 7%, transparent);
+}
+.focus-watch--info {
+  background: color-mix(in oklab, var(--foreground) 3%, transparent);
+}
+.focus-blocked {
+  border-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+  background: color-mix(in oklab, var(--muted-foreground) 6%, transparent);
+}
+
+/* Focus Field: a restrained rim on the surface that matches CURRENT.
+   No blur, no dimming, no pulsing — readable across a full night shift. */
+.focus-active-surface[data-focus-active="true"],
+[data-focus-field="active"] {
+  border-color: color-mix(in oklab, var(--cyan-glow) 50%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--cyan-glow) 22%, transparent);
+  transition: box-shadow 220ms ease, border-color 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-active-surface[data-focus-active="true"],
+  [data-focus-field="active"] {
+    transition: none;
+  }
+}
