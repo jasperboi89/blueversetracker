@@ -21,7 +21,8 @@ function fakeLedger() {
   return { port, rows };
 }
 
-function addItemAction(task = "Call the on-call tech"): AnyProposedAction {
+let seq = 0;
+function addItemAction(task = `Call the on-call tech ${++seq}`): AnyProposedAction {
   return createProposedAction({
     type: "add_night_plan_item",
     payload: { task, priority: "must" },
@@ -45,7 +46,7 @@ describe("safe action executor", () => {
     const res = await executeAction(action, { confirmed: true, ledger: port });
 
     expect(res.status).toBe("success");
-    expect(nightPlanStore.get().items.some((i) => i.task === "Call the on-call tech")).toBe(true);
+    expect(countTask(action.payload.task)).toBe(1);
     const record = rows.get(action.idempotencyKey)!;
     expect(record.status).toBe("success");
     expect(record.after).toMatchObject({ priority: "must" });
