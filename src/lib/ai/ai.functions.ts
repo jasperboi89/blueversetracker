@@ -74,7 +74,7 @@ export const aiSummarizeTicket = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: threadText(data),
-      tier: "balanced",
+      task: "summary",
     });
     return res;
   });
@@ -96,7 +96,7 @@ export const aiDraftNote = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: `${threadText(data)}\n\n${workText(data)}`,
-      tier: "balanced",
+      task: "summary",
     });
     return res;
   });
@@ -120,7 +120,7 @@ export const aiCopilot = createServerFn({ method: "POST" })
         "Be concise and specific. Reference ticket numbers and accounts where relevant.",
       ].join("\n"),
       prompt: `Question: ${data.question}\n\nHub snapshot:\n${data.snapshot}`,
-      tier: "balanced",
+      task: "operational_question",
     });
   });
 
@@ -145,7 +145,7 @@ export const aiShiftSummary = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: data.snapshot,
-      tier: "balanced",
+      task: "handoff_generation",
     });
   });
 
@@ -181,7 +181,7 @@ export const aiFocus = createServerFn({ method: "POST" })
       ]
         .filter(Boolean)
         .join("\n\n"),
-      tier: "flagship",
+      task: "pattern_analysis",
     });
   });
 
@@ -225,7 +225,7 @@ export const aiAccountIntel = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: body || "No ticket history provided.",
-      tier: "balanced",
+      task: "summary",
     });
   });
 
@@ -244,7 +244,7 @@ export const aiClassifyTicket = createServerFn({ method: "POST" })
         "Base it ONLY on the provided text.",
       ].join("\n"),
       prompt: `${threadText(data)}\n\n${workText(data)}`,
-      tier: "fast",
+      task: "classification",
     });
     if (!res.ok) return { ok: false as const, error: res.error };
     try {
@@ -315,7 +315,7 @@ export const aiOrganizeKnowledgeNote = createServerFn({ method: "POST" })
         "ORIGINAL NOTE:",
         data.sourceText,
       ].join("\n"),
-      tier: "balanced",
+      task: "structured_generation",
     });
 
     if (!res.ok) return { ok: false as const, error: res.error };
@@ -415,7 +415,7 @@ export const aiParseTicketIssue = createServerFn({ method: "POST" })
       ]
         .filter(Boolean)
         .join("\n"),
-      tier: "fast",
+      task: "extraction",
     });
     if (!res.ok) return { ok: false as const, error: res.error };
     try {
@@ -478,7 +478,7 @@ export const aiCopilotChat = createServerFn({ method: "POST" })
       system,
       input,
       tools: COPILOT_TOOLS,
-      tier: "flagship",
+      task: "ticket_investigation",
       runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
     });
 
@@ -535,7 +535,7 @@ export const aiBriefing = createServerFn({ method: "POST" })
         },
       ],
       tools: COPILOT_TOOLS,
-      tier: "flagship",
+      task: "pattern_analysis",
       maxSteps: 8,
       runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
     });
@@ -569,7 +569,7 @@ export const aiOperatorProfile = createServerFn({ method: "POST" })
         },
       ],
       tools: COPILOT_TOOLS,
-      tier: "balanced",
+      task: "summary",
       maxSteps: 6,
       runTool: (name, args) => runCopilotTool(context.supabase, context.userId, name, args),
     });
@@ -594,7 +594,7 @@ export const aiPolishNote = createServerFn({ method: "POST" })
     await logAi(context, "polish-note", "");
 
     const res = await aiComplete({
-      tier: "fast",
+      task: "rewrite",
       system: [
         "You clean up a support operator's internal note before it is pasted into a ticket.",
         "Rules: keep every fact exactly as written; never invent details, causes, or outcomes.",
@@ -624,7 +624,7 @@ export const aiSuggestSubject = createServerFn({ method: "POST" })
     await logAi(context, "suggest-subject", "");
 
     const res = await aiComplete({
-      tier: "fast",
+      task: "extraction",
       system: [
         "You write the subject line for an internal support work item.",
         "Return ONE line, 3-9 words, sentence case, no trailing period, no quotes,",

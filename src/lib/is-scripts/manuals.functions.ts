@@ -237,7 +237,7 @@ export const explainManualPassage = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n\n"),
       json: true,
-      tier: "flagship",
+      task: "knowledge_interpretation",
     });
     if (!res.ok) return { ok: false as const, error: res.error ?? "AI call failed." };
     try {

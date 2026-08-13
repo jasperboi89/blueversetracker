@@ -4,6 +4,11 @@
 // `stream: true` (consumed server-side) so long reasoning runs never sit
 // silent past the platform request timeout.
 
+import { routeTask, degradationNotice } from "./router/task-router";
+import { reportModelFailure, reportModelSuccess } from "./router/model-registry";
+import { recordRouting, describeRouting, logRoutingIfDev } from "./router/telemetry";
+import type { ModelTier as RouterTier, TaskKind } from "./router/task-types";
+
 export interface AiCompleteResult {
   ok: boolean;
   text?: string;
@@ -26,6 +31,43 @@ export type ModelTier = keyof typeof AI_MODELS;
 
 export function modelFor(tier: ModelTier): string {
   return AI_MODELS[tier];
+}
+
+/**
+ * Resolve the model for a call through the Task / Model Router. Legacy
+ * `tier`/`model` options still work; `task` is the preferred input.
+ */
+function resolveRouting(opts: {
+  task?: TaskKind;
+  tier?: ModelTier;
+  model?: string;
+  capabilities?: { tools?: boolean; structuredOutput?: boolean; streaming?: boolean; vision?: boolean; longContext?: boolean };
+}) {
+  if (opts.model) {
+    return { modelId: opts.model, tier: (opts.tier ?? "balanced") as RouterTier, decision: undefined };
+  }
+  const kind: TaskKind = opts.task ?? "summary";
+  const decision = routeTask({
+    kind,
+    requirements: {
+      ...(opts.task ? {} : { tier: opts.tier ?? "balanced" }),
+      ...(opts.capabilities ? { capabilities: opts.capabilities } : {}),
+    },
+  });
+  logRoutingIfDev(
+    describeRouting({
+      taskKind: decision.taskKind,
+      tier: decision.tier,
+      ...(decision.modelId ? { modelId: decision.modelId } : {}),
+      reasonCode: decision.reasonCode,
+      capabilities: { ...decision.capabilities },
+    }),
+  );
+  return {
+    modelId: decision.modelId ?? modelFor(opts.tier ?? "balanced"),
+    tier: (decision.tier === "deterministic" ? "balanced" : decision.tier) as RouterTier,
+    decision,
+  };
 }
 
 export interface ResponsesTool {
@@ -173,9 +215,18 @@ export async function aiComplete(opts: {
   tier?: ModelTier;
   /** Explicit model id override (must be an allowlisted gateway id). */
   model?: string;
+  /** Preferred input: the router picks the tier/model from the task kind. */
+  task?: TaskKind;
 }): Promise<AiCompleteResult> {
+  const routing = resolveRouting({
+    ...(opts.task ? { task: opts.task } : {}),
+    ...(opts.tier ? { tier: opts.tier } : {}),
+    ...(opts.model ? { model: opts.model } : {}),
+    ...(opts.json ? { capabilities: { structuredOutput: true } } : {}),
+  });
+  const started = Date.now();
   const res = await callResponses({
-    model: opts.model ?? modelFor(opts.tier ?? "balanced"),
+    model: routing.modelId,
     instructions: opts.system,
     input: [
       {
@@ -191,6 +242,18 @@ export async function aiComplete(opts: {
     ],
     ...(opts.json ? { text: { format: { type: "json_object" } } } : {}),
   });
+  recordRouting({
+    at: new Date().toISOString(),
+    taskKind: routing.decision?.taskKind ?? opts.task ?? "summary",
+    tier: routing.tier,
+    modelId: routing.modelId,
+    reasonCode: routing.decision?.reasonCode ?? "ROUTINE_GENERATION",
+    fallbackUsed: Boolean(routing.decision?.degradedFrom),
+    durationMs: Date.now() - started,
+    success: res.ok,
+  });
+  if (res.ok) reportModelSuccess(routing.modelId);
+  else reportModelFailure(routing.modelId);
   if (!res.ok) return { ok: false, error: res.error };
   return { ok: true, text: res.text ?? "" };
 }
@@ -217,17 +280,54 @@ export async function aiRespondWithTools(opts: {
   runTool: (name: string, args: unknown) => Promise<unknown>;
   tier?: ModelTier;
   maxSteps?: number;
+  /** Preferred input: the router picks the tier/model from the task kind. */
+  task?: TaskKind;
   /** Optional live progress sink (tool activity + answer text deltas). */
   onEvent?: (event: CopilotStreamEvent) => void;
-}): Promise<{ ok: boolean; text?: string; error?: string; toolsUsed?: ToolRunTrace[] }> {
+}): Promise<{
+  ok: boolean;
+  text?: string;
+  error?: string;
+  toolsUsed?: ToolRunTrace[];
+  routing?: { tier: string; modelId: string; reasonCode: string; notice?: string };
+}> {
   const items = [...opts.input];
   const toolsUsed: ToolRunTrace[] = [];
   const maxSteps = opts.maxSteps ?? 6;
+  const routing = resolveRouting({
+    ...(opts.task ? { task: opts.task } : {}),
+    ...(opts.tier ? { tier: opts.tier } : {}),
+    capabilities: { tools: true, streaming: true },
+  });
+  const notice = routing.decision ? degradationNotice(routing.decision) : undefined;
+  const routingMeta = {
+    tier: routing.tier,
+    modelId: routing.modelId,
+    reasonCode: routing.decision?.reasonCode ?? "ROUTINE_GENERATION",
+    ...(notice ? { notice } : {}),
+  };
+  const started = Date.now();
+  const finish = <T extends { ok: boolean }>(res: T) => {
+    recordRouting({
+      at: new Date().toISOString(),
+      taskKind: routing.decision?.taskKind ?? opts.task ?? "operational_question",
+      tier: routing.tier,
+      modelId: routing.modelId,
+      reasonCode: routingMeta.reasonCode as never,
+      fallbackUsed: Boolean(routing.decision?.degradedFrom),
+      durationMs: Date.now() - started,
+      success: res.ok,
+      toolsUsed: toolsUsed.length,
+    });
+    if (res.ok) reportModelSuccess(routing.modelId);
+    else reportModelFailure(routing.modelId);
+    return { ...res, routing: routingMeta };
+  };
 
   for (let step = 0; step < maxSteps; step++) {
     const res = await callResponsesStreaming(
       {
-        model: modelFor(opts.tier ?? "flagship"),
+        model: routing.modelId,
         instructions: opts.system,
         input: items,
         tools: opts.tools,
@@ -238,14 +338,14 @@ export async function aiRespondWithTools(opts: {
       },
       opts.onEvent ? (text) => opts.onEvent?.({ type: "delta", text }) : undefined,
     );
-    if (!res.ok) return { ok: false, error: res.error, toolsUsed };
+    if (!res.ok) return finish({ ok: false, error: res.error, toolsUsed });
 
     const output = res.output ?? [];
     const calls = output.filter((i) => i.type === "function_call");
 
     if (calls.length === 0) {
       const text = (res.text ?? "").trim();
-      return { ok: true, text: text || "No answer was returned. Try rephrasing.", toolsUsed };
+      return finish({ ok: true, text: text || "No answer was returned. Try rephrasing.", toolsUsed });
     }
 
     // Resend the model's own items, then append each tool result.
@@ -274,9 +374,9 @@ export async function aiRespondWithTools(opts: {
     }
   }
 
-  return {
+  return finish({
     ok: false,
     error: "Copilot needed too many lookups to answer. Try a narrower question.",
     toolsUsed,
-  };
+  });
 }
