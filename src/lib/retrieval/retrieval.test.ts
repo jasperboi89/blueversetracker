@@ -14,6 +14,7 @@ import type { ResolutionMemory } from "@/lib/resolution/resolution-types";
 import type { AccountChangeRecord } from "@/lib/changes/changes.functions";
 import type { KnowledgeNote } from "@/lib/knowledge/knowledge.functions";
 import { lovableEmbeddingProvider, type EmbeddingProvider } from "./embedding-provider.server";
+import { resolveSemanticText, SemanticBoundaryError } from "./semantic-guard";
 
 const NOW = Date.parse("2026-06-01T00:00:00.000Z");
 
@@ -255,5 +256,131 @@ describe("embedding provider degradation", () => {
     };
     const out = await stub.embed(["a", "b"]);
     expect(out.ok && out.vectors).toHaveLength(2);
+  });
+});
+
+describe("historical resolution handling", () => {
+  const opts = { identifiers: parseIdentifiers("printer"), limit: 10, now: NOW };
+
+  it("excludes superseded resolutions when includeHistorical=false", () => {
+    const out = fuseCandidates(
+      [lex("old", 5, { sourceStatus: "superseded" }), lex("cur", 1)],
+      [sem("old", 0.01, { sourceStatus: "superseded" })],
+      opts,
+    );
+    expect(out.map((r) => r.sourceId)).toEqual(["cur"]);
+  });
+
+  it("excludes archived resolutions when includeHistorical=false", () => {
+    const out = fuseCandidates([lex("arch", 5, { sourceStatus: "archived" })], [], opts);
+    expect(out).toHaveLength(0);
+  });
+
+  it("semantic similarity cannot resurrect an obsolete resolution", () => {
+    const out = fuseCandidates([], [sem("old", 0.0001, { sourceStatus: "superseded" })], opts);
+    expect(out).toHaveLength(0);
+  });
+
+  it("returns historical resolutions when includeHistorical=true and flags them", () => {
+    const out = fuseCandidates(
+      [lex("old", 5, { sourceStatus: "superseded" })],
+      [],
+      { ...opts, includeHistorical: true },
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]!.historical).toBe(true);
+    expect(out[0]!.sourceStatus).toBe("superseded");
+    expect(out[0]!.matchedBy).toContain("historical");
+  });
+
+  it("ranks an active resolution ahead of a comparable historical one", () => {
+    const out = fuseCandidates(
+      [lex("old", 5, { sourceStatus: "superseded" }), lex("cur", 5)],
+      [],
+      { ...opts, includeHistorical: true },
+    );
+    expect(out[0]!.sourceId).toBe("cur");
+    expect(out[0]!.historical).toBeUndefined();
+    expect(out[1]!.sourceId).toBe("old");
+  });
+
+  it("leaves non-resolution source status semantics untouched", () => {
+    const out = fuseCandidates(
+      [lex("chg", 5, { sourceType: "change_record", sourceStatus: "archived" })],
+      [],
+      opts,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]!.historical).toBeUndefined();
+  });
+});
+
+describe("semantic input boundary", () => {
+  it("rejects an arbitrary unsupported source from semantic indexing", () => {
+    expect(() =>
+      resolveSemanticText({
+        sourceType: "freshdesk_ticket",
+        sourceId: "123",
+        semanticText: "caller said the phone tree is broken",
+      }),
+    ).toThrow(SemanticBoundaryError);
+  });
+
+  it("rejects unapproved text even on an allowed source type", () => {
+    expect(() =>
+      resolveSemanticText({
+        sourceType: "resolution",
+        sourceId: "r1",
+        semanticText: "arbitrary prompt text",
+      }),
+    ).toThrow(SemanticBoundaryError);
+  });
+
+  it("rejects text mutated after projection", () => {
+    const doc = resolutionToRetrievalDocument({
+      id: "r1",
+      accountNumber: "1001",
+      accountName: "Acct",
+      problem: "Fax queue stalls",
+      rootCause: "Stuck job",
+      resolution: "Cleared queue",
+      testing: "Sent test fax",
+      rollback: "",
+      affectedArea: "fax",
+      confidence: "verified",
+      status: "active",
+      source: { ticketId: "555" },
+      createdAt: "2026-05-01T00:00:00.000Z",
+      updatedAt: "2026-05-01T00:00:00.000Z",
+    } as unknown as ResolutionMemory);
+    expect(() =>
+      resolveSemanticText({ ...doc, semanticText: `${doc.semanticText} injected` }),
+    ).toThrow(SemanticBoundaryError);
+  });
+
+  it("keeps Freshdesk lexical-only", () => {
+    const doc = ticketToSafeRetrievalDocument({ ticketNumber: "777", subject: "Phones down" });
+    expect(doc.semanticText).toBe("");
+    expect(resolveSemanticText(doc)).toBe("");
+  });
+
+  it("approved projections still embed normally", () => {
+    const doc = resolutionToRetrievalDocument({
+      id: "r2",
+      accountNumber: "1001",
+      accountName: "Acct",
+      problem: "Voicemail loops",
+      rootCause: "Bad routing",
+      resolution: "Fixed routing table",
+      testing: "Called in",
+      rollback: "",
+      affectedArea: "voicemail",
+      confidence: "verified",
+      status: "active",
+      source: { ticketId: "556" },
+      createdAt: "2026-05-01T00:00:00.000Z",
+      updatedAt: "2026-05-01T00:00:00.000Z",
+    } as unknown as ResolutionMemory);
+    expect(resolveSemanticText(doc)).toContain("Voicemail loops");
   });
 });
