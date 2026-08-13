@@ -30,16 +30,6 @@ import {
 } from "@/lib/settings/dropdowns-store";
 import { useShiftSettings, shiftSettingsStore, fmtHour } from "@/lib/settings/shift-settings-store";
 import { useDisplayPrefs, displayPrefsStore } from "@/lib/settings/display-prefs-store";
-import {
-  usePresencePrefs,
-  presencePrefsStore,
-  type CheckInFrequency,
-  type VoiceMode,
-  type PresenceCorner,
-} from "@/lib/presence/presence-prefs-store";
-import { listDeviceVoices, onVoicesChanged, previewVoice } from "@/lib/presence/speech";
-import { KOKORO_VOICES, onKokoroProgress } from "@/lib/presence/kokoro";
-import { CLARA_AI_VOICES } from "@/lib/presence/tts.functions";
 import { nightPlanHistory } from "@/lib/reports/night-plan-history";
 import { useTickets } from "@/lib/tickets-store";
 import { useAccounts } from "@/lib/accounts-store";
@@ -70,7 +60,6 @@ const SECTIONS = [
   { id: "dropdowns",  title: "Dropdown Management",   icon: ListChecks },
   { id: "shift",      title: "Shift Settings",        icon: Clock },
   { id: "display",    title: "Display Preferences",   icon: Eye },
-  { id: "presence",   title: "Presence Avatar",       icon: Sparkles },
   { id: "data",       title: "Data / Cleanup",        icon: Database },
 ] as const;
 
@@ -107,7 +96,6 @@ function SettingsPage() {
             <DropdownsSection />
             <ShiftSection />
             <DisplaySection />
-            <PresenceSection />
             <DataSection />
           </div>
         </div>
@@ -726,201 +714,6 @@ function ToggleRow({ label, description, checked, onChange }: { label: string; d
         {description && <div className="text-muted-foreground">{description}</div>}
       </div>
     </div>
-  );
-}
-
-/* ---------------- Clara ---------------- */
-function PresenceSection() {
-  const p = usePresencePrefs();
-  const [deviceVoices, setDeviceVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [kokoroPct, setKokoroPct] = useState<number | null>(null);
-  useEffect(() => {
-    const sync = () => setDeviceVoices(listDeviceVoices());
-    sync();
-    return onVoicesChanged(sync);
-  }, []);
-  useEffect(() => onKokoroProgress(setKokoroPct), []);
-  return (
-    <SectionCard id="presence" title="Clara" icon={Sparkles}>
-      <p className="mb-1 text-xs text-muted-foreground">
-        Clara is your holographic companion — she floats in with guidance, checks in during the
-        shift, and opens the Intel Copilot when you tap her. Close her any time and she collapses
-        to a small pill that still pulses for alerts.
-      </p>
-      <ToggleRow
-        label="Enable Clara"
-        description="When off, the classic sparkle Copilot button comes back."
-        checked={p.enabled}
-        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, enabled: v }))}
-      />
-      <ToggleRow
-        label="Collapse to pill"
-        description="Keeps her out of the way; alerts still arrive on the pill."
-        checked={p.hidden}
-        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, hidden: v }))}
-      />
-      <ToggleRow
-        label="Speak messages aloud"
-        description="Nothing plays until you've interacted with the page."
-        checked={p.voice}
-        onChange={(v) => presencePrefsStore.update((c) => ({ ...c, voice: v }))}
-      />
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <Field label="Voice type">
-          <Select
-            value={p.voiceMode}
-            onValueChange={(v) =>
-              presencePrefsStore.update((c) => ({ ...c, voiceMode: v as VoiceMode }))
-            }
-          >
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="device">Device voices (instant, free)</SelectItem>
-              <SelectItem value="kokoro">Human voices — free, on-device</SelectItem>
-              <SelectItem value="ai">Human AI voices (higher quality)</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        {p.voiceMode === "ai" ? (
-          <Field label="Clara's voice">
-            <Select
-              value={p.aiVoice}
-              onValueChange={(v) => presencePrefsStore.update((c) => ({ ...c, aiVoice: v }))}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CLARA_AI_VOICES.map((voice) => (
-                  <SelectItem key={voice.id} value={voice.id}>{voice.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        ) : p.voiceMode === "kokoro" ? (
-          <Field label="Clara's voice">
-            <Select
-              value={p.kokoroVoice}
-              onValueChange={(v) => presencePrefsStore.update((c) => ({ ...c, kokoroVoice: v }))}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {KOKORO_VOICES.map((voice) => (
-                  <SelectItem key={voice.id} value={voice.id}>{voice.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        ) : (
-          <Field label="Device voice">
-            <Select
-              value={p.deviceVoiceUri || "__auto"}
-              onValueChange={(v) =>
-                presencePrefsStore.update((c) => ({
-                  ...c,
-                  deviceVoiceUri: v === "__auto" ? "" : v,
-                }))
-              }
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__auto">Automatic</SelectItem>
-                {deviceVoices.map((voice) => (
-                  <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
-                    {voice.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
-        <Field label="Preview">
-          <Button variant="secondary" className="w-full" onClick={() => previewVoice()}>
-            {kokoroPct === null ? "Hear Clara" : `Preparing voice… ${kokoroPct}%`}
-          </Button>
-        </Field>
-      </div>
-      {p.voiceMode === "kokoro" && (
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Free natural voices that run on your machine — no AI credits. The first line downloads
-          the voice model once (about 90&nbsp;MB); after that it works offline and instantly. If it
-          can't load, Clara falls back to a device voice.
-        </p>
-      )}
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <Field label={`Speaking rate — ${p.rate.toFixed(2)}×`}>
-          <input
-            type="range" min={60} max={140} step={2} value={Math.round(p.rate * 100)}
-            onChange={(e) =>
-              presencePrefsStore.update((c) => ({ ...c, rate: Number(e.target.value) / 100 }))
-            }
-            className="w-full accent-[var(--cyan-glow)]"
-          />
-        </Field>
-        <Field label={`Pitch — ${p.pitch.toFixed(2)}`}>
-          <input
-            type="range" min={60} max={160} step={5} value={Math.round(p.pitch * 100)}
-            onChange={(e) =>
-              presencePrefsStore.update((c) => ({ ...c, pitch: Number(e.target.value) / 100 }))
-            }
-            className="w-full accent-[var(--cyan-glow)]"
-          />
-        </Field>
-        <Field label="Corner">
-          <Select
-            value={p.corner}
-            onValueChange={(v) =>
-              presencePrefsStore.update((c) => ({ ...c, corner: v as PresenceCorner }))
-            }
-          >
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="br">Bottom right</SelectItem>
-              <SelectItem value="bl">Bottom left</SelectItem>
-              <SelectItem value="tr">Top right</SelectItem>
-              <SelectItem value="tl">Top left</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-      </div>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <Field label="Check-in frequency">
-          <Select
-            value={p.checkIn}
-            onValueChange={(v) =>
-              presencePrefsStore.update((c) => ({ ...c, checkIn: v as CheckInFrequency }))
-            }
-          >
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="off">Off</SelectItem>
-              <SelectItem value="relaxed">Relaxed (~45 min)</SelectItem>
-              <SelectItem value="normal">Normal (~25 min)</SelectItem>
-              <SelectItem value="attentive">Attentive (~12 min)</SelectItem>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label={`Size — ${p.size}px`}>
-          <input
-            type="range" min={80} max={220} step={4} value={p.size}
-            onChange={(e) =>
-              presencePrefsStore.update((c) => ({ ...c, size: Number(e.target.value) }))
-            }
-            className="w-full accent-[var(--cyan-glow)]"
-          />
-        </Field>
-        <Field label={`Idle opacity — ${Math.round(p.opacity * 100)}%`}>
-          <input
-            type="range" min={20} max={100} step={5} value={Math.round(p.opacity * 100)}
-            onChange={(e) =>
-              presencePrefsStore.update((c) => ({ ...c, opacity: Number(e.target.value) / 100 }))
-            }
-            className="w-full accent-[var(--cyan-glow)]"
-          />
-        </Field>
-      </div>
-    </SectionCard>
   );
 }
 
