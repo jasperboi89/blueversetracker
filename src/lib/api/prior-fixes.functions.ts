@@ -186,7 +186,7 @@ export const findPriorFixes = createServerFn({ method: "POST" })
       const { aiComplete } = await import("@/lib/ai/ai-client.server");
       const res = await aiComplete({
         json: true,
-        tier: "fast",
+        task: "extraction",
         system: [
           "You compare a current support ticket against past tickets for a night-shift operator.",
           'Return strict JSON: { "matches": [ { "number": string, "why": string, "fix": string } ] }.',
