@@ -117,7 +117,9 @@ export const awarenessStore = {
   get: (): AwarenessItem[] => items,
   subscribe(l: () => void) {
     listeners.add(l);
-    return () => listeners.delete(l);
+    return () => {
+      listeners.delete(l);
+    };
   },
   recompute: recomputeAwareness,
   dismiss(dedupeKey: string) {
