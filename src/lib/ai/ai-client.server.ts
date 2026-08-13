@@ -54,7 +54,15 @@ function resolveRouting(opts: {
       ...(opts.capabilities ? { capabilities: opts.capabilities } : {}),
     },
   });
-  logRoutingIfDev(describeRouting(decision));
+  logRoutingIfDev(
+    describeRouting({
+      taskKind: decision.taskKind,
+      tier: decision.tier,
+      ...(decision.modelId ? { modelId: decision.modelId } : {}),
+      reasonCode: decision.reasonCode,
+      capabilities: { ...decision.capabilities },
+    }),
+  );
   return {
     modelId: decision.modelId ?? modelFor(opts.tier ?? "balanced"),
     tier: (decision.tier === "deterministic" ? "balanced" : decision.tier) as RouterTier,
