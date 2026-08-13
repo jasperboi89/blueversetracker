@@ -110,8 +110,8 @@ describe("account context integration", () => {
   it("keeps provenance on every fix", async () => {
     const pack = await assembleAccountContext(ACC, ports());
     for (const fix of pack.knownFixes) {
-      expect(fix.source.name).toBeTruthy();
-      expect(fix.source.id).toBeTruthy();
+      expect(fix.source.source).toBeTruthy();
+      expect(fix.source.retrievedAt).toBeTruthy();
     }
   });
 
@@ -134,7 +134,7 @@ describe("account context integration", () => {
       }),
     );
     expect(pack.resolutions).toEqual([]);
-    expect(pack.gaps.some((g) => g.includes("resolution"))).toBe(true);
+    expect(pack.provenance.sources.resolution?.ok).toBe(false);
     expect(pack.knownFixes.length).toBeGreaterThan(0);
   });
 });
