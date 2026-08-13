@@ -29,9 +29,13 @@ function addItemAction(task = "Call the on-call tech"): AnyProposedAction {
   }) as AnyProposedAction;
 }
 
+/** The store has no delete API, so tests assert on deltas from a baseline. */
+let baseline = 0;
+const countTask = (task: string) =>
+  nightPlanStore.get().items.filter((i) => i.task === task).length;
+
 beforeEach(() => {
-  localStorage.clear();
-  nightPlanStore.get().items.slice().forEach((i) => nightPlanStore.remove(i.id));
+  baseline = nightPlanStore.get().items.length;
 });
 
 describe("safe action executor", () => {
@@ -56,7 +60,7 @@ describe("safe action executor", () => {
     }) as AnyProposedAction;
     const res = await executeAction(action, { confirmed: true, ledger: port });
     expect(res.status).toBe("rejected");
-    expect(nightPlanStore.get().items).toHaveLength(0);
+    expect(nightPlanStore.get().items).toHaveLength(baseline);
   });
 
   it("rejects an unknown action type", async () => {
@@ -70,7 +74,7 @@ describe("safe action executor", () => {
     const { port } = fakeLedger();
     const res = await executeAction(addItemAction(), { confirmed: false, ledger: port });
     expect(res.status).toBe("rejected");
-    expect(nightPlanStore.get().items).toHaveLength(0);
+    expect(nightPlanStore.get().items).toHaveLength(baseline);
   });
 
   it("does not execute twice for the same idempotency key", async () => {
@@ -81,7 +85,7 @@ describe("safe action executor", () => {
 
     expect(first.status).toBe("success");
     expect(second.status).toBe("duplicate");
-    expect(nightPlanStore.get().items).toHaveLength(1);
+    expect(countTask(action.payload.task)).toBe(1);
   });
 
   it("returns a failed result when the mutation cannot complete", async () => {
@@ -106,7 +110,7 @@ describe("safe action executor", () => {
     };
     const res = await executeAction(addItemAction(), { confirmed: true, ledger: port });
     expect(res.status).toBe("failed");
-    expect(nightPlanStore.get().items).toHaveLength(0);
+    expect(nightPlanStore.get().items).toHaveLength(baseline);
   });
 
   it("emits exactly one Event Spine event per transition", async () => {
