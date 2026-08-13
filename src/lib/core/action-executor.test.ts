@@ -156,6 +156,113 @@ describe("safe action executor", () => {
   });
 });
 
+describe("idempotency recovery semantics", () => {
+  it("reserves and executes, recording a proven success", async () => {
+    const { port, rows } = fakeLedger();
+    const action = addItemAction();
+    const res = await executeAction(action, { confirmed: true, ledger: port });
+    expect(res.status).toBe("success");
+    expect(res.ledgerSynced).toBe(true);
+    expect(rows.get(action.idempotencyKey)?.status).toBe("success");
+  });
+
+  it("a duplicate after a confirmed success does not execute again", async () => {
+    const { port } = fakeLedger();
+    const action = addItemAction();
+    await executeAction(action, { confirmed: true, ledger: port });
+    const spy = vi.spyOn(nightPlanStore, "add");
+    const second = await executeAction(action, { confirmed: true, ledger: port });
+    expect(second.status).toBe("duplicate");
+    expect(spy).not.toHaveBeenCalled();
+    expect(countTask(action.payload.task)).toBe(1);
+    spy.mockRestore();
+  });
+
+  it("records a failed handler outcome as failed, not as applied", async () => {
+    const { port, rows } = fakeLedger();
+    const action = createProposedAction({
+      type: "complete_night_plan_item",
+      payload: { task: "no such item at all" },
+      origin: "copilot",
+    }) as AnyProposedAction;
+    const res = await executeAction(action, { confirmed: true, ledger: port });
+    expect(res.status).toBe("failed");
+    expect(rows.get(action.idempotencyKey)?.status).toBe("failed");
+  });
+
+  it("allows a failed action to be retried and succeed on the second attempt", async () => {
+    const { port, rows } = fakeLedger();
+    const action = addItemAction();
+    const boom = vi.spyOn(nightPlanStore, "add").mockImplementationOnce(() => {
+      throw new Error("store offline");
+    });
+    const first = await executeAction(action, { confirmed: true, ledger: port });
+    expect(first.status).toBe("failed");
+    expect(rows.get(action.idempotencyKey)?.status).toBe("failed");
+    boom.mockRestore();
+
+    // Same key: the failed reservation must NOT report "already applied".
+    const second = await executeAction(action, { confirmed: true, ledger: port });
+    expect(second.status).toBe("success");
+    expect(countTask(action.payload.task)).toBe(1);
+  });
+
+  it("does not let a stale/incomplete reservation masquerade as success", async () => {
+    let now = Date.now();
+    const { port } = fakeLedger(() => now);
+    const action = addItemAction();
+    // Client dies after reserve, before the mutation.
+    await port.reserve({
+      actionId: action.id,
+      idempotencyKey: action.idempotencyKey,
+      actionType: action.type,
+      origin: action.origin,
+    });
+
+    const live = await executeAction(action, { confirmed: true, ledger: port });
+    expect(live.status).toBe("rejected");
+    expect(live.message).toMatch(/already running/i);
+
+    now += LEASE_MS + 1;
+    const stale = await executeAction(action, { confirmed: true, ledger: port });
+    expect(stale.status).toBe("uncertain");
+    expect(stale.status).not.toBe("duplicate");
+    expect(countTask(action.payload.task)).toBe(0);
+  });
+
+  it("handles finalization failure after a successful mutation without duplicating it", async () => {
+    const { port } = fakeLedger();
+    const action = addItemAction();
+    const broken: LedgerPort = {
+      reserve: port.reserve,
+      finalize: async () => {
+        throw new Error("ledger unreachable");
+      },
+    };
+    const first = await executeAction(action, { confirmed: true, ledger: broken });
+    expect(first.status).toBe("success");
+    expect(first.ledgerSynced).toBe(false);
+    expect(countTask(action.payload.task)).toBe(1);
+
+    // Row is still "executing" (live lease) — a retry must not re-mutate.
+    const second = await executeAction(action, { confirmed: true, ledger: broken });
+    expect(second.status).toBe("rejected");
+    expect(countTask(action.payload.task)).toBe(1);
+  });
+
+  it("double Apply results in exactly one successful mutation", async () => {
+    const { port } = fakeLedger();
+    const action = addItemAction();
+    const [a, b] = await Promise.all([
+      executeAction(action, { confirmed: true, ledger: port }),
+      executeAction(action, { confirmed: true, ledger: port }),
+    ]);
+    const outcomes = [a.status, b.status].sort();
+    expect(outcomes).toContain("success");
+    expect(countTask(action.payload.task)).toBe(1);
+  });
+});
+
 describe("ledger snapshot privacy", () => {
   it("keeps only allowlisted fields", () => {
     const out = sanitizeSnapshot({
