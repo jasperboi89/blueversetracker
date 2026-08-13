@@ -495,22 +495,35 @@ export function CopilotSheet() {
                 </div>
               )}
 
-              {proposals.map((p, i) => (
+              {proposals.map((p) => (
                 <div
-                  key={i}
+                  key={p.id}
                   className="rounded-md border border-border/50 bg-white/[0.04] p-2 text-xs"
                 >
                   <div className="text-foreground/90">{describeAction(p)}</div>
                   {p.reason && <div className="mt-0.5 text-muted-foreground">{p.reason}</div>}
+                  {failures[p.id] && (
+                    <div className="mt-0.5 text-destructive">{failures[p.id]}</div>
+                  )}
                   <div className="mt-1.5 flex gap-1.5">
-                    <Button size="sm" className="h-6 px-2 text-[11px]" onClick={() => confirm(p, i)}>
-                      <Check className="mr-1 h-3 w-3" /> Apply
+                    <Button
+                      size="sm"
+                      className="h-6 px-2 text-[11px]"
+                      disabled={applying === p.id}
+                      onClick={() => void confirm(p)}
+                    >
+                      {applying === p.id ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Check className="mr-1 h-3 w-3" />
+                      )}
+                      {failures[p.id] ? "Retry" : "Apply"}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-[11px]"
-                      onClick={() => setProposals((prev) => prev.filter((_, x) => x !== i))}
+                      onClick={() => setProposals((prev) => prev.filter((x) => x.id !== p.id))}
                     >
                       <X className="mr-1 h-3 w-3" /> Discard
                     </Button>
