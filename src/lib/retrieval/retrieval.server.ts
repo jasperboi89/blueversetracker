@@ -25,6 +25,7 @@ import {
 import { mapResolutionRow, SELECT_COLUMNS as RESOLUTION_COLUMNS } from "@/lib/resolution/resolution-map";
 import type { AccountChangeRecord } from "@/lib/changes/changes.functions";
 import type { KnowledgeNote } from "@/lib/knowledge/knowledge.functions";
+import { resolveSemanticText } from "./semantic-guard";
 
 export type Client = SupabaseClient<Database>;
 
@@ -105,14 +106,15 @@ export async function upsertDocuments(
     account_number: d.accountNumber,
     title: d.title,
     lexical_text: d.lexicalText,
-    semantic_text: d.semanticText,
+    // Boundary: throws unless this text came from an approved projection.
+    semantic_text: resolveSemanticText(d),
     source_status: d.sourceStatus,
     confidence: d.confidence,
     source_created_at: d.sourceCreatedAt ?? null,
     source_updated_at: d.sourceUpdatedAt ?? null,
     content_hash: d.contentHash,
     // Content changed: the old vector no longer describes this row.
-    embedding_status: d.semanticText ? "pending" : "skipped",
+        embedding_status: resolveSemanticText(d) ? "pending" : "skipped",
     embedding_error: "",
     embedding_attempts: 0,
   }));
@@ -305,6 +307,7 @@ export async function searchKnowledge(
   const results = fuseCandidates(lexical, semantic, {
     identifiers,
     ...(input.accountNumber ? { accountNumber: input.accountNumber } : {}),
+    includeHistorical: input.includeHistorical ?? false,
     limit,
   });
 

@@ -10,6 +10,7 @@ import type { ResolutionMemory } from "@/lib/resolution/resolution-types";
 import type { AccountChangeRecord } from "@/lib/changes/changes.functions";
 import type { KnowledgeNote } from "@/lib/knowledge/knowledge.functions";
 import type { RetrievalDocumentInput } from "./retrieval-types";
+import { approveSemanticText } from "./semantic-guard";
 
 const SEMANTIC_MAX = 1500;
 const LEXICAL_MAX = 4000;
@@ -108,6 +109,7 @@ export function resolutionToRetrievalDocument(m: ResolutionMemory): RetrievalDoc
     title: m.problem.slice(0, 200),
     lexicalText,
     semanticText,
+    semanticApproval: approveSemanticText("resolution", semanticText),
     sourceStatus: m.status,
     confidence: m.confidence,
     ...(m.createdAt ? { sourceCreatedAt: m.createdAt } : {}),
@@ -143,6 +145,7 @@ export function changeRecordToRetrievalDocument(
     title: c.title.slice(0, 200),
     lexicalText,
     semanticText,
+    semanticApproval: approveSemanticText("change_record", semanticText),
     sourceStatus: c.status,
     confidence: c.status === "verified" ? "verified" : "unknown",
     ...(c.createdAt ? { sourceCreatedAt: c.createdAt } : {}),
@@ -190,6 +193,7 @@ export function knowledgeToRetrievalDocuments(
       title: note.title.slice(0, 200),
       lexicalText: lexical([note.title, note.tags.join(" "), chunk]),
       semanticText,
+      ...(semanticText ? { semanticApproval: approveSemanticText("knowledge_note", semanticText) } : {}),
       sourceStatus: note.isArchived ? "archived" : "active",
       confidence: "" as const,
       ...(note.createdAt ? { sourceCreatedAt: note.createdAt } : {}),
