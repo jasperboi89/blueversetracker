@@ -497,7 +497,7 @@ export async function assembleAccountContext(
   for (const gap of coverage?.gaps ?? []) {
     warnings.push({
       id: `coverage:${gap.kind}:${gap.date}`,
-      severity: gap.severity === "high" ? "critical" : "warning",
+      severity: gap.severity === "critical" ? "critical" : "warning",
       label: gap.label,
       source: src("coverage", accountNumber),
     });
