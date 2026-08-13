@@ -11,6 +11,7 @@
  * mutation only runs after the server has granted the idempotency key.
  */
 import { getActionHandler } from "./action-handlers";
+import { blockers } from "./blockers";
 import {
   isActionType,
   sanitizeSnapshot,
@@ -144,6 +145,16 @@ export async function executeAction(
     };
   }
   if (claim.outcome === "uncertain") {
+    // First-class blocker: the operator must verify before proceeding. Only
+    // the action id / entity id travel — never the payload.
+    blockers.create({
+      type: "action_uncertain",
+      entity: { type: "action", id: action.id },
+      ...(action.context?.accountNumber ? { accountId: action.context.accountNumber } : {}),
+      reasonCode: "ACTION_OUTCOME_UNCERTAIN",
+      safeLabel: "Outcome needs verification",
+      source: "action_executor",
+    });
     return {
       actionId,
       status: "uncertain",
