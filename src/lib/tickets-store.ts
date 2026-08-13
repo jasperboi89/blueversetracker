@@ -1088,7 +1088,7 @@ export const ticketsStore = {
         source: "tickets-store",
         ticketId: t.id,
         accountId: t.accountNumber || undefined,
-        metadata: { label: `Ticket #${t.number}`, subject: t.details?.subject },
+        metadata: { label: `Ticket #${t.number}` },
       }),
     );
     // Seed synchronously with the regex Request/Background fallback so the
