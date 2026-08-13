@@ -36,6 +36,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Toggle } from "@/components/ui/toggle";
 import { Input } from "@/components/ui/input";
+import { MoreHorizontal } from "lucide-react";
 import {
   useSnippets,
   snippetsActions,
@@ -249,79 +250,27 @@ function SnippetMenu({ editor, scope }: { editor: Editor; scope: SnippetScope })
   );
 }
 
-function Toolbar({ editor, snippetScope }: { editor: Editor | null; snippetScope?: SnippetScope }) {
-  if (!editor) return null;
-
+/** Colour, font, size, clear-formatting and snippets. Rendered inline on
+ *  wide screens and inside an overflow popover on narrow ones. */
+function SecondaryControls({
+  editor,
+  snippetScope,
+  stacked,
+}: {
+  editor: Editor;
+  snippetScope?: SnippetScope;
+  stacked?: boolean;
+}) {
   const currentFontFamily =
     (editor.getAttributes("textStyle").fontFamily as string | undefined) ?? "";
   const currentFontSize =
     (editor.getAttributes("textStyle").fontSize as string | undefined) ?? "";
 
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b border-input bg-muted/30 px-1.5 py-1">
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("bold")}
-        onPressedChange={() => editor.chain().focus().toggleBold().run()}
-        aria-label="Bold"
-        className="h-7 w-7 p-0"
-      >
-        <Bold className="h-3.5 w-3.5" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("italic")}
-        onPressedChange={() => editor.chain().focus().toggleItalic().run()}
-        aria-label="Italic"
-        className="h-7 w-7 p-0"
-      >
-        <Italic className="h-3.5 w-3.5" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("underline")}
-        onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
-        aria-label="Underline"
-        className="h-7 w-7 p-0"
-      >
-        <UnderlineIcon className="h-3.5 w-3.5" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("strike")}
-        onPressedChange={() => editor.chain().focus().toggleStrike().run()}
-        aria-label="Strikethrough"
-        className="h-7 w-7 p-0"
-      >
-        <Strikethrough className="h-3.5 w-3.5" />
-      </Toggle>
-
-      <Separator orientation="vertical" className="mx-1 h-5" />
-
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("bulletList")}
-        onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
-        aria-label="Bullet list"
-        className="h-7 w-7 p-0"
-      >
-        <List className="h-3.5 w-3.5" />
-      </Toggle>
-      <Toggle
-        size="sm"
-        pressed={editor.isActive("orderedList")}
-        onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
-        aria-label="Numbered list"
-        className="h-7 w-7 p-0"
-      >
-        <ListOrdered className="h-3.5 w-3.5" />
-      </Toggle>
-
-      <Separator orientation="vertical" className="mx-1 h-5" />
-
+    <>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Text color">
+          <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" aria-label="Text color">
             <Palette className="h-3.5 w-3.5" />
           </Button>
         </PopoverTrigger>
@@ -337,7 +286,7 @@ function Toolbar({ editor, snippetScope }: { editor: Editor | null; snippetScope
 
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Highlight">
+          <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" aria-label="Highlight">
             <Highlighter className="h-3.5 w-3.5" />
           </Button>
         </PopoverTrigger>
@@ -351,16 +300,17 @@ function Toolbar({ editor, snippetScope }: { editor: Editor | null; snippetScope
         </PopoverContent>
       </Popover>
 
-      <Separator orientation="vertical" className="mx-1 h-5" />
-
       <Select
         value={currentFontFamily}
         onValueChange={(v) => {
-          if (!v) editor.chain().focus().unsetFontFamily().run();
+          if (!v || v === "__default") editor.chain().focus().unsetFontFamily().run();
           else editor.chain().focus().setFontFamily(v).run();
         }}
       >
-        <SelectTrigger className="h-7 w-[130px] text-xs">
+        <SelectTrigger
+          aria-label="Font"
+          className={cn("h-8 min-w-0 text-xs", stacked ? "w-full" : "w-[120px] shrink")}
+        >
           <SelectValue placeholder="Font" />
         </SelectTrigger>
         <SelectContent>
@@ -380,8 +330,11 @@ function Toolbar({ editor, snippetScope }: { editor: Editor | null; snippetScope
           else (editor.chain().focus() as any).setFontSize(size).run();
         }}
       >
-        <SelectTrigger className="h-7 w-[72px] text-xs">
-          <Type className="mr-1 h-3 w-3" />
+        <SelectTrigger
+          aria-label="Font size"
+          className={cn("h-8 min-w-0 text-xs", stacked ? "w-full" : "w-[68px] shrink")}
+        >
+          <Type className="mr-1 h-3 w-3 shrink-0" />
           <SelectValue placeholder="Size" />
         </SelectTrigger>
         <SelectContent>
@@ -393,24 +346,117 @@ function Toolbar({ editor, snippetScope }: { editor: Editor | null; snippetScope
         </SelectContent>
       </Select>
 
-      <Separator orientation="vertical" className="mx-1 h-5" />
-
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 w-7 p-0"
+        className={cn("h-8 shrink-0 p-0", stacked ? "w-full justify-start px-2 text-xs" : "w-8")}
         aria-label="Clear formatting"
         onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
       >
         <Eraser className="h-3.5 w-3.5" />
+        {stacked && <span className="ml-2">Clear formatting</span>}
       </Button>
 
-      {snippetScope && (
-        <>
-          <Separator orientation="vertical" className="mx-1 h-5" />
-          <SnippetMenu editor={editor} scope={snippetScope} />
-        </>
-      )}
+      {snippetScope && <SnippetMenu editor={editor} scope={snippetScope} />}
+    </>
+  );
+}
+
+function Toolbar({ editor, snippetScope }: { editor: Editor | null; snippetScope?: SnippetScope }) {
+  if (!editor) return null;
+
+  return (
+    <div className="flex w-full min-w-0 flex-nowrap items-center gap-0.5 overflow-hidden border-b border-input/60 bg-muted/20 px-1.5 py-1 sm:flex-wrap sm:gap-1">
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("bold")}
+        onPressedChange={() => editor.chain().focus().toggleBold().run()}
+        aria-label="Bold"
+        className="h-8 w-8 shrink-0 p-0"
+      >
+        <Bold className="h-3.5 w-3.5" />
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("italic")}
+        onPressedChange={() => editor.chain().focus().toggleItalic().run()}
+        aria-label="Italic"
+        className="h-8 w-8 shrink-0 p-0"
+      >
+        <Italic className="h-3.5 w-3.5" />
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("underline")}
+        onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
+        aria-label="Underline"
+        className="h-8 w-8 shrink-0 p-0"
+      >
+        <UnderlineIcon className="h-3.5 w-3.5" />
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("strike")}
+        onPressedChange={() => editor.chain().focus().toggleStrike().run()}
+        aria-label="Strikethrough"
+        className="hidden h-8 w-8 shrink-0 p-0 sm:inline-flex"
+      >
+        <Strikethrough className="h-3.5 w-3.5" />
+      </Toggle>
+
+      <Separator orientation="vertical" className="mx-1 hidden h-5 sm:block" />
+
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("bulletList")}
+        onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+        aria-label="Bullet list"
+        className="h-8 w-8 shrink-0 p-0"
+      >
+        <List className="h-3.5 w-3.5" />
+      </Toggle>
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("orderedList")}
+        onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+        aria-label="Numbered list"
+        className="h-8 w-8 shrink-0 p-0"
+      >
+        <ListOrdered className="h-3.5 w-3.5" />
+      </Toggle>
+
+      <Separator orientation="vertical" className="mx-1 hidden h-5 sm:block" />
+
+      {/* Wide screens: everything inline. */}
+      <div className="hidden min-w-0 flex-wrap items-center gap-1 sm:flex">
+        <SecondaryControls editor={editor} {...(snippetScope ? { snippetScope } : {})} />
+      </div>
+
+      {/* Narrow screens: overflow menu keeps every control reachable. */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-8 w-8 shrink-0 p-0 sm:hidden"
+            aria-label="More formatting options"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="flex w-56 flex-col gap-1.5 p-2 sm:hidden">
+          <Toggle
+            size="sm"
+            pressed={editor.isActive("strike")}
+            onPressedChange={() => editor.chain().focus().toggleStrike().run()}
+            aria-label="Strikethrough"
+            className="h-8 w-full justify-start px-2 text-xs"
+          >
+            <Strikethrough className="mr-2 h-3.5 w-3.5" /> Strikethrough
+          </Toggle>
+          <SecondaryControls editor={editor} {...(snippetScope ? { snippetScope } : {})} stacked />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
@@ -431,6 +477,9 @@ export interface RichTextEditorProps {
   onBlur?: () => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   toolbar?: boolean;
+  /** Drops the shell chrome so a parent surface (e.g. the Copilot composer)
+   *  can own the border, radius and focus treatment. */
+  bare?: boolean;
   /** Enables the snippet picker in the toolbar for this kind of box. */
   snippetScope?: SnippetScope;
 }
@@ -449,6 +498,7 @@ export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorPro
       onBlur,
       onKeyDown,
       toolbar = true,
+      bare = false,
       snippetScope,
     },
     ref,
@@ -504,8 +554,11 @@ export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorPro
       <div
         ref={ref}
         onKeyDown={onKeyDown}
+        data-slot="rich-text-editor"
         className={cn(
-          "flex w-full flex-col rounded-md border border-input bg-transparent shadow-sm focus-within:ring-1 focus-within:ring-ring",
+          "rich-text-shell flex w-full min-w-0 flex-col overflow-hidden bg-transparent",
+          !bare &&
+            "rounded-md border border-input shadow-sm focus-within:ring-1 focus-within:ring-ring",
           disabled && "opacity-50",
           className,
         )}
@@ -513,6 +566,7 @@ export const RichTextEditor = React.forwardRef<HTMLDivElement, RichTextEditorPro
         {toolbar ? <Toolbar editor={editor} {...(snippetScope ? { snippetScope } : {})} /> : null}
         <EditorContent
           editor={editor}
+          className="min-w-0 flex-1"
           style={{ minHeight: typeof minHeight === "number" ? `${minHeight}px` : minHeight }}
         />
       </div>

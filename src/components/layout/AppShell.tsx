@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-12 items-center gap-2.5 border-b border-border/40 bg-background/35 px-3 backdrop-blur-xl">
+          <header className="sticky top-0 z-30 flex h-12 w-full min-w-0 items-center gap-2.5 overflow-hidden border-b border-border/40 bg-background/35 px-3 backdrop-blur-xl">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
             {/* Live status dot */}
