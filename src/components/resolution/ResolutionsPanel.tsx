@@ -59,7 +59,15 @@ export function ResolutionsPanel({
   }, [load]);
 
   useEffect(
-    () => eventSpine.subscribe(() => void load(), { accountId: accountNumber }),
+    () => eventSpine.subscribe(() => void load(), {
+      accountId: accountNumber,
+      types: [
+        "resolution.created",
+        "resolution.updated",
+        "resolution.superseded",
+        "resolution.archived",
+      ],
+    }),
     [accountNumber, load],
   );
 
