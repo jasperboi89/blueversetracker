@@ -26,6 +26,8 @@ export interface StreamRequest {
   style?: string;
   pageContext?: string;
   profile?: string;
+  /** Bounded deterministic Focus snapshot (CURRENT/NEXT/WATCH/BLOCKED). */
+  focus?: string;
   nowIso?: string;
 }
 

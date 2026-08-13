@@ -8,6 +8,7 @@ import { AssignedInboxPoller } from "@/components/assigned-inbox/AssignedInboxPo
 import { UnlockToast } from "@/components/achievements/UnlockToast";
 import { AchievementsWatcher } from "@/components/achievements/AchievementsWatcher";
 import { RetrievalSyncWatcher } from "@/components/retrieval/RetrievalSyncWatcher";
+import { FocusStrip } from "@/components/focus/FocusStrip";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -49,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
 
             <div className="ml-auto flex items-center gap-2">
+              <FocusStrip />
               <span className="hidden items-center gap-1 rounded-md border border-border/40 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80 md:inline-flex">
                 ⌘K / Ctrl+K
               </span>
