@@ -91,6 +91,19 @@ function rejected(actionId: string, message: string): ActionExecutionResult {
   return { actionId, status: "rejected", message };
 }
 
+/**
+ * Deterministic exit for an uncertain action: the operator (or a proven
+ * ledger outcome) has established what actually happened. Never auto-retries.
+ */
+export function resolveActionUncertainty(actionId: string): void {
+  blockers.resolve({
+    type: "action_uncertain",
+    entity: { type: "action", id: actionId },
+    reasonCode: "ACTION_OUTCOME_VERIFIED",
+    source: "action_executor",
+  });
+}
+
 export async function executeAction(
   action: AnyProposedAction,
   ctx: ExecutionContext,
@@ -135,6 +148,7 @@ export async function executeAction(
 
   // Only a PROVEN prior success reports a clean duplicate.
   if (claim.outcome === "duplicate_success") {
+    resolveActionUncertainty(action.id);
     return { actionId, status: "duplicate", message: "This action has already been applied." };
   }
   if (claim.outcome === "in_flight") {
@@ -175,6 +189,8 @@ export async function executeAction(
   }
 
   const executedAt = new Date().toISOString();
+  // A completed run is a proven outcome for this action id.
+  resolveActionUncertainty(action.id);
   let ledgerSynced = true;
   try {
     await ledger.finalize({
