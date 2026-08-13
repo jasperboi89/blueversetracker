@@ -126,7 +126,9 @@ export function CopilotSheet() {
   const [busy, setBusy] = useState(false);
   const [liveText, setLiveText] = useState("");
   const [activity, setActivity] = useState<string[]>([]);
-  const [proposals, setProposals] = useState<ProposedAction[]>([]);
+  const [proposals, setProposals] = useState<AnyProposedAction[]>([]);
+  const [applying, setApplying] = useState<string | null>(null);
+  const [failures, setFailures] = useState<Record<string, string>>({});
   const [showThreads, setShowThreads] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -199,7 +201,10 @@ export function CopilotSheet() {
           setLiveText("");
           setActivity((prev) => [...prev, TOOL_LABEL[name] ?? name]);
         },
-        onProposal: (action) => setProposals((prev) => [...prev, action]),
+        onProposal: (action) => {
+          const typed = toProposedAction(action);
+          if (typed) setProposals((prev) => [...prev, typed]);
+        },
       },
       controller.signal,
     );
@@ -270,11 +275,29 @@ export function CopilotSheet() {
     toast.success("Operator profile updated — answers will be more personal.");
   };
 
-  const confirm = (action: ProposedAction, index: number) => {
-    const out = applyAction(action);
-    setProposals((prev) => prev.filter((_, i) => i !== index));
-    if (out.ok) toast.success(out.message);
-    else toast.error(out.message);
+  /**
+   * Apply routes through the Safe Action Executor: validate → server-side
+   * idempotency claim → execute → durable ledger record. Failures keep the
+   * proposal on screen so it can be retried safely.
+   */
+  const confirm = async (action: AnyProposedAction) => {
+    if (applying) return;
+    setApplying(action.id);
+    const out = await executeAction(action, { confirmed: true });
+    setApplying(null);
+    if (out.status === "success" || out.status === "duplicate") {
+      setProposals((prev) => prev.filter((p) => p.id !== action.id));
+      setFailures((prev) => {
+        const next = { ...prev };
+        delete next[action.id];
+        return next;
+      });
+      if (out.status === "duplicate") toast.info(out.message ?? "Already applied.");
+      else toast.success(out.message ?? "Applied.");
+      return;
+    }
+    setFailures((prev) => ({ ...prev, [action.id]: out.message ?? "That action failed." }));
+    toast.error(out.message ?? "That action failed.");
   };
 
   const jump = (to?: string, params?: Record<string, string>) => {
