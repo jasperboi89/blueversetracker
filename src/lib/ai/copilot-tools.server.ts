@@ -161,6 +161,33 @@ export async function runCopilotTool(
   const args = (rawArgs ?? {}) as Row;
 
   switch (name) {
+    case "search_operational_knowledge": {
+      const { searchKnowledge } = await import("@/lib/retrieval/retrieval.server");
+      const account = str(args["accountNumber"]);
+      const res = await searchKnowledge(supabase as never, {
+        query: str(args["query"]).slice(0, 400),
+        ...(account ? { accountNumber: account } : {}),
+        includeHistorical: args["includeHistorical"] === true,
+        limit: 6,
+      });
+      return {
+        mode: res.modeUsed,
+        warnings: res.warnings,
+        // Retrieval results are evidence, not answers: keep provenance attached.
+        results: res.results.map((r) => ({
+          source: r.sourceType,
+          sourceId: r.sourceId,
+          title: r.title,
+          snippet: r.snippet,
+          account: r.accountNumber ?? null,
+          confidence: r.confidence ?? null,
+          status: r.sourceStatus ?? null,
+          matchedBy: r.matchedBy,
+          updatedAt: r.sourceUpdatedAt ?? null,
+        })),
+      };
+    }
+
     case "search_tickets": {
       const blob = await readBlob(supabase, userId, "tickets");
       const status = str(args["status"]);
