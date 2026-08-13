@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { executeAction, type LedgerPort } from "./action-executor";
-import { createProposedAction, sanitizeSnapshot, type AnyProposedAction } from "./actions";
+import {
+  createProposedAction,
+  sanitizeSnapshot,
+  type AnyProposedAction,
+  type ProposedAction,
+} from "./actions";
 import { nightPlanStore } from "@/lib/night-plan-store";
 import { eventSpine } from "./event-spine";
 
@@ -22,12 +27,14 @@ function fakeLedger() {
 }
 
 let seq = 0;
-function addItemAction(task = `Call the on-call tech ${++seq}`): AnyProposedAction {
+function addItemAction(
+  task = `Call the on-call tech ${++seq}`,
+): ProposedAction<"add_night_plan_item"> {
   return createProposedAction({
     type: "add_night_plan_item",
     payload: { task, priority: "must" },
     origin: "copilot",
-  }) as AnyProposedAction;
+  });
 }
 
 /** The store has no delete API, so tests assert on deltas from a baseline. */
