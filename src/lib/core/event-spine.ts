@@ -2,6 +2,7 @@ import { createPersistedStore, useStoreValue } from "@/lib/settings/_persist";
 import { getShiftKey } from "@/lib/shift";
 import {
   matchesFilter,
+  sanitizeMetadata,
   type AccEvent,
   type AccEventFilter,
   type AccEventHandler,
@@ -38,6 +39,9 @@ export const eventSpine = {
       ...input,
       id: newId(),
       timestamp: input.timestamp ?? new Date().toISOString(),
+      // Coordination log, not a content archive: strip anything not on the
+      // small routing allowlist before it is persisted or fanned out.
+      metadata: sanitizeMetadata(input.metadata),
     };
     try {
       const shiftKey = getShiftKey();
