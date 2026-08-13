@@ -40,6 +40,11 @@ export type AccEventType =
   // Timers
   | "timer.started"
   | "timer.stopped"
+  // Resolution Memory (operator-confirmed reusable fixes)
+  | "resolution.created"
+  | "resolution.updated"
+  | "resolution.superseded"
+  | "resolution.archived"
   // Night plan
   | "night_plan.item_added"
   | "night_plan.item_completed";
@@ -55,6 +60,7 @@ export type AccEventSource =
   | "changes"
   | "coverage"
   | "knowledge"
+  | "resolution"
   | "handoff"
   | "copilot"
   | "route"
@@ -107,6 +113,9 @@ export const EVENT_METADATA_KEYS = [
   "route",
   "count",
   "reason",
+  "confidence",
+  "sourceType",
+  "resolutionId",
 ] as const;
 
 export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];

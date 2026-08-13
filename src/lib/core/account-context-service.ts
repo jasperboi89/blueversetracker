@@ -16,6 +16,8 @@ import { awarenessStore } from "./awareness-store";
 import { eventSpine } from "./event-spine";
 import type { AccEventType } from "./events";
 import { listChangeRecords } from "@/lib/changes/changes.functions";
+import { listResolutionMemories } from "@/lib/resolution/resolution.functions";
+import { rankResolutions } from "@/lib/resolution/resolution-types";
 import { listKnowledgeVault } from "@/lib/knowledge/knowledge.functions";
 import {
   assembleAccountContext,
@@ -42,6 +44,10 @@ const INVALIDATING: readonly AccEventType[] = [
   "coverage.confirmed",
   "knowledge.created",
   "knowledge.updated",
+  "resolution.created",
+  "resolution.updated",
+  "resolution.superseded",
+  "resolution.archived",
 ];
 
 export const CONTEXT_TTL_MS = 60_000;
@@ -69,8 +75,14 @@ export const defaultAccountContextPorts: AccountContextPorts = {
     additional: additionalWorkStore.byAccount(num),
   }),
   changes: async (num) => {
-    const rows = await listChangeRecords({ data: { accountNumber: num, limit: 50 } });
-    return Array.isArray(rows) ? rows : [];
+    const res = await listChangeRecords({ data: { accountNumber: num, limit: 50 } });
+    return res?.records ?? [];
+  },
+  resolutions: async (num) => {
+    const { memories } = await listResolutionMemories({
+      data: { accountNumber: num, status: "active", limit: 20 },
+    });
+    return rankResolutions(memories, { accountNumber: num });
   },
   coverage: (num) => {
     const state = coverageStore.get();

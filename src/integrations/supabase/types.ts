@@ -657,6 +657,83 @@ export type Database = {
         }
         Relationships: []
       }
+      resolution_memories: {
+        Row: {
+          account_name: string
+          account_number: string
+          affected_area: string
+          confidence: string
+          created_at: string
+          fingerprint: string
+          id: string
+          operator_user_id: string
+          problem: string
+          resolution: string
+          rollback: string
+          root_cause: string
+          source_change_record_id: string | null
+          source_dispatch_id: string
+          source_ticket_id: string
+          source_work_item_id: string
+          status: string
+          supersedes_id: string | null
+          testing: string
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string
+          account_number?: string
+          affected_area?: string
+          confidence?: string
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          operator_user_id: string
+          problem: string
+          resolution: string
+          rollback?: string
+          root_cause?: string
+          source_change_record_id?: string | null
+          source_dispatch_id?: string
+          source_ticket_id?: string
+          source_work_item_id?: string
+          status?: string
+          supersedes_id?: string | null
+          testing?: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          affected_area?: string
+          confidence?: string
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          operator_user_id?: string
+          problem?: string
+          resolution?: string
+          rollback?: string
+          root_cause?: string
+          source_change_record_id?: string | null
+          source_dispatch_id?: string
+          source_ticket_id?: string
+          source_work_item_id?: string
+          status?: string
+          supersedes_id?: string | null
+          testing?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolution_memories_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "resolution_memories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_handoffs: {
         Row: {
           created_at: string

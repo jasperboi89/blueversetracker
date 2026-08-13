@@ -34,7 +34,12 @@ export function toCopilotAccountContext(pack: AccountContextPack): string {
   }
   if (pack.knownFixes.length) {
     lines.push("Known fixes:");
-    for (const f of pack.knownFixes.slice(0, 4)) lines.push(`- [${f.confidence}] ${f.label}`);
+    for (const f of pack.knownFixes.slice(0, 4)) {
+      const origin = f.kind === "resolution" ? "resolution memory" : "change record";
+      lines.push(
+        `- [${f.confidence} · ${origin}]${f.problem ? ` ${f.problem} →` : ""} ${f.label}`,
+      );
+    }
   }
   if (pack.recurringPatterns.length) {
     lines.push("Patterns:");

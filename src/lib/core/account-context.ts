@@ -19,6 +19,8 @@ import type { DispatchSession } from "@/lib/dispatch-store";
 import type { CoverageGap, WatchedAccount } from "@/lib/coverage/coverage-store";
 import type { RecurringRow } from "@/lib/reports/recurring-issues";
 import type { AwarenessItem } from "./awareness";
+import type { ResolutionMemory } from "@/lib/resolution/resolution-types";
+import { summarizeResolution } from "@/lib/resolution/resolution-types";
 
 /* ------------------------------------------------------------------ */
 /* Provenance                                                          */
@@ -30,6 +32,7 @@ export type ContextSourceName =
   | "work"
   | "change_record"
   | "knowledge"
+  | "resolution"
   | "coverage"
   | "dispatch"
   | "awareness";
@@ -109,11 +112,33 @@ export interface AccountContextChange {
 
 export interface AccountContextFix {
   id: string;
+  /** Where the fix knowledge came from — provenance is never flattened away. */
+  kind: "resolution" | "change_record";
   label: string;
-  confidence: "verified" | "probable";
+  confidence: "verified" | "probable" | "unknown";
+  /** Present for Resolution Memories: the problem this fix answers. */
+  problem?: string;
   changeType?: string;
   ticketNumber?: string;
   at: string;
+  source: ContextSource;
+}
+
+/** Compact Resolution Memory reference — never the full record body. */
+export interface AccountContextResolution {
+  id: string;
+  problem: string;
+  resolutionSummary: string;
+  confidence: "verified" | "probable" | "unknown";
+  status: "active" | "superseded" | "archived";
+  affectedArea?: string;
+  updatedAt: string;
+  sourceRefs: {
+    ticketId?: string;
+    changeRecordId?: string;
+    workItemId?: string;
+    dispatchId?: string;
+  };
   source: ContextSource;
 }
 
@@ -168,6 +193,7 @@ export interface AccountContextPack {
   recentTickets: AccountContextTicket[];
   recentWork: AccountContextWork[];
   recentChanges: AccountContextChange[];
+  resolutions: AccountContextResolution[];
   knownFixes: AccountContextFix[];
   coverage?: AccountContextCoverage;
   recurringPatterns: AccountContextPattern[];
@@ -189,7 +215,9 @@ export interface AccountContextOptions {
   recentChangeLimit?: number;
   recentDispatchLimit?: number;
   knowledgeLimit?: number;
+  resolutionLimit?: number;
   includeCoverage?: boolean;
+  includeResolutions?: boolean;
   includeKnowledge?: boolean;
 }
 
@@ -200,6 +228,7 @@ export const CONTEXT_LIMITS = {
   changes: { def: 6, max: 20 },
   dispatches: { def: 5, max: 15 },
   knowledge: { def: 5, max: 15 },
+  resolutions: { def: 6, max: 20 },
   fixes: { max: 6 },
 } as const;
 
@@ -224,6 +253,8 @@ export interface AccountContextPorts {
   coverage: (accountNumber: string) => { watched?: WatchedAccount; gaps: CoverageGap[] };
   knowledge: (accountNumber: string, accountName?: string) => Promise<KnowledgeNote[]>;
   dispatch: (accountNumber: string) => DispatchSession[];
+  /** Active Resolution Memories for the account (server-backed, fail-soft). */
+  resolutions: (accountNumber: string) => Promise<ResolutionMemory[]>;
   recurring: (accountNumber: string) => RecurringRow | undefined;
   awareness: (accountNumber: string) => AwarenessItem[];
 }
@@ -274,6 +305,7 @@ export async function assembleAccountContext(
   const changeLimit = bound(options.recentChangeLimit, CONTEXT_LIMITS.changes);
   const dispatchLimit = bound(options.recentDispatchLimit, CONTEXT_LIMITS.dispatches);
   const knowledgeLimit = bound(options.knowledgeLimit, CONTEXT_LIMITS.knowledge);
+  const resolutionLimit = bound(options.resolutionLimit, CONTEXT_LIMITS.resolutions);
 
   /* identity ------------------------------------------------------- */
   let identity: AccountContextIdentity = { id: accountNumber, accountNumber };
@@ -374,20 +406,60 @@ export async function assembleAccountContext(
     fail("change_record", err);
   }
 
-  /* known fixes — verified outranks probable, nothing is invented ----- */
-  const knownFixes: AccountContextFix[] = allChanges
+  /* resolution memories — operator-confirmed, server-backed ----------- */
+  let resolutions: AccountContextResolution[] = [];
+  if (options.includeResolutions !== false) {
+    try {
+      const rows = await ports.resolutions(accountNumber);
+      resolutions = rows.slice(0, resolutionLimit).map((r) => ({
+        id: r.id,
+        problem: trim(r.problem, 200) ?? "",
+        resolutionSummary: summarizeResolution(r),
+        confidence: r.confidence,
+        status: r.status,
+        ...(r.affectedArea ? { affectedArea: r.affectedArea } : {}),
+        updatedAt: r.updatedAt,
+        sourceRefs: { ...r.source },
+        source: src("resolution", r.id),
+      }));
+      note("resolution", resolutions.length, true, resolutions[0]?.updatedAt);
+    } catch (err) {
+      // Fail soft: an unavailable resolution store must never blank the pack.
+      fail("resolution", err);
+    }
+  }
+
+  /* known fixes — resolutions outrank change records, nothing is invented */
+  const fromResolutions: AccountContextFix[] = resolutions
+    .filter((r) => r.status === "active")
+    .map((r) => ({
+      id: r.id,
+      kind: "resolution" as const,
+      label: r.resolutionSummary,
+      confidence: r.confidence,
+      ...(r.problem ? { problem: r.problem } : {}),
+      ...(r.sourceRefs.ticketId ? { ticketNumber: r.sourceRefs.ticketId } : {}),
+      at: r.updatedAt,
+      source: src("resolution", r.id),
+    }));
+
+  const fromChanges: AccountContextFix[] = allChanges
     .filter((c) => c.status === "verified" || c.status === "applied")
     .map((c) => ({
       id: c.id,
+      kind: "change_record" as const,
       label: trim(c.title) ?? "Prior change",
       confidence: (c.status === "verified" ? "verified" : "probable") as "verified" | "probable",
       changeType: c.changeType,
       ...(c.ticketNumber ? { ticketNumber: c.ticketNumber } : {}),
       at: c.verifiedAt ?? c.appliedAt ?? c.createdAt,
       source: src("change_record", c.id),
-    }))
+    }));
+
+  const knownFixes: AccountContextFix[] = [...fromResolutions, ...fromChanges]
     .sort((a, b) => {
-      if (a.confidence !== b.confidence) return a.confidence === "verified" ? -1 : 1;
+      const rank = fixRank(a) - fixRank(b);
+      if (rank !== 0) return rank;
       return b.at.localeCompare(a.at);
     })
     .slice(0, CONTEXT_LIMITS.fixes.max);
@@ -529,6 +601,7 @@ export async function assembleAccountContext(
     recentTickets,
     recentWork,
     recentChanges,
+    resolutions,
     knownFixes,
     ...(coverage ? { coverage } : {}),
     recurringPatterns,
@@ -539,6 +612,19 @@ export async function assembleAccountContext(
     freshness: { generatedAt: at, sources: freshness },
     errors,
   };
+}
+
+/**
+ * Ranking for the merged known-fix list: operator-confirmed Resolution
+ * Memories first, then the Change Record fallback (still supported).
+ */
+function fixRank(fix: AccountContextFix): number {
+  if (fix.kind === "resolution") {
+    if (fix.confidence === "verified") return 0;
+    if (fix.confidence === "probable") return 1;
+    return 4;
+  }
+  return fix.confidence === "verified" ? 2 : 3;
 }
 
 /** Knowledge has no account foreign key — matches are by explicit mention. */

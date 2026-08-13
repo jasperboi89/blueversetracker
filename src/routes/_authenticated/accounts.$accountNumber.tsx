@@ -10,6 +10,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
 import { ChangeRecordsPanel } from "@/components/changes/ChangeRecordsPanel";
+import { ResolutionsPanel } from "@/components/resolution/ResolutionsPanel";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accountsStore, useAccounts, type AccountTemplateType } from "@/lib/accounts-store";
@@ -356,6 +357,9 @@ function AccountProfilePage() {
                 accountOnly
                 autoRun={false}
               />
+            </div>
+            <div className="glass-panel p-4">
+              <ResolutionsPanel accountNumber={accountNumber} accountName={acct.name} />
             </div>
             <NotesCard accountNumber={accountNumber} />
             <TemplatesCard accountNumber={accountNumber} />
