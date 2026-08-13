@@ -193,15 +193,18 @@ function ruleLongRunningWork(s: AwarenessSnapshot): AwarenessCondition[] {
   const ms = w.elapsedMs;
   const t = AWARENESS_THRESHOLDS;
   if (ms < t.longWorkInfoMs) return [];
-  const severity: AwarenessSeverity =
-    ms >= t.longWorkCriticalMs ? "critical" : ms >= t.longWorkWarnMs ? "warning" : "info";
+  const atWarning = ms >= t.longWorkWarnMs;
+  const veryLong = ms >= t.longWorkVeryLongMs;
+  const severity: AwarenessSeverity = atWarning ? "warning" : "info";
   const entity = workEntity(w);
   return [
     {
       type: "long_running_work",
       severity,
-      title: "Long-running work",
-      message: `${w.label} has been active for ${formatDuration(ms)}.`,
+      title: veryLong ? "Long-running work — extended" : "Long-running work",
+      message: veryLong
+        ? `${w.label} has been active for ${formatDuration(ms)}. Consider wrapping up, delegating, or documenting the next step.`
+        : `${w.label} has been active for ${formatDuration(ms)}.`,
       dedupeKey: `long-work:${entity.type}:${entity.id}`,
       entity,
       actions: openAction(w),
@@ -209,6 +212,7 @@ function ruleLongRunningWork(s: AwarenessSnapshot): AwarenessCondition[] {
     },
   ];
 }
+
 
 function ruleStaleWaiting(s: AwarenessSnapshot): AwarenessCondition[] {
   const t = AWARENESS_THRESHOLDS;
