@@ -6,6 +6,7 @@
  * Knowledge Vault note, Freshdesk ticket) through sourceType + sourceId.
  */
 import type { ResolutionConfidence } from "@/lib/resolution/resolution-types";
+import type { ApprovedSemanticText } from "./semantic-guard";
 
 export const RETRIEVAL_SOURCE_TYPES = [
   "resolution",
@@ -38,6 +39,11 @@ export interface RetrievalDocumentInput {
   lexicalText: string;
   /** Bounded, privacy-checked text used for embeddings. "" = lexical only. */
   semanticText: string;
+  /**
+   * Proof the semantic text came from an approved projection. Documents
+   * without it are indexed lexical-only (or rejected when they carry text).
+   */
+  semanticApproval?: ApprovedSemanticText;
   sourceStatus: string;
   confidence: ResolutionConfidence | "";
   sourceCreatedAt?: string;
@@ -99,6 +105,8 @@ export interface RetrievalResult {
   finalScore: number;
   confidence?: ResolutionConfidence;
   sourceStatus?: string;
+  /** True when this row is a superseded/archived (non-current) record. */
+  historical?: boolean;
   sourceUpdatedAt?: string;
   provenance: RetrievalProvenance;
 }
