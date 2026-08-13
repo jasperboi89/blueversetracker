@@ -40,6 +40,9 @@ import { copilotThreads, useCopilotThreads } from "@/lib/ai/copilot-threads-stor
 import { describeAction, toProposedAction } from "@/lib/ai/copilot-actions";
 import { executeAction } from "@/lib/core/action-executor";
 import type { AnyProposedAction } from "@/lib/core/actions";
+import { shiftContextStore } from "@/lib/core/shift-context";
+import { getAccountContext } from "@/lib/core/account-context-service";
+import { toCopilotAccountContext } from "@/lib/core/account-context-projection";
 
 export const COPILOT_OPEN_EVENT = "intel-copilot:open";
 export function openCopilot() {
@@ -81,6 +84,22 @@ function buildHubSnapshot(): string {
   );
 
   return lines.join("\n").slice(0, 7500);
+}
+
+/**
+ * The Hub snapshot plus the Account Context Pack for whichever account the
+ * shift is currently on. Context failures never block the prompt.
+ */
+async function buildFocusSnapshot(): Promise<string> {
+  const base = buildHubSnapshot();
+  const active = shiftContextStore.get().activeAccount;
+  if (!active?.id) return base;
+  try {
+    const pack = await getAccountContext(active.id);
+    return `${base}\n\nACCOUNT CONTEXT\n${toCopilotAccountContext(pack)}`.slice(0, 9500);
+  } catch {
+    return base;
+  }
 }
 
 const SEVERITY_TONE: Record<InsightSeverity, string> = {
@@ -241,7 +260,7 @@ export function CopilotSheet() {
     const res = await aiFocus({
       data: {
         activity: activitySummary(),
-        snapshot: buildHubSnapshot(),
+        snapshot: await buildFocusSnapshot(),
         insights: insights.map((i) => `- ${i.text}`).join("\n"),
       },
     });
