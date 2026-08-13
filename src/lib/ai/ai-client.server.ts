@@ -215,9 +215,18 @@ export async function aiComplete(opts: {
   tier?: ModelTier;
   /** Explicit model id override (must be an allowlisted gateway id). */
   model?: string;
+  /** Preferred input: the router picks the tier/model from the task kind. */
+  task?: TaskKind;
 }): Promise<AiCompleteResult> {
+  const routing = resolveRouting({
+    ...(opts.task ? { task: opts.task } : {}),
+    ...(opts.tier ? { tier: opts.tier } : {}),
+    ...(opts.model ? { model: opts.model } : {}),
+    ...(opts.json ? { capabilities: { structuredOutput: true } } : {}),
+  });
+  const started = Date.now();
   const res = await callResponses({
-    model: opts.model ?? modelFor(opts.tier ?? "balanced"),
+    model: routing.modelId,
     instructions: opts.system,
     input: [
       {
@@ -233,6 +242,18 @@ export async function aiComplete(opts: {
     ],
     ...(opts.json ? { text: { format: { type: "json_object" } } } : {}),
   });
+  recordRouting({
+    at: new Date().toISOString(),
+    taskKind: routing.decision?.taskKind ?? opts.task ?? "summary",
+    tier: routing.tier,
+    modelId: routing.modelId,
+    reasonCode: routing.decision?.reasonCode ?? "ROUTINE_GENERATION",
+    fallbackUsed: Boolean(routing.decision?.degradedFrom),
+    durationMs: Date.now() - started,
+    success: res.ok,
+  });
+  if (res.ok) reportModelSuccess(routing.modelId);
+  else reportModelFailure(routing.modelId);
   if (!res.ok) return { ok: false, error: res.error };
   return { ok: true, text: res.text ?? "" };
 }
