@@ -5,6 +5,13 @@ import { activeWorkStore } from "@/lib/workspace/active-work-store";
 import { ticketsStore } from "@/lib/tickets-store";
 import { eventSpine } from "./event-spine";
 import type { AccEvent } from "./events";
+import {
+  BLOCKER_TYPE_LABEL,
+  type BlockerEntityType,
+  type BlockerSource,
+  type BlockerType,
+  type WorkBlocker,
+} from "./blockers";
 
 /**
  * Intelligence Core — Shift Working Context.
@@ -26,8 +33,11 @@ export interface ShiftActivity {
   ticketId?: string;
 }
 
-export interface ShiftBlocker {
-  id: string;
+/**
+ * Active blocker as the shift knows it. Phase 9.5 makes this a first-class
+ * WorkBlocker; `label`/`since`/`ticketId` stay for existing consumers.
+ */
+export interface ShiftBlocker extends WorkBlocker {
   label: string;
   since: string;
   ticketId?: string;
@@ -59,6 +69,8 @@ export interface ShiftWorkingContext {
 }
 
 const MAX_ACTIVITY = 25;
+/** Generous: we bound, but never silently drop a real active blocker. */
+const MAX_BLOCKERS = 25;
 
 const EMPTY: ShiftWorkingContext = {
   shiftKey: "",
