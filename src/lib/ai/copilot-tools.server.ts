@@ -101,6 +101,18 @@ export const COPILOT_TOOLS: ResponsesTool[] = [
       reason: { type: "string" },
     }),
   },
+  {
+    type: "function",
+    name: "search_operational_knowledge",
+    strict: true,
+    description:
+      "Hybrid search (keyword + meaning) over the operator's own resolutions, change records, runbooks and knowledge notes. Use for 'have we seen this before', 'how did we fix X', or before proposing a fix. Every result carries its source and confidence — cite them and never present a result as verified unless it says verified. Pass null to skip a filter.",
+    parameters: schema({
+      query: { type: "string" },
+      accountNumber: nullableString,
+      includeHistorical: { type: ["boolean", "null"] },
+    }),
+  },
 ];
 
 async function readBlob(
