@@ -101,6 +101,18 @@ export const COPILOT_TOOLS: ResponsesTool[] = [
       reason: { type: "string" },
     }),
   },
+  {
+    type: "function",
+    name: "search_operational_knowledge",
+    strict: true,
+    description:
+      "Hybrid search (keyword + meaning) over the operator's own resolutions, change records, runbooks and knowledge notes. Use for 'have we seen this before', 'how did we fix X', or before proposing a fix. Every result carries its source and confidence — cite them and never present a result as verified unless it says verified. Pass null to skip a filter.",
+    parameters: schema({
+      query: { type: "string" },
+      accountNumber: nullableString,
+      includeHistorical: { type: ["boolean", "null"] },
+    }),
+  },
 ];
 
 async function readBlob(
@@ -149,6 +161,33 @@ export async function runCopilotTool(
   const args = (rawArgs ?? {}) as Row;
 
   switch (name) {
+    case "search_operational_knowledge": {
+      const { searchKnowledge } = await import("@/lib/retrieval/retrieval.server");
+      const account = str(args["accountNumber"]);
+      const res = await searchKnowledge(supabase as never, {
+        query: str(args["query"]).slice(0, 400),
+        ...(account ? { accountNumber: account } : {}),
+        includeHistorical: args["includeHistorical"] === true,
+        limit: 6,
+      });
+      return {
+        mode: res.modeUsed,
+        warnings: res.warnings,
+        // Retrieval results are evidence, not answers: keep provenance attached.
+        results: res.results.map((r) => ({
+          source: r.sourceType,
+          sourceId: r.sourceId,
+          title: r.title,
+          snippet: r.snippet,
+          account: r.accountNumber ?? null,
+          confidence: r.confidence ?? null,
+          status: r.sourceStatus ?? null,
+          matchedBy: r.matchedBy,
+          updatedAt: r.sourceUpdatedAt ?? null,
+        })),
+      };
+    }
+
     case "search_tickets": {
       const blob = await readBlob(supabase, userId, "tickets");
       const status = str(args["status"]);

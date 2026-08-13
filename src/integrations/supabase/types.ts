@@ -734,6 +734,90 @@ export type Database = {
           },
         ]
       }
+      retrieval_documents: {
+        Row: {
+          account_number: string
+          chunk_id: string
+          confidence: string
+          content_hash: string
+          created_at: string
+          embedded_at: string | null
+          embedded_content_hash: string
+          embedding: string | null
+          embedding_attempts: number
+          embedding_error: string
+          embedding_model: string
+          embedding_status: string
+          embedding_version: string
+          id: string
+          lexical_text: string
+          operator_user_id: string
+          search_vector: unknown
+          semantic_text: string
+          source_created_at: string | null
+          source_id: string
+          source_status: string
+          source_type: string
+          source_updated_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string
+          chunk_id?: string
+          confidence?: string
+          content_hash: string
+          created_at?: string
+          embedded_at?: string | null
+          embedded_content_hash?: string
+          embedding?: string | null
+          embedding_attempts?: number
+          embedding_error?: string
+          embedding_model?: string
+          embedding_status?: string
+          embedding_version?: string
+          id?: string
+          lexical_text?: string
+          operator_user_id: string
+          search_vector?: unknown
+          semantic_text?: string
+          source_created_at?: string | null
+          source_id: string
+          source_status?: string
+          source_type: string
+          source_updated_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string
+          chunk_id?: string
+          confidence?: string
+          content_hash?: string
+          created_at?: string
+          embedded_at?: string | null
+          embedded_content_hash?: string
+          embedding?: string | null
+          embedding_attempts?: number
+          embedding_error?: string
+          embedding_model?: string
+          embedding_status?: string
+          embedding_version?: string
+          id?: string
+          lexical_text?: string
+          operator_user_id?: string
+          search_vector?: unknown
+          semantic_text?: string
+          source_created_at?: string | null
+          source_id?: string
+          source_status?: string
+          source_type?: string
+          source_updated_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shift_handoffs: {
         Row: {
           created_at: string
@@ -874,6 +958,57 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      retrieval_lexical_candidates: {
+        Args: {
+          p_account_number?: string
+          p_confidences?: string[]
+          p_include_historical?: boolean
+          p_limit?: number
+          p_query: string
+          p_source_types?: string[]
+        }
+        Returns: {
+          account_number: string
+          chunk_id: string
+          confidence: string
+          embedding_status: string
+          id: string
+          lexical_score: number
+          lexical_text: string
+          source_created_at: string
+          source_id: string
+          source_status: string
+          source_type: string
+          source_updated_at: string
+          title: string
+        }[]
+      }
+      retrieval_semantic_candidates: {
+        Args: {
+          p_account_number?: string
+          p_confidences?: string[]
+          p_embedding: string
+          p_include_historical?: boolean
+          p_limit?: number
+          p_model: string
+          p_source_types?: string[]
+        }
+        Returns: {
+          account_number: string
+          chunk_id: string
+          confidence: string
+          distance: number
+          embedding_status: string
+          id: string
+          lexical_text: string
+          source_created_at: string
+          source_id: string
+          source_status: string
+          source_type: string
+          source_updated_at: string
+          title: string
+        }[]
       }
       search_freshdesk_documents: {
         Args: { p_limit?: number; p_query: string }
