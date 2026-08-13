@@ -156,6 +156,7 @@ export function reduceShiftContext(
         }),
       };
     }
+    case "dispatch.opened":
     case "dispatch.started": {
       if (!event.dispatchId) return ctx;
       return {
