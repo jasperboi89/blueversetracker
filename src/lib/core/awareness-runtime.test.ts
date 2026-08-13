@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eventSpine } from "./event-spine";
 import { awarenessStore, recomputeAwareness, startAwareness } from "./awareness-store";
-import { setActiveWork, clearActiveWork, activeWorkStore } from "@/lib/workspace/active-work-store";
+import { setActiveWork, stopActive, activeWorkStore } from "@/lib/workspace/active-work-store";
 
 /**
  * Runtime wiring: the engine reads live stores, reacts to spine events, and
@@ -11,7 +11,7 @@ describe("awareness runtime", () => {
   beforeEach(() => {
     localStorage.clear();
     eventSpine.clear();
-    clearActiveWork();
+    activeWorkStore.set({ current: null, totals: {} });
     awarenessStore.reset();
   });
 
