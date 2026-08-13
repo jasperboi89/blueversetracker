@@ -4,6 +4,11 @@
 // `stream: true` (consumed server-side) so long reasoning runs never sit
 // silent past the platform request timeout.
 
+import { routeTask } from "./router/task-router";
+import { reportModelFailure, reportModelSuccess } from "./router/model-registry";
+import { recordRouting, describeRouting, logRoutingIfDev } from "./router/telemetry";
+import type { ModelTier as RouterTier, TaskKind } from "./router/task-types";
+
 export interface AiCompleteResult {
   ok: boolean;
   text?: string;
@@ -26,6 +31,35 @@ export type ModelTier = keyof typeof AI_MODELS;
 
 export function modelFor(tier: ModelTier): string {
   return AI_MODELS[tier];
+}
+
+/**
+ * Resolve the model for a call through the Task / Model Router. Legacy
+ * `tier`/`model` options still work; `task` is the preferred input.
+ */
+function resolveRouting(opts: {
+  task?: TaskKind;
+  tier?: ModelTier;
+  model?: string;
+  capabilities?: { tools?: boolean; structuredOutput?: boolean; streaming?: boolean; vision?: boolean; longContext?: boolean };
+}) {
+  if (opts.model) {
+    return { modelId: opts.model, tier: (opts.tier ?? "balanced") as RouterTier, decision: undefined };
+  }
+  const kind: TaskKind = opts.task ?? "summary";
+  const decision = routeTask({
+    kind,
+    requirements: {
+      ...(opts.task ? {} : { tier: opts.tier ?? "balanced" }),
+      ...(opts.capabilities ? { capabilities: opts.capabilities } : {}),
+    },
+  });
+  logRoutingIfDev(describeRouting(decision));
+  return {
+    modelId: decision.modelId ?? modelFor(opts.tier ?? "balanced"),
+    tier: (decision.tier === "deterministic" ? "balanced" : decision.tier) as RouterTier,
+    decision,
+  };
 }
 
 export interface ResponsesTool {
