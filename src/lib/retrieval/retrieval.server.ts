@@ -253,9 +253,9 @@ export async function searchKnowledge(
 
   const filters = {
     p_query: query,
-    p_account_number: input.accountNumber ?? null,
-    p_source_types: input.sourceTypes ?? null,
-    p_confidences: input.confidence ?? null,
+    ...(input.accountNumber ? { p_account_number: input.accountNumber } : {}),
+    ...(input.sourceTypes ? { p_source_types: input.sourceTypes as string[] } : {}),
+    ...(input.confidence ? { p_confidences: input.confidence as string[] } : {}),
     p_include_historical: input.includeHistorical ?? false,
     p_limit: RETRIEVAL_CANDIDATE_LIMIT,
   };
@@ -271,10 +271,10 @@ export async function searchKnowledge(
     const { data, error } = await client.rpc("retrieval_semantic_candidates", {
       p_embedding: toVectorLiteral(vector),
       p_model: provider.model,
-      p_account_number: filters.p_account_number,
-      p_source_types: filters.p_source_types,
-      p_confidences: filters.p_confidences,
-      p_include_historical: filters.p_include_historical,
+      ...(input.accountNumber ? { p_account_number: input.accountNumber } : {}),
+      ...(input.sourceTypes ? { p_source_types: input.sourceTypes as string[] } : {}),
+      ...(input.confidence ? { p_confidences: input.confidence as string[] } : {}),
+      p_include_historical: input.includeHistorical ?? false,
       p_limit: RETRIEVAL_CANDIDATE_LIMIT,
     });
     if (error) return { error: error.message };
