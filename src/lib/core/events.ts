@@ -15,6 +15,7 @@ export type AccEventType =
   // Accounts
   | "account.opened"
   // Generic work items
+  | "work.opened"
   | "work.started"
   | "work.paused"
   | "work.completed"
@@ -78,6 +79,59 @@ export type AccEventInput = Omit<AccEvent, "id" | "timestamp"> & {
 };
 
 export type AccEventHandler = (event: AccEvent) => void;
+
+/**
+ * Metadata allowlist.
+ *
+ * The spine is a coordination log, not a content archive: it must never carry
+ * ticket bodies, notes, caller/patient details, message or conversation text,
+ * prompts/responses, or account instructions. Only these small routing keys
+ * survive `sanitizeMetadata`, and strings are capped so a body can't be
+ * smuggled through a permitted key.
+ */
+export const EVENT_METADATA_KEYS = [
+  "label",
+  "kind",
+  "accountName",
+  "status",
+  "prevStatus",
+  "classification",
+  "priority",
+  "severity",
+  "itemId",
+  "durationMs",
+  "resumed",
+  "route",
+  "count",
+  "reason",
+] as const;
+
+export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];
+
+export type AccEventMetadata = Partial<
+  Record<AccEventMetadataKey, string | number | boolean | null>
+>;
+
+const MAX_STRING = 120;
+
+/** Keep only allowlisted, small, primitive metadata. */
+export function sanitizeMetadata(
+  metadata: Record<string, unknown> | undefined,
+): AccEventMetadata | undefined {
+  if (!metadata) return undefined;
+  const out: Record<string, string | number | boolean | null> = {};
+  for (const key of EVENT_METADATA_KEYS) {
+    if (!(key in metadata)) continue;
+    const v = metadata[key];
+    if (v === null) out[key] = null;
+    else if (typeof v === "number" || typeof v === "boolean") out[key] = v;
+    else if (typeof v === "string") {
+      const t = v.trim();
+      if (t) out[key] = t.length > MAX_STRING ? `${t.slice(0, MAX_STRING)}…` : t;
+    }
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 
 export interface AccEventFilter {
   /** Only deliver these types. Omit for all. */
