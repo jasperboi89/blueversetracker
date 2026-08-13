@@ -123,6 +123,7 @@ export const EVENT_METADATA_KEYS = [
   // Blocker routing — IDs and reason codes only.
   "blockerId",
   "blockerType",
+  "reasonCode",
   "entityType",
   "entityId",
   "blockerSource",
