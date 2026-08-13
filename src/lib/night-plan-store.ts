@@ -3,6 +3,7 @@ import { getShiftKey, getNextShiftKey } from "./shift";
 import { additionalWorkStore } from "./additional-work-store";
 import { attachCloudSync } from "./cloud-sync/blob-sync";
 import { nightPlanHistory, type NPHistoryItem, type NPHistoryStatus } from "./reports/night-plan-history";
+import { eventSpine } from "./core/event-spine";
 
 export type Priority = "must" | "important" | "normal";
 export type Status = "todo" | "in-progress" | "done" | "carried" | "dismissed" | "converted";
@@ -114,6 +115,11 @@ export const nightPlanStore = {
     };
     state = { ...state, items: [...state.items, item] };
     persist();
+    eventSpine.emit({
+      type: "night_plan.item_added",
+      source: "night-plan",
+      metadata: { itemId: item.id, label: task, priority },
+    });
   },
   update(id: string, patch: Partial<NightPlanItem>) {
     ensureLoaded();
@@ -129,6 +135,14 @@ export const nightPlanStore = {
     if (status === "dismissed") patch.dismissedAt = Date.now();
     if (status === "converted") patch.convertedAt = Date.now();
     this.update(id, patch);
+    if (status === "done") {
+      const item = state.items.find((i) => i.id === id);
+      eventSpine.emit({
+        type: "night_plan.item_completed",
+        source: "night-plan",
+        metadata: { itemId: id, label: item?.task ?? "Night plan item" },
+      });
+    }
   },
   convertToAdditionalWork(
     id: string,

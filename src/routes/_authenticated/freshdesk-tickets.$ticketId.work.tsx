@@ -62,6 +62,7 @@ import { resolveFloating, setLayoutMode, usePaneLayout } from "@/lib/workspace/p
 import { FloatingPane } from "@/components/workspace/FloatingPane";
 import type { PaneDefault } from "@/lib/workspace/pane-layout-store";
 import { setActiveWork, leaveActiveWork } from "@/lib/workspace/active-work-store";
+import { eventSpine } from "@/lib/core/event-spine";
 import { AccountMemoryPane } from "@/components/workspace/AccountMemoryPane";
 import { TicketAIPane } from "@/components/workspace/TicketAIPane";
 import { InlineWorkTimer } from "@/components/workspace/InlineWorkTimer";
@@ -119,6 +120,23 @@ function WorkspacePage() {
   useEffect(() => {
     ticketsStore.touchRecent(ticketId);
   }, [ticketId]);
+
+  // Event Spine: opening a ticket establishes ticket + account context.
+  useEffect(() => {
+    if (!ticket) return;
+    eventSpine.emit({
+      type: "ticket.opened",
+      source: "route",
+      ticketId,
+      accountId: ticket.accountNumber || undefined,
+      metadata: {
+        label: `Ticket #${ticket.number}`,
+        subject: ticket.details?.subject,
+        accountName: ticket.accountName,
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketId, ticket?.number]);
 
   // Backfill legacy plain-text issueText into HTML so the rich editor
   // renders it as separate paragraphs instead of one squished line.

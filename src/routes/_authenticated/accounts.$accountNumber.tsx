@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft, Archive, Building2, ClipboardList, Clock, FileText, MessageSquarePlus,
@@ -25,6 +25,7 @@ import {
   type WorkLogEntry,
 } from "@/lib/workspace/work-log-store";
 import { formatElapsed } from "@/lib/workspace/active-work-store";
+import { eventSpine } from "@/lib/core/event-spine";
 import { TimeEditDialog } from "@/components/workspace/TimeEditDialog";
 import { CreateAdditionalWorkModal } from "@/components/additional-work/CreateAdditionalWorkModal";
 import { formatCentralShort } from "@/lib/shift";
@@ -58,6 +59,20 @@ function AccountProfilePage() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [filter, setFilter] = useState<TimelineFilter>("all");
   const [timeEdit, setTimeEdit] = useState<WorkLogEntry | null>(null);
+
+  // Event Spine: opening the account sets account context without clearing
+  // whatever ticket the operator is currently working.
+  useEffect(() => {
+    eventSpine.emit({
+      type: "account.opened",
+      source: "route",
+      accountId: accountNumber,
+      metadata: {
+        label: `Account ${accountNumber}`,
+        accountName: accountsStore.get(accountNumber)?.name,
+      },
+    });
+  }, [accountNumber]);
   const [addTimeOpen, setAddTimeOpen] = useState(false);
 
   if (!acct) {
