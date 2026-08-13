@@ -64,7 +64,17 @@ export type AnyProposedAction = {
   [K in ActionType]: ProposedAction<K>;
 }[ActionType];
 
-export type ActionStatus = "success" | "failed" | "duplicate" | "rejected";
+/**
+ * "uncertain" = the ledger cannot prove whether the mutation ran (a stale
+ * reservation or a finalize that never landed). It is deliberately NOT
+ * treated as success and NOT auto-retried.
+ */
+export type ActionStatus =
+  | "success"
+  | "failed"
+  | "duplicate"
+  | "rejected"
+  | "uncertain";
 
 export interface ActionExecutionResult {
   actionId: string;
@@ -72,6 +82,11 @@ export interface ActionExecutionResult {
   executedAt?: string;
   message?: string;
   eventId?: string;
+  /**
+   * False when the mutation ran but the durable ledger record could not be
+   * closed out — the local state is correct, the audit trail is incomplete.
+   */
+  ledgerSynced?: boolean;
 }
 
 /** Minimal, privacy-conscious ledger snapshot. */
