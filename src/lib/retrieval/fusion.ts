@@ -34,6 +34,24 @@ const BOOST = {
 
 const RECENCY_WINDOW_MS = 180 * 24 * 60 * 60 * 1000;
 
+/** Resolution Memory statuses that mean "no longer current guidance". */
+export const HISTORICAL_RESOLUTION_STATUSES = ["superseded", "archived"] as const;
+
+/**
+ * Historical semantics are source-specific. Only Resolution Memories carry
+ * superseded/archived lifecycle status; other source types keep their own
+ * status meanings untouched.
+ */
+export function isHistoricalCandidate(c: {
+  sourceType: string;
+  sourceStatus: string;
+}): boolean {
+  return (
+    c.sourceType === "resolution" &&
+    (HISTORICAL_RESOLUTION_STATUSES as readonly string[]).includes(c.sourceStatus)
+  );
+}
+
 export interface QueryIdentifiers {
   ticketNumbers: string[];
   accountNumbers: string[];
@@ -89,6 +107,11 @@ export interface FuseOptions {
   identifiers: QueryIdentifiers;
   accountNumber?: string;
   limit: number;
+  /**
+   * Defense-in-depth mirror of the SQL filter: superseded/archived Resolution
+   * Memories are dropped entirely unless historical search was requested.
+   */
+  includeHistorical?: boolean;
   /** Injected for deterministic tests. */
   now?: number;
 }
@@ -128,6 +151,8 @@ export function fuseCandidates(
   const results: RetrievalResult[] = [];
   for (const entry of byKey.values()) {
     const c = entry.candidate;
+    const historical = isHistoricalCandidate(c);
+    if (historical && !opts.includeHistorical) continue;
     const matchedBy: MatchSignal[] = [];
     let fusionScore = 0;
     if (entry.lexicalRank !== undefined) {
@@ -191,6 +216,7 @@ export function fuseCandidates(
       finalScore,
       ...(c.confidence ? { confidence: c.confidence as ResolutionConfidence } : {}),
       ...(c.sourceStatus ? { sourceStatus: c.sourceStatus } : {}),
+      ...(historical ? { historical: true } : {}),
       ...(c.sourceUpdatedAt ? { sourceUpdatedAt: c.sourceUpdatedAt } : {}),
       provenance: {
         source: c.sourceType,
