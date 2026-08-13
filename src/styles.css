@@ -1340,7 +1340,7 @@ html[data-theme="holoquiet"] header[class*="sticky"] {
   .active-breathe,
   .shimmer::after,
   [class*="qb-"],
-  [class*="animate-"] {
+  [class*="animate-"]:not(.animate-spin) {
     animation: none !important;
     transition-duration: 1ms !important;
   }
@@ -1349,7 +1349,7 @@ html[data-motion="reduced"] .quiet-float,
 html[data-motion="reduced"] .active-breathe,
 html[data-motion="reduced"] .shimmer::after,
 html[data-motion="reduced"] [class*="qb-"],
-html[data-motion="reduced"] [class*="animate-"] {
+html[data-motion="reduced"] [class*="animate-"]:not(.animate-spin) {
   animation: none !important;
   transition-duration: 1ms !important;
 }
