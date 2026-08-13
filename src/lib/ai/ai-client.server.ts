@@ -4,7 +4,7 @@
 // `stream: true` (consumed server-side) so long reasoning runs never sit
 // silent past the platform request timeout.
 
-import { routeTask } from "./router/task-router";
+import { routeTask, degradationNotice } from "./router/task-router";
 import { reportModelFailure, reportModelSuccess } from "./router/model-registry";
 import { recordRouting, describeRouting, logRoutingIfDev } from "./router/telemetry";
 import type { ModelTier as RouterTier, TaskKind } from "./router/task-types";
