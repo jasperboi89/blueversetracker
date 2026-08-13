@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { setTheme, themeStore, THEME_NAMES, type ThemeName } from "./theme-store";
 
-const CSS = readFileSync(new URL("../../styles.css", import.meta.url), "utf8");
+const CSS = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 const HQ = 'html[data-theme="holoquiet"]';
 
 describe("theme registration", () => {
