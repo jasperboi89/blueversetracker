@@ -19,6 +19,7 @@ export function FocusStrip() {
   const current = focus.current;
   const must = focus.shift.mustRemaining;
   const watch = focus.actionableWatchCount;
+  const hasCritical = focus.watch.some((w) => w.severity === "critical");
 
   const summary = [
     current ? current.label : "No tracked work",
@@ -39,20 +40,22 @@ export function FocusStrip() {
           data-focus-active={current ? "true" : "false"}
         >
           <FocusIcon className="h-3 w-3 shrink-0" aria-hidden />
-          {time && <span className="hidden font-mono tabular-nums lg:inline">{time}</span>}
-          <span className="hidden max-w-[16ch] truncate text-foreground/90 sm:inline">
+          {time && <span className="hidden font-mono tabular-nums xl:inline">{time}</span>}
+          {/* Priority order: what I'm on → for how long → what still must happen. */}
+          <span className="hidden max-w-[18ch] truncate text-foreground/90 sm:inline">
             {current ? current.label : "No tracked work"}
           </span>
-          {current?.accountId && (
-            <span className="hidden xl:inline">Acct {current.accountId}</span>
-          )}
           {current && (
             <span className="hidden font-mono tabular-nums lg:inline">{current.elapsedLabel}</span>
           )}
           <span className="sm:hidden">Focus</span>
-          <span className="whitespace-nowrap">{must} Must</span>
+          {must > 0 && <span className="whitespace-nowrap">{must} Must</span>}
           {watch > 0 && (
-            <span className="focus-watch--warning whitespace-nowrap rounded-full px-1">
+            <span
+              className={`whitespace-nowrap rounded-full px-1 ${
+                hasCritical ? "focus-watch--critical" : "focus-watch--warning"
+              }`}
+            >
               {watch} Watch
             </span>
           )}
