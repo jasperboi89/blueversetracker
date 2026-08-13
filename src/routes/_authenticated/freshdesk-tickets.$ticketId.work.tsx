@@ -55,6 +55,7 @@ import {
 import { AddSnipModal } from "@/components/freshdesk/AddSnipModal";
 import { AccountLinker } from "@/components/freshdesk/AccountLinker";
 import { PriorFixesPanel } from "@/components/freshdesk/PriorFixesPanel";
+import { SimilarPriorWorkPanel } from "@/components/retrieval/SimilarPriorWorkPanel";
 import { ChangeRecordsPanel } from "@/components/changes/ChangeRecordsPanel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
@@ -375,19 +376,25 @@ function WorkspacePage() {
   );
 
   const priorFixesBody = (
-    <PriorFixesPanel
-      ticketNumber={ticket.number}
-      subject={ticket.details.subject}
-      description={(ticket.freshdeskNotes[0]?.body ?? "").slice(0, 12000)}
-      {...(ticket.accountNumber ? { accountNumber: ticket.accountNumber } : {})}
-      onUseFix={(text) =>
-        update({
-          changesText: session.changesText.trim()
-            ? `${session.changesText}<p>${text}</p>`
-            : `<p>${text}</p>`,
-        })
-      }
-    />
+    <div className="space-y-3">
+      <PriorFixesPanel
+        ticketNumber={ticket.number}
+        subject={ticket.details.subject}
+        description={(ticket.freshdeskNotes[0]?.body ?? "").slice(0, 12000)}
+        {...(ticket.accountNumber ? { accountNumber: ticket.accountNumber } : {})}
+        onUseFix={(text) =>
+          update({
+            changesText: session.changesText.trim()
+              ? `${session.changesText}<p>${text}</p>`
+              : `<p>${text}</p>`,
+          })
+        }
+      />
+      <SimilarPriorWorkPanel
+        query={ticket.details.subject}
+        {...(ticket.accountNumber ? { accountNumber: ticket.accountNumber } : {})}
+      />
+    </div>
   );
 
   const resultBody = (
