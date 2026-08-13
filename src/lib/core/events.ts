@@ -31,6 +31,10 @@ export type AccEventType =
   // Coverage
   | "coverage.expiring"
   | "coverage.confirmed"
+  // Blockers (Phase 9.5) — "work cannot move forward"
+  | "blocker.created"
+  | "blocker.updated"
+  | "blocker.resolved"
   // Knowledge Vault
   | "knowledge.created"
   | "knowledge.updated"
@@ -116,6 +120,13 @@ export const EVENT_METADATA_KEYS = [
   "confidence",
   "sourceType",
   "resolutionId",
+  // Blocker routing — IDs and reason codes only.
+  "blockerId",
+  "blockerType",
+  "entityType",
+  "entityId",
+  "blockerSource",
+  "safeLabel",
 ] as const;
 
 export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];
