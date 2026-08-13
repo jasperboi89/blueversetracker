@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { useNow } from "@/hooks/use-now";
-import { isOverdue, useTickets, type Ticket } from "@/lib/tickets-store";
-import { useActiveWork, elapsedMs } from "@/lib/workspace/active-work-store";
-import { useRecurringRows } from "@/lib/reports/recurring-issues";
-import { nightPlanStore } from "@/lib/night-plan-store";
+import { isOverdue, useTickets } from "@/lib/tickets-store";
+import { useAwareness, awarenessStore } from "@/lib/core/awareness-store";
+import type { AwarenessItem, AwarenessSeverity } from "@/lib/core/awareness";
+
+export type { AwarenessItem, AwarenessSeverity } from "@/lib/core/awareness";
 
 export type InsightSeverity = "info" | "warn" | "high";
 
@@ -13,41 +15,54 @@ export interface Insight {
   /** Optional jump target (TanStack route id + params). */
   to?: string;
   params?: Record<string, string>;
+  /** Awareness dedupe key — present for rule-driven items. */
+  dedupeKey?: string;
+  /** Set while re-alerting is on cooldown; the item stays visible. */
+  cooldownUntil?: string;
 }
 
-const LONG_TASK_MS = 25 * 60 * 1000;
-const STALE_WAITING_MS = 2 * 24 * 60 * 60 * 1000;
+const SEVERITY_MAP: Record<AwarenessSeverity, InsightSeverity> = {
+  info: "info",
+  warning: "warn",
+  critical: "high",
+};
+
+/** Adapter: awareness item -> the Insight shape the existing UI renders. */
+export function insightFromAwareness(a: AwarenessItem): Insight {
+  const nav = a.actions?.find((x) => x.kind === "navigate");
+  return {
+    id: a.dedupeKey,
+    severity: SEVERITY_MAP[a.severity],
+    text: a.message,
+    to: nav?.to,
+    params: nav?.params,
+    dedupeKey: a.dedupeKey,
+    cooldownUntil: a.cooldownUntil,
+  };
+}
 
 /**
- * Rule-based situational awareness — instant, free, deterministic. The reasoned
- * AI layer (aiFocus) builds on the same signals when the operator asks.
+ * Deterministic situational awareness for the UI.
+ *
+ * Rules live in the Awareness engine (`@/lib/core/awareness`), which is driven
+ * by the Event Spine and Shift Working Context. This hook only adapts those
+ * items to the existing Insight shape and appends the two light, purely
+ * derived nudges that need no dedupe/cooldown state.
  */
 export function useInsights(): Insight[] {
+  const awareness = useAwareness();
   const { tickets } = useTickets();
-  const { current } = useActiveWork();
-  const recurring = useRecurringRows();
   const now = useNow(30_000);
   const nowMs = now.getTime() || Date.now();
 
-  const insights: Insight[] = [];
+  // The engine's slow tick handles durations; recompute when the view wakes.
+  useEffect(() => {
+    awarenessStore.recompute();
+  }, [nowMs]);
 
-  // Time-on-task: gently flag long stretches on one item.
-  if (current) {
-    const ms = elapsedMs(current, nowMs);
-    if (ms > LONG_TASK_MS) {
-      const mins = Math.round(ms / 60000);
-      insights.push({
-        id: "long-task",
-        severity: "high",
-        text: `You've been on ${current.label} for ${mins} min — capture a note, or hand off if blocked.`,
-        to: current.to,
-        params: current.params,
-      });
-    }
-  }
+  const insights = awareness.map(insightFromAwareness);
 
-  // Overdue tickets.
-  const overdue = tickets.filter((t) => t.status !== "completed" && isOverdue(t));
+  const overdue = tickets.filter((t) => t.status !== "completed" && isOverdue(t, nowMs));
   if (overdue.length > 0) {
     insights.push({
       id: "overdue",
@@ -58,55 +73,12 @@ export function useInsights(): Insight[] {
     });
   }
 
-  // Current account is a recurring-issue account.
-  if (current?.kind === "ticket") {
-    const t = tickets.find((x) => x.id === current.id);
-    const rec = t && recurring.find((r) => r.accountNumber === t.accountNumber && r.triggered);
-    if (t && rec) {
-      insights.push({
-        id: "recurring-account",
-        severity: "warn",
-        text: `Account ${t.accountNumber} is recurring (${rec.rollingCount} in 30d) — check history before changing.`,
-      });
-    }
-  }
-
-  // Stale waiting tickets.
-  const stale = tickets.filter(
-    (t: Ticket) =>
-      (t.status === "waiting-cs" || t.status === "waiting-prog") &&
-      nowMs - t.updatedAt > STALE_WAITING_MS,
-  );
-  if (stale.length > 0) {
-    insights.push({
-      id: "stale-waiting",
-      severity: "warn",
-      text: `${stale.length} waiting ticket${stale.length === 1 ? "" : "s"} idle 2+ days — nudge or close out.`,
-      to: "/freshdesk-tickets",
-      params: {},
-    });
-  }
-
-  // Night-plan must-dos still open.
-  const mustDo = nightPlanStore
-    .get()
-    .items.filter(
-      (i) => i.priority === "must" && (i.status === "todo" || i.status === "in-progress"),
-    );
-  if (mustDo.length > 0) {
-    insights.push({
-      id: "night-plan",
-      severity: "info",
-      text: `Night plan: ${mustDo.length} must-do item${mustDo.length === 1 ? "" : "s"} left.`,
-      to: "/",
-      params: {},
-    });
-  }
-
-  // Nothing active but open work exists.
-  if (!current) {
-    const open = tickets.filter((t) => t.status !== "completed");
-    if (open.length > 0) {
+  const open = tickets.filter((t) => t.status !== "completed");
+  if (!awareness.some((a) => a.type === "long_running_work" || a.type === "work_without_timer") &&
+      open.length > 0 &&
+      !insights.some((i) => i.id.startsWith("long-work"))) {
+    // Only when nothing is being tracked at all.
+    if (!awareness.some((a) => a.entity?.type === "work" || a.type === "timer_without_work")) {
       insights.push({
         id: "nothing-active",
         severity: "info",
@@ -118,6 +90,11 @@ export function useInsights(): Insight[] {
   }
 
   return insights;
+}
+
+/** Dismiss a rule-driven insight for the current condition. */
+export function dismissInsight(insight: Insight): void {
+  if (insight.dedupeKey) awarenessStore.dismiss(insight.dedupeKey);
 }
 
 export function hasHighInsight(insights: Insight[]): boolean {
