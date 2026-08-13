@@ -66,7 +66,7 @@ export function FocusStrip() {
         className="w-[22rem] max-w-[92vw] p-3"
         aria-label="Focus workspace"
       >
-        <p className="mb-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70">
+        <p className="mb-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Focus
         </p>
         <FocusPanel focus={focus} onClose={() => setOpen(false)} />

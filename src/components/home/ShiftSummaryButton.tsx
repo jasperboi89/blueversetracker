@@ -205,7 +205,7 @@ export function ShiftSummaryButton() {
                     </Button>
                   </div>
                 )}
-                <div className="mt-1 text-[10px] text-muted-foreground/70">
+                <div className="mt-1 text-[10px] text-muted-foreground">
                   Draft only — review before sending. Recorded in the Audit Log.
                 </div>
               </div>

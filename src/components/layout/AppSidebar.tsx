@@ -174,11 +174,11 @@ export function AppSidebar() {
       <SidebarFooter className="px-3 py-4">
         <UserChip collapsed={collapsed} />
         {!collapsed && (
-          <div className="mt-2 text-[10px] leading-relaxed text-muted-foreground/70">
+          <div className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
             HIPAA-Safeguarded
             <br />
             Internal Use
-            <span className="mt-1 block font-mono text-muted-foreground/60">
+            <span className="mt-1 block font-mono text-muted-foreground">
               ⌘K / Ctrl+K — Quick Command
             </span>
           </div>

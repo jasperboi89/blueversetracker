@@ -61,8 +61,8 @@ function Section({
   const has = Array.isArray(children) ? children.length > 0 : Boolean(children);
   return (
     <section aria-label={title} className="space-y-1">
-      <h3 className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">{title}</h3>
-      {has ? children : <p className="text-xs text-muted-foreground/70">{empty}</p>}
+      <h3 className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{title}</h3>
+      {has ? children : <p className="text-xs text-muted-foreground">{empty}</p>}
     </section>
   );
 }
@@ -83,7 +83,7 @@ function AccountSummary({ accountNumber }: { accountNumber: string }) {
     : undefined;
   return (
     <section aria-label="Account context" className="space-y-1">
-      <h3 className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+      <h3 className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
         Account {pack.account.accountNumber}
       </h3>
       <ul className="space-y-0.5 text-xs text-muted-foreground">
