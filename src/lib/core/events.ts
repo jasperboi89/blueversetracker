@@ -70,12 +70,14 @@ export interface AccEvent {
   ticketId?: string;
   workItemId?: string;
   dispatchId?: string;
-  metadata?: Record<string, unknown>;
+  /** Small, non-sensitive routing metadata only (see sanitizeMetadata). */
+  metadata?: AccEventMetadata;
 }
 
 /** What callers pass to emit — id/timestamp are filled in by the spine. */
-export type AccEventInput = Omit<AccEvent, "id" | "timestamp"> & {
+export type AccEventInput = Omit<AccEvent, "id" | "timestamp" | "metadata"> & {
   timestamp?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type AccEventHandler = (event: AccEvent) => void;
