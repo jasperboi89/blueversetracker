@@ -31,7 +31,8 @@ export type FocusReason =
   | "ACTIVE_WORK_FOLLOW_UP"
   | "AWARENESS_CONDITION"
   | "WAITING_RESPONSE"
-  | "RECORDED_BLOCKER";
+  | "RECORDED_BLOCKER"
+  | "ACTION_OUTCOME_UNCERTAIN";
 
 export type FocusSeverity = AwarenessSeverity;
 
@@ -42,7 +43,8 @@ export type FocusEntityType =
   | "dispatch"
   | "night_plan"
   | "handoff"
-  | "coverage";
+  | "coverage"
+  | "action";
 
 export interface FocusEntityRef {
   type: FocusEntityType;
@@ -354,25 +356,44 @@ const WAITING_LABEL: Record<string, string> = {
 
 function buildBlocked(s: FocusSnapshot): FocusItem[] {
   const out: FocusItem[] = [];
+  // Explicit blockers win. Ticket entities they already cover are recorded so
+  // the compatibility fallback below can't produce a duplicate BLOCKED row.
+  const coveredTickets = new Set<string>();
 
   for (const b of s.context.blockers) {
+    if (b.entity?.type === "ticket") coveredTickets.add(b.entity.id);
+    if (b.ticketId) coveredTickets.add(b.ticketId);
+    const isAction = b.entity?.type === "action";
+    const entityId = b.entity?.id ?? b.ticketId;
     out.push({
       id: `focus:blk:${b.id}`,
-      label: b.label,
-      detail: "Recorded blocker",
-      severity: "warning",
+      label: isAction ? `Action ${(entityId ?? "").slice(0, 8)}` : b.ticketId ? `Ticket ${b.ticketId}` : b.label,
+      detail: b.safeLabel ?? b.label,
+      severity: b.type === "action_uncertain" ? "warning" : "info",
       source: "shift_context",
-      reason: "RECORDED_BLOCKER",
-      entity: b.ticketId ? { type: "ticket", id: b.ticketId } : undefined,
-      actions: [],
+      reason: b.type === "action_uncertain" ? "ACTION_OUTCOME_UNCERTAIN" : "RECORDED_BLOCKER",
+      entity: b.entity
+        ? { type: b.entity.type as FocusEntityType, id: b.entity.id }
+        : b.ticketId
+          ? { type: "ticket", id: b.ticketId }
+          : undefined,
+      actions: b.ticketId
+        ? navAction("open", "Open Ticket", "/freshdesk-tickets/$ticketId/work", {
+            ticketId: b.ticketId,
+          })
+        : [],
       rank: 0,
     });
   }
 
-  // Waiting is a real recorded state. Elapsed time alone never creates a blocker.
+  // Compatibility fallback (Phase 9.5): waiting tickets are now emitted as
+  // first-class blockers by the reconciler. This path only covers the moment
+  // before reconciliation lands and dedupes against explicit blockers. Remove
+  // once emitter coverage is verified in production use.
   for (const t of s.tickets) {
     const label = WAITING_LABEL[t.status];
     if (!label) continue;
+    if (coveredTickets.has(t.id)) continue;
     out.push({
       id: `focus:wait:${t.id}`,
       label: `Ticket #${t.number}`,
