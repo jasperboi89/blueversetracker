@@ -35,9 +35,11 @@ import { nightPlanStore } from "@/lib/night-plan-store";
 import { activitySummary } from "@/lib/workspace/activity-store";
 import { htmlToPlainText } from "@/lib/rich-text";
 import { useInsights, type InsightSeverity } from "@/lib/ai/awareness";
-import { streamCopilot, TOOL_LABEL, type ProposedAction } from "@/lib/ai/copilot-stream";
+import { streamCopilot, TOOL_LABEL } from "@/lib/ai/copilot-stream";
 import { copilotThreads, useCopilotThreads } from "@/lib/ai/copilot-threads-store";
-import { applyAction, describeAction } from "@/lib/ai/copilot-actions";
+import { describeAction, toProposedAction } from "@/lib/ai/copilot-actions";
+import { executeAction } from "@/lib/core/action-executor";
+import type { AnyProposedAction } from "@/lib/core/actions";
 
 export const COPILOT_OPEN_EVENT = "intel-copilot:open";
 export function openCopilot() {
