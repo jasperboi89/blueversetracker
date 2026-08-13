@@ -48,7 +48,8 @@ export interface ShiftSummary {
 
 export interface ShiftWorkingContext {
   shiftKey: string;
-  activeTicket?: { id: string; subject?: string; accountId?: string; startedAt?: string };
+  /** No ticket body/subject here — the spine carries IDs and labels only. */
+  activeTicket?: { id: string; label?: string; accountId?: string; openedAt?: string };
   activeAccount?: { id: string; name?: string };
   activeWorkItem?: { id: string; title?: string; startedAt?: string };
   activeDispatch?: { id: string };
@@ -97,9 +98,9 @@ export function reduceShiftContext(
         ...ctx,
         activeTicket: {
           id: event.ticketId,
-          subject: str(event.metadata?.["subject"]),
+          label: label || undefined,
           accountId: event.accountId,
-          startedAt: event.timestamp,
+          openedAt: event.timestamp,
         },
         // Opening a ticket also establishes its account context, but never
         // wipes an account the operator navigated to deliberately.
@@ -155,6 +156,7 @@ export function reduceShiftContext(
         }),
       };
     }
+    case "dispatch.opened":
     case "dispatch.started": {
       if (!event.dispatchId) return ctx;
       return {
@@ -179,12 +181,22 @@ export function reduceShiftContext(
       };
     }
     case "timer.started":
+    case "work.opened":
     case "work.started": {
       const id = event.workItemId ?? event.ticketId ?? event.dispatchId;
       if (!id) return ctx;
+      const started = event.type !== "work.opened";
       return {
         ...ctx,
-        activeWorkItem: { id, title: label || undefined, startedAt: event.timestamp },
+        activeWorkItem: {
+          id,
+          title: label || undefined,
+          startedAt: started
+            ? event.timestamp
+            : ctx.activeWorkItem?.id === id
+              ? ctx.activeWorkItem.startedAt
+              : undefined,
+        },
         activeAccount: event.accountId
           ? { id: event.accountId, name: str(event.metadata?.["accountName"]) }
           : ctx.activeAccount,
@@ -215,6 +227,12 @@ export function reduceShiftContext(
     case "night_plan.item_added":
     case "night_plan.item_completed": {
       const id = str(event.metadata?.["itemId"]) ?? event.id;
+      const complete = event.type === "night_plan.item_completed";
+      const existing = ctx.recentActivity.find(
+        (a) => a.kind === "night_plan" && a.id === id,
+      );
+      // Idempotent: a repeated completion must not add a second history row.
+      if (complete && existing?.complete) return ctx;
       return {
         ...ctx,
         recentActivity: pushActivity(ctx.recentActivity, {
@@ -222,7 +240,7 @@ export function reduceShiftContext(
           kind: "night_plan",
           label: label || "Night plan item",
           at: event.timestamp,
-          complete: event.type === "night_plan.item_completed",
+          complete,
         }),
       };
     }

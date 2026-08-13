@@ -47,7 +47,8 @@ function Workspace() {
   useEffect(() => {
     if (!session) return;
     eventSpine.emit({
-      type: "dispatch.started",
+      // Route mount = viewed. Tracked work start comes from active-work-store.
+      type: "dispatch.opened",
       source: "route",
       dispatchId: sessionId,
       accountId: session.accountNumber || undefined,
