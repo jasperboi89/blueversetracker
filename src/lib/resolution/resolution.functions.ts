@@ -55,10 +55,29 @@ const ListSchema = z
   })
   .default({});
 
+interface ResolutionRowPayload {
+  operator_user_id: string;
+  account_number: string;
+  account_name: string;
+  problem: string;
+  root_cause: string;
+  resolution: string;
+  testing: string;
+  rollback: string;
+  affected_area: string;
+  confidence: string;
+  source_ticket_id: string;
+  source_change_record_id: string | null;
+  source_work_item_id: string;
+  source_dispatch_id: string;
+  fingerprint: string;
+  supersedes_id?: string;
+}
+
 function rowPayload(
   userId: string,
   data: z.infer<typeof CreateSchema>,
-): Record<string, unknown> {
+): ResolutionRowPayload {
   return {
     operator_user_id: userId,
     account_number: data.accountNumber,
@@ -146,7 +165,7 @@ export const createResolutionMemory = createServerFn({ method: "POST" })
       }
     }
 
-    const payload = {
+    const payload: ResolutionRowPayload = {
       ...rowPayload(userId, data),
       ...(data.supersedesId ? { supersedes_id: data.supersedesId } : {}),
     };
@@ -164,8 +183,8 @@ export const createResolutionMemory = createServerFn({ method: "POST" })
           .from("resolution_memories")
           .select(SELECT_COLUMNS)
           .eq("operator_user_id", userId)
-          .eq("fingerprint", payload.fingerprint as string)
-          .eq("source_ticket_id", payload.source_ticket_id as string)
+          .eq("fingerprint", payload.fingerprint)
+          .eq("source_ticket_id", payload.source_ticket_id)
           .neq("status", "archived")
           .maybeSingle();
         if (existing) {
@@ -209,7 +228,7 @@ export const updateResolutionMemory = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => UpdateSchema.parse(input))
   .handler(async ({ context, data }) => {
     const { id, ...fields } = data;
-    const patch: Record<string, unknown> = {};
+    const patch: Partial<ResolutionRowPayload> = {};
     if (fields.problem !== undefined) patch.problem = fields.problem;
     if (fields.rootCause !== undefined) patch.root_cause = fields.rootCause;
     if (fields.resolution !== undefined) patch.resolution = fields.resolution;
@@ -230,8 +249,8 @@ export const updateResolutionMemory = createServerFn({ method: "POST" })
       if (!current) throw new Error("Resolution not found.");
       const cur = current as { problem: string; resolution: string };
       patch.fingerprint = resolutionFingerprint(
-        (fields.problem ?? cur.problem) as string,
-        (fields.resolution ?? cur.resolution) as string,
+        fields.problem ?? cur.problem,
+        fields.resolution ?? cur.resolution,
       );
     }
 
