@@ -130,17 +130,18 @@ export const nightPlanStore = {
     persist();
   },
   setStatus(id: string, status: Status) {
+    const before = state.items.find((i) => i.id === id);
     const patch: Partial<NightPlanItem> = { status };
     if (status === "done") patch.completedAt = Date.now();
     if (status === "dismissed") patch.dismissedAt = Date.now();
     if (status === "converted") patch.convertedAt = Date.now();
     this.update(id, patch);
-    if (status === "done") {
-      const item = state.items.find((i) => i.id === id);
+    // Only a real transition into "done" is a completion event.
+    if (status === "done" && before && before.status !== "done") {
       eventSpine.emit({
         type: "night_plan.item_completed",
         source: "night-plan",
-        metadata: { itemId: id, label: item?.task ?? "Night plan item" },
+        metadata: { itemId: id, label: before.task || "Night plan item", prevStatus: before.status },
       });
     }
   },
