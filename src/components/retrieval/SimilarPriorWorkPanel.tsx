@@ -112,7 +112,7 @@ export function SimilarPriorWorkPanel({ query, accountNumber, autoRun = true }: 
               {r.sourceUpdatedAt && (
                 <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
                   <Clock className="h-3 w-3" />
-                  {formatCentralShort(r.sourceUpdatedAt)}
+                  {formatCentralShort(new Date(r.sourceUpdatedAt))}
                 </span>
               )}
             </div>
