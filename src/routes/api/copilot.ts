@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
+import { classifyOperatorMessage, detectDeterministicIntent } from "@/lib/ai/router/deterministic-intercept";
+import { routeTask } from "@/lib/ai/router/task-router";
+import { GROUNDING_RULES } from "@/lib/ai/router/context-builder";
+import type { TaskKind } from "@/lib/ai/router/task-types";
 
 /**
  * Streaming Copilot endpoint. Same tool loop as the buffered server function,
@@ -93,12 +97,40 @@ export const Route = createFileRoute("/api/copilot")({
           query: `ai:${body.mode === "briefing" ? `briefing-${body.kind}` : "copilot-chat"}`,
         });
 
+        // Task routing: briefings are handoff/pattern work; chat is classified
+        // deterministically from the operator's last message.
+        const lastUser = [...body.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+        const intercept = body.mode === "chat" ? detectDeterministicIntent(lastUser) : null;
+        const taskKind: TaskKind =
+          body.mode === "briefing"
+            ? body.kind === "weekly-digest"
+              ? "pattern_analysis"
+              : "handoff_generation"
+            : intercept?.wantsInterpretation
+              ? "knowledge_interpretation"
+              : intercept
+                ? intercept.taskKind
+                : classifyOperatorMessage(lastUser);
+
+        // A pure deterministic intent is answered by the Hub's own tools; the
+        // model tier is only used when interpretation is actually requested.
+        const decision = routeTask({
+          kind: taskKind,
+          requirements: { capabilities: { tools: true, streaming: true } },
+        });
+        const modelTaskKind: TaskKind =
+          decision.route === "deterministic" ? "operational_question" : taskKind;
+
         const system = [
           "You are Intel Copilot for a night-shift support/programming operator in the Account Intel Hub.",
           "Use the read-only tools to look up the operator's real Hub data before answering — never guess ticket numbers, accounts, statuses, or times.",
           "If a lookup returns nothing, say so plainly. Be concise and specific; reference ticket and account numbers.",
           "When the operator would clearly benefit from a change (a night plan item, a classification, a timer), call propose_action — it only queues a card they confirm.",
           "Short markdown: bold labels and bullets. No preamble, no closing pleasantries.",
+          GROUNDING_RULES,
+          intercept
+            ? `The request maps to a deterministic Hub lookup (${intercept.intercept}${intercept.target ? ` ${intercept.target}` : ""}). Answer from that lookup's tool result only — do not speculate.`
+            : "",
           body.nowIso ? `Current time (ISO): ${body.nowIso}.` : "",
           body.pageContext ? `The operator is currently viewing: ${body.pageContext}.` : "",
           body.profile ? `Operator profile (learned patterns):\n${body.profile}` : "",
@@ -141,7 +173,7 @@ export const Route = createFileRoute("/api/copilot")({
               system,
               input: input as Record<string, unknown>[],
               tools: COPILOT_TOOLS,
-              tier: "flagship",
+              task: modelTaskKind,
               maxSteps: body.mode === "briefing" ? 8 : 6,
               onEvent: send,
               runTool: async (name, args) => {
