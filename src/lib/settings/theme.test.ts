@@ -98,9 +98,15 @@ describe("holoquiet stylesheet", () => {
   });
 
   it("has a reduced-motion branch that disables spectral motion", () => {
-    const rm = CSS.slice(CSS.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    const rm = CSS.slice(
+      CSS.indexOf('html[data-theme="holoquiet"] [data-surface="copilot"][data-busy="true"]::before'),
+    );
     expect(rm).toContain('[data-surface="copilot"][data-busy="true"]::before');
     expect(rm).toContain("animation: none");
+  });
+
+  it("stops decorative motion for the reduced-motion setting too", () => {
+    expect(CSS).toContain('html[data-motion="reduced"] [class*="qb-"]');
   });
 
   it("does not restyle BlueVerse or Quantum Bloom surfaces globally", () => {
