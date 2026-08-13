@@ -111,7 +111,7 @@ describe("fallback and health", () => {
 
   it("falls back across tiers and reports the degradation", () => {
     const registry: ModelProfile[] = [
-      { id: "bal", provider: "t", tier: "balanced", capabilities: caps(), enabled: true, priority: 10 },
+      { id: "bal", provider: "t", tier: "balanced", capabilities: caps({ longContext: true }), enabled: true, priority: 10 },
     ];
     const d = routeTask({ kind: "account_investigation", registry });
     expect(d.tier).toBe("balanced");

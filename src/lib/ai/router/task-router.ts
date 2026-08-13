@@ -94,7 +94,7 @@ export function routeTask(input: RouteTaskInput): RoutingDecision {
     reasonCode = "LOW_CONFIDENCE_SAFE_DEFAULT";
   }
   if (caps.vision) reasonCode = "VISION_REQUIRED";
-  else if (caps.longContext && tier === "flagship") reasonCode = "LONG_CONTEXT_REQUIRED";
+  else if (input.requirements?.capabilities?.longContext) reasonCode = "LONG_CONTEXT_REQUIRED";
 
   const requestedTier = tier as ModelTier;
   const chain = tierChain(requestedTier, policy.fallbackTier);

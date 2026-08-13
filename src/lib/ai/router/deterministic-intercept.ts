@@ -69,7 +69,7 @@ const CLASSIFY = /\b(classify|categoriz|tag|which group|label this)\w*/i;
 export function classifyOperatorMessage(raw: string): TaskKind {
   const text = raw.trim();
   if (CLASSIFY.test(text)) return "classification";
-  if (DOCUMENTATION.test(text) && INVESTIGATION.test(text)) return "knowledge_interpretation";
+  if (DOCUMENTATION.test(text)) return "knowledge_interpretation";
   if (INVESTIGATION.test(text)) {
     if (/\baccount\b/i.test(text)) return "account_investigation";
     if (/\bticket\b/i.test(text)) return "ticket_investigation";
