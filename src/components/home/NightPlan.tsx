@@ -426,7 +426,7 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
                 placeholder="Optional context"
                 className="mt-1"
               />
-              <div className="mt-1 text-[10px] text-muted-foreground/70">Enter to add · Ctrl+Enter from Notes</div>
+              <div className="mt-1 text-[10px] text-muted-foreground">Enter to add · Ctrl+Enter from Notes</div>
             </div>
             <div>
               <label className="text-xs uppercase tracking-wider text-muted-foreground">Priority</label>

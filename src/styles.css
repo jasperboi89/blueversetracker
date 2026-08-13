@@ -1127,7 +1127,8 @@ html[data-theme="holoquiet"] [data-slot="sidebar-container"],
 html[data-theme="holoquiet"] [data-sidebar="sidebar"] {
   background: var(--sidebar);
   border-right: 1px solid var(--hq-rim-neutral);
-  backdrop-filter: blur(10px);
+  /* No blur here: the rail is opaque enough, and one fewer blurred layer
+     keeps the header + panel + popover stack cheap during long sessions. */
 }
 html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"] {
   border-left: 2px solid transparent;
@@ -1328,4 +1329,28 @@ html[data-theme="holoquiet"] header[class*="sticky"] {
   html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"] {
     transition: none;
   }
+}
+
+/* ================================================================== */
+/* Reduced motion — one authoritative sweep.                          */
+/* Honours the OS setting and the in-app data-motion="reduced" flag.  */
+/* Decorative motion stops; state still reads through color/edges.    */
+/* ================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .quiet-float,
+  .active-breathe,
+  .shimmer::after,
+  [class*="qb-"],
+  [class*="animate-"]:not(.animate-spin) {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}
+html[data-motion="reduced"] .quiet-float,
+html[data-motion="reduced"] .active-breathe,
+html[data-motion="reduced"] .shimmer::after,
+html[data-motion="reduced"] [class*="qb-"],
+html[data-motion="reduced"] [class*="animate-"]:not(.animate-spin) {
+  animation: none !important;
+  transition-duration: 1ms !important;
 }

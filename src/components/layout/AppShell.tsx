@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="truncate font-display text-sm font-semibold tracking-wide text-foreground">
                 Account Intel Hub
               </span>
-              <span className="hidden text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 sm:inline">
+              <span className="hidden text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:inline">
                 2036 Night Ops
               </span>
             </div>
@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <div className="ml-auto flex items-center gap-2">
               <FocusStrip />
-              <span className="hidden items-center gap-1 rounded-md border border-border/40 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80 md:inline-flex">
+              <span className="hidden items-center gap-1 rounded-md border border-border/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground md:inline-flex">
                 ⌘K / Ctrl+K
               </span>
               <SanctuaryButton />

@@ -1234,7 +1234,7 @@ export function KnowledgeVault() {
           </ScrollArea>
         </section>
 
-        <main className="glass-panel min-h-[680px] min-w-0 overflow-hidden">
+        <div className="glass-panel min-h-[680px] min-w-0 overflow-hidden">
           {draft ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="border-b border-white/10 p-4">
@@ -1455,7 +1455,7 @@ export function KnowledgeVault() {
               </div>
             </div>
           )}
-        </main>
+        </div>
       </div>
 
       {printTarget ? (
@@ -1781,7 +1781,7 @@ function KnowledgeContentWorkspace({
         )}
         Note
         {aiGenerated && (
-          <span className="normal-case tracking-normal text-muted-foreground/55">
+          <span className="normal-case tracking-normal text-muted-foreground">
             AI-written · earlier text in Versions
           </span>
         )}
@@ -1976,7 +1976,7 @@ function NoteCard({
           </div>
         </div>
         <div
-          className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+          className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
           onClick={stop}
           onKeyDown={stop}
         >
@@ -1984,7 +1984,7 @@ function NoteCard({
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0"
-            title="Rename"
+            title="Rename" aria-label="Rename note"
             onClick={(e) => {
               e.stopPropagation();
               onStartRename();
@@ -2090,7 +2090,7 @@ function NoteCard({
         </div>
       </div>
       {(note.tags.length > 0 || (note.attachments ?? []).length > 0) && (
-        <div className="mt-2 flex min-w-0 items-center gap-1 overflow-hidden text-[9px] text-muted-foreground/70">
+        <div className="mt-2 flex min-w-0 items-center gap-1 overflow-hidden text-[10px] text-muted-foreground">
           {note.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}
@@ -2107,9 +2107,9 @@ function NoteCard({
           )}
         </div>
       )}
-      <div className="mt-2 flex items-center justify-between gap-2 text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">
+      <div className="mt-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-muted-foreground/60">{config.singular}</span>
+          <span className="truncate text-muted-foreground">{config.singular}</span>
           {showFolderChip && folder && (
             <span
               className="truncate rounded-full border px-1.5 py-[1px]"
@@ -2347,7 +2347,7 @@ function AttachmentsPanel({
                       {a.name}
                     </button>
                   )}
-                  <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                     <a
                       href={a.dataUrl}
                       download={a.name}

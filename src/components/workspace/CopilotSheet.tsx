@@ -500,7 +500,7 @@ export function CopilotSheet() {
                 ) : (
                   <div key={i} className="space-y-1">
                     {t.tools && t.tools.length > 0 && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <Wrench className="h-3 w-3" />{" "}
                         {t.tools.map((n) => TOOL_LABEL[n] ?? n).join(", ")}
                       </div>
@@ -517,7 +517,7 @@ export function CopilotSheet() {
                   {activity.map((a, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-1.5 text-[11px] text-muted-foreground/80"
+                      className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
                     >
                       <Wrench className="h-3 w-3" /> {a}
                       {i === activity.length - 1 ? "…" : ""}
@@ -546,13 +546,25 @@ export function CopilotSheet() {
                   <div className="text-foreground/90">{describeAction(p)}</div>
                   {p.reason && <div className="mt-0.5 text-muted-foreground">{p.reason}</div>}
                   {failures[p.id] && (
-                    <div className="mt-0.5 text-destructive">{failures[p.id]}</div>
+                    <div
+                      role="status"
+                      className={
+                        outcomes[p.id] === "uncertain"
+                          ? "mt-0.5 text-muted-foreground"
+                          : "mt-0.5 text-destructive"
+                      }
+                    >
+                      {outcomes[p.id] === "uncertain"
+                        ? "Outcome unclear — check whether this already took effect before applying again."
+                        : failures[p.id]}
+                    </div>
                   )}
                   <div className="mt-1.5 flex gap-1.5">
                     <Button
                       size="sm"
                       className="h-6 px-2 text-[11px]"
-                      disabled={applying === p.id}
+                      disabled={applying !== null}
+                      aria-busy={applying === p.id}
                       onClick={() => void confirm(p)}
                     >
                       {applying === p.id ? (
@@ -560,12 +572,19 @@ export function CopilotSheet() {
                       ) : (
                         <Check className="mr-1 h-3 w-3" />
                       )}
-                      {failures[p.id] ? "Retry" : "Apply"}
+                      {applying === p.id
+                        ? "Applying…"
+                        : outcomes[p.id] === "uncertain"
+                          ? "Apply again"
+                          : failures[p.id]
+                            ? "Retry"
+                            : "Apply"}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-[11px]"
+                      disabled={applying !== null}
                       onClick={() => setProposals((prev) => prev.filter((x) => x.id !== p.id))}
                     >
                       <X className="mr-1 h-3 w-3" /> Discard
