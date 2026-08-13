@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { createPersistedStore, useStoreValue } from "./_persist";
 
-export type ThemeName = "blueverse" | "quantum-bloom";
+export type ThemeName = "blueverse" | "quantum-bloom" | "holoquiet";
+
+export const THEME_NAMES: readonly ThemeName[] = ["blueverse", "quantum-bloom", "holoquiet"];
 
 export interface ThemeState {
   theme: ThemeName;

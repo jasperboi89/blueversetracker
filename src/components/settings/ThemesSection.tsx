@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { setTheme, useTheme } from "@/lib/settings/theme-store";
+import { setTheme, useTheme, type ThemeName } from "@/lib/settings/theme-store";
 import { DiscoveryLogDrawer } from "@/components/quantum-bloom/DiscoveryLogDrawer";
 import {
   setQbTuning,
@@ -35,10 +35,11 @@ export function ThemesSection() {
       </header>
       <p className="mb-4 text-xs text-muted-foreground">
         BlueVerse is the default. Quantum Bloom is an immersive optional theme that surrounds the
-        portal with a living nebula and shifts color phases with the night shift.
+        portal with a living nebula and shifts color phases with the night shift. HoloQuiet is a
+        calm future-office environment where light is only used to signal operational state.
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <ThemeCard
           name="blueverse"
           title="BlueVerse"
@@ -52,6 +53,13 @@ export function ThemesSection() {
           subtitle="Living nebula · Aurora color phases · Crystal glass"
           gradient="linear-gradient(135deg, oklch(0.45 0.22 290 / 0.8), oklch(0.7 0.22 250 / 0.6), oklch(0.85 0.16 210 / 0.5))"
           active={theme === "quantum-bloom"}
+        />
+        <ThemeCard
+          name="holoquiet"
+          title="HoloQuiet"
+          subtitle="Architectural glass · Quiet holography · Signal-only light"
+          gradient="linear-gradient(135deg, oklch(0.22 0.03 262), oklch(0.27 0.024 258) 60%, oklch(0.5 0.06 205 / 0.45))"
+          active={theme === "holoquiet"}
         />
       </div>
 
@@ -218,7 +226,7 @@ function ThemeCard({
   gradient,
   active,
 }: {
-  name: "blueverse" | "quantum-bloom";
+  name: ThemeName;
   title: string;
   subtitle: string;
   gradient: string;

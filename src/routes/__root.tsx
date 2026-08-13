@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GalaxyBackground } from "@/components/layout/GalaxyBackground";
+import { HoloQuietBackground } from "@/components/layout/HoloQuietBackground";
 import { Toaster } from "@/components/ui/sonner";
 import { useApplyDisplayPrefs } from "@/lib/settings/display-prefs-store";
 import { usePointerGlow } from "@/hooks/use-pointer-glow";
@@ -151,7 +152,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {theme === "quantum-bloom" ? <NebulaCanvas /> : <GalaxyBackground />}
+      {theme === "quantum-bloom" ? (
+        <NebulaCanvas />
+      ) : theme === "holoquiet" ? (
+        <HoloQuietBackground />
+      ) : (
+        <GalaxyBackground />
+      )}
       {theme === "quantum-bloom" && <QuantumBloomDriver />}
       {theme === "quantum-bloom" && <EntryOverlay />}
       {theme === "quantum-bloom" && <CelebrationLayer />}

@@ -950,3 +950,382 @@ html[data-qb-sanctuary="on"] header.sticky:hover {
     transition: none;
   }
 }
+
+/* ================================================================== */
+/* HOLOQUIET — the future office that knows when to shut up.          */
+/*                                                                    */
+/* Third production theme. Implemented entirely as token overrides on */
+/* html[data-theme="holoquiet"] plus restyling of the SHARED semantic */
+/* classes that already exist (glass-panel, focus-*, sidebar, table). */
+/* BlueVerse and Quantum Bloom rendering is untouched: every rule in  */
+/* this block is scoped to the holoquiet attribute selector.          */
+/*                                                                    */
+/* Plane 1 Architecture (background) · Plane 2 Workglass (surfaces)   */
+/* Plane 3 Holographic Signal (state only — rare, earned, meaningful) */
+/* ================================================================== */
+
+html[data-theme="holoquiet"] {
+  /* --- Foundation ------------------------------------------------ */
+  --hq-void-graphite: oklch(0.16 0.021 265);
+  --hq-midnight: oklch(0.21 0.028 262);
+  --hq-workglass-slate: oklch(0.27 0.024 258);
+  --hq-navy-smoke: oklch(0.23 0.03 262);
+
+  /* --- Signals (used on edges and small elements, never as fills) - */
+  --hq-photon-blue: oklch(0.7 0.13 245);
+  --hq-ion-cyan: oklch(0.79 0.11 205);
+  --hq-spectral-violet: oklch(0.68 0.13 295);
+  --hq-amber: oklch(0.78 0.12 78);
+  --hq-signal-green: oklch(0.74 0.12 158);
+  --hq-soft-rose: oklch(0.68 0.14 18);
+
+  /* --- Materials ------------------------------------------------- */
+  --hq-bg-architecture: oklch(0.145 0.02 265);
+  --hq-bg-workspace: oklch(0.175 0.022 264);
+  --hq-workglass: oklch(0.225 0.024 262 / 0.9);
+  --hq-workglass-elevated: oklch(0.255 0.026 260 / 0.94);
+  --hq-data-glass: oklch(0.205 0.022 263 / 0.96);
+  --hq-spectral-glass: oklch(0.235 0.038 288 / 0.93);
+
+  /* --- Rims (Plane 3) -------------------------------------------- */
+  --hq-rim-neutral: oklch(0.82 0.02 250 / 0.14);
+  --hq-rim-active: color-mix(in oklab, var(--hq-ion-cyan) 42%, transparent);
+  --hq-rim-ai: color-mix(in oklab, var(--hq-spectral-violet) 40%, transparent);
+  --hq-rim-warning: color-mix(in oklab, var(--hq-amber) 42%, transparent);
+  --hq-rim-blocked: color-mix(in oklab, var(--hq-amber) 30%, var(--hq-soft-rose) 18%);
+  --hq-rim-success: color-mix(in oklab, var(--hq-signal-green) 40%, transparent);
+
+  --hq-shadow-low: 0 1px 2px oklch(0 0 0 / 0.35), 0 8px 20px -16px oklch(0 0 0 / 0.6);
+  --hq-shadow-elevated: 0 2px 4px oklch(0 0 0 / 0.4), 0 20px 42px -24px oklch(0 0 0 / 0.7);
+  --hq-telemetry: color-mix(in oklab, var(--hq-photon-blue) 32%, transparent);
+
+  /* --- Map onto the app's existing semantic tokens ---------------- */
+  --background: var(--hq-bg-workspace);
+  --foreground: oklch(0.95 0.008 250);
+  --card: var(--hq-workglass);
+  --card-foreground: oklch(0.95 0.008 250);
+  --popover: oklch(0.215 0.024 262);
+  --popover-foreground: oklch(0.95 0.008 250);
+  --primary: var(--hq-photon-blue);
+  --primary-foreground: oklch(0.16 0.02 265);
+  --secondary: oklch(0.27 0.024 260 / 0.75);
+  --secondary-foreground: oklch(0.95 0.008 250);
+  --muted: oklch(0.25 0.022 262 / 0.7);
+  --muted-foreground: oklch(0.76 0.014 250);
+  --accent: oklch(0.3 0.03 258 / 0.7);
+  --accent-foreground: oklch(0.96 0.008 250);
+  --destructive: var(--hq-soft-rose);
+  --border: var(--hq-rim-neutral);
+  --input: oklch(0.84 0.02 250 / 0.2);
+  --ring: var(--hq-ion-cyan);
+  --sidebar: oklch(0.165 0.02 264 / 0.92);
+  --sidebar-foreground: oklch(0.9 0.01 250);
+  --sidebar-primary: var(--hq-ion-cyan);
+  --sidebar-primary-foreground: oklch(0.16 0.02 265);
+  --sidebar-accent: oklch(0.27 0.026 260 / 0.7);
+  --sidebar-accent-foreground: oklch(0.96 0.008 250);
+  --sidebar-border: var(--hq-rim-neutral);
+  --sidebar-ring: var(--hq-ion-cyan);
+
+  /* Legacy accent aliases used across components — desaturated so no
+     component paints a nightclub color just by keeping its old style. */
+  --cyan-glow: var(--hq-ion-cyan);
+  --electric: var(--hq-photon-blue);
+  --violet-glow: var(--hq-spectral-violet);
+  --gold-glow: var(--hq-amber);
+  --amber-glow: var(--hq-amber);
+  --green-glow: var(--hq-signal-green);
+  --pink-glow: var(--hq-soft-rose);
+
+  /* Glows become restrained edge definition, not bloom. */
+  --shadow-glow-cyan: 0 0 0 1px color-mix(in oklab, var(--hq-ion-cyan) 26%, transparent);
+  --shadow-glow-violet: 0 0 0 1px color-mix(in oklab, var(--hq-spectral-violet) 26%, transparent);
+  --shadow-glow-gold: 0 0 0 1px color-mix(in oklab, var(--hq-amber) 26%, transparent);
+}
+
+html[data-theme="holoquiet"] body {
+  background: var(--hq-bg-architecture);
+}
+
+/* ---- Plane 2: Workglass ------------------------------------------ */
+html[data-theme="holoquiet"] .glass-panel {
+  background: linear-gradient(
+    168deg,
+    color-mix(in oklab, var(--hq-workglass) 100%, transparent),
+    color-mix(in oklab, var(--hq-navy-smoke) 92%, transparent)
+  );
+  border: 1px solid var(--hq-rim-neutral);
+  /* Targeted, cheap blur: large reading surfaces stay near-opaque. */
+  backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.05),
+    var(--hq-shadow-low);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+html[data-theme="holoquiet"] .glass-panel-lifted {
+  transform: none;
+  background: linear-gradient(
+    168deg,
+    var(--hq-workglass-elevated),
+    color-mix(in oklab, var(--hq-navy-smoke) 96%, transparent)
+  );
+  border-color: oklch(0.86 0.02 250 / 0.2);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.07),
+    var(--hq-shadow-elevated);
+}
+
+/* Dialogs, drawers, popovers, dropdowns, tooltips — elevated Workglass. */
+html[data-theme="holoquiet"] [data-slot="dialog-content"],
+html[data-theme="holoquiet"] [data-slot="sheet-content"],
+html[data-theme="holoquiet"] [data-slot="popover-content"],
+html[data-theme="holoquiet"] [data-slot="dropdown-menu-content"],
+html[data-theme="holoquiet"] [data-slot="dropdown-menu-sub-content"],
+html[data-theme="holoquiet"] [data-slot="select-content"],
+html[data-theme="holoquiet"] [data-slot="command-dialog"] {
+  background: var(--hq-workglass-elevated);
+  border-color: oklch(0.86 0.02 250 / 0.18);
+  box-shadow: var(--hq-shadow-elevated);
+  backdrop-filter: blur(10px);
+}
+html[data-theme="holoquiet"] [data-slot="dialog-overlay"],
+html[data-theme="holoquiet"] [data-slot="sheet-overlay"] {
+  background: oklch(0.1 0.015 265 / 0.6);
+  backdrop-filter: none;
+}
+html[data-theme="holoquiet"] [data-slot="tooltip-content"] {
+  background: oklch(0.24 0.022 262);
+  color: oklch(0.96 0.008 250);
+  border: 1px solid var(--hq-rim-neutral);
+  box-shadow: var(--hq-shadow-low);
+}
+
+/* ---- Plane 2: Data Glass (dense operational data) ---------------- */
+html[data-theme="holoquiet"] table {
+  background: var(--hq-data-glass);
+}
+html[data-theme="holoquiet"] thead tr,
+html[data-theme="holoquiet"] [data-slot="table-header"] tr {
+  background: oklch(0.235 0.024 262);
+  border-bottom: 1px solid oklch(0.86 0.02 250 / 0.16);
+}
+html[data-theme="holoquiet"] tbody tr {
+  border-bottom: 1px solid oklch(0.86 0.02 250 / 0.07);
+}
+html[data-theme="holoquiet"] tbody tr:hover {
+  background: oklch(0.29 0.024 258 / 0.55);
+}
+html[data-theme="holoquiet"] tbody tr[data-state="selected"],
+html[data-theme="holoquiet"] tbody tr[aria-selected="true"] {
+  background: color-mix(in oklab, var(--hq-ion-cyan) 7%, transparent);
+  box-shadow: inset 2px 0 0 var(--hq-ion-cyan);
+}
+
+/* ---- Plane 2: navigation rail ------------------------------------ */
+html[data-theme="holoquiet"] [data-slot="sidebar-container"],
+html[data-theme="holoquiet"] [data-sidebar="sidebar"] {
+  background: var(--sidebar);
+  border-right: 1px solid var(--hq-rim-neutral);
+  backdrop-filter: blur(10px);
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"] {
+  border-left: 2px solid transparent;
+  border-radius: 0.5rem;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"]:hover {
+  background: oklch(0.3 0.024 258 / 0.5);
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"] {
+  background: color-mix(in oklab, var(--hq-ion-cyan) 8%, transparent);
+  border-left-color: var(--hq-ion-cyan);
+  color: oklch(0.97 0.008 250);
+}
+
+/* ---- Light Keys (buttons) and inputs ----------------------------- */
+html[data-theme="holoquiet"] [data-slot="button"] {
+  transition: background-color 130ms ease, box-shadow 130ms ease, border-color 130ms ease;
+}
+html[data-theme="holoquiet"] [data-slot="button"]:hover {
+  box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--hq-photon-blue) 40%, transparent);
+}
+html[data-theme="holoquiet"] [data-slot="button"]:active {
+  box-shadow: inset 0 1px 2px oklch(0 0 0 / 0.4);
+}
+html[data-theme="holoquiet"] [data-slot="input"],
+html[data-theme="holoquiet"] [data-slot="textarea"],
+html[data-theme="holoquiet"] .rich-text-editor {
+  background: oklch(0.19 0.02 263 / 0.9);
+  border-color: var(--hq-rim-neutral);
+  color: oklch(0.96 0.008 250);
+}
+html[data-theme="holoquiet"] :is(input, textarea, [contenteditable="true"], button, a, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--hq-ion-cyan) 60%, transparent);
+  border-color: color-mix(in oklab, var(--hq-ion-cyan) 55%, transparent);
+}
+
+/* ---- Tabs: thin projected underline ------------------------------ */
+html[data-theme="holoquiet"] [data-slot="tabs-trigger"][data-state="active"] {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--hq-ion-cyan);
+  color: oklch(0.97 0.008 250);
+}
+
+/* ---- Plane 3: Focus Workspace semantics -------------------------- */
+/* CURRENT — the strongest anchor: a thin projected lower boundary. */
+html[data-theme="holoquiet"] .focus-current {
+  background: color-mix(in oklab, var(--hq-ion-cyan) 5%, var(--hq-workglass-elevated));
+  border-color: var(--hq-rim-active);
+  box-shadow:
+    inset 0 -2px 0 color-mix(in oklab, var(--hq-ion-cyan) 55%, transparent),
+    var(--hq-shadow-low);
+}
+/* NEXT — calm elevated Workglass, no signal color. */
+html[data-theme="holoquiet"] .focus-next {
+  background: var(--hq-workglass-elevated);
+  border-color: oklch(0.86 0.02 250 / 0.16);
+}
+/* WATCH — peripheral signaling, severity-scaled. */
+html[data-theme="holoquiet"] .focus-watch--info {
+  background: color-mix(in oklab, var(--hq-photon-blue) 4%, transparent);
+  border-color: color-mix(in oklab, var(--hq-photon-blue) 18%, transparent);
+}
+html[data-theme="holoquiet"] .focus-watch--warning {
+  background: color-mix(in oklab, var(--hq-amber) 5%, transparent);
+  border-color: var(--hq-rim-warning);
+  box-shadow: inset 2px 0 0 color-mix(in oklab, var(--hq-amber) 60%, transparent);
+}
+html[data-theme="holoquiet"] .focus-watch--critical {
+  background: color-mix(in oklab, var(--hq-soft-rose) 7%, transparent);
+  border-color: color-mix(in oklab, var(--hq-soft-rose) 50%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in oklab, var(--hq-soft-rose) 65%, transparent);
+}
+/* BLOCKED — interrupted rhythm: a dashed edge, not an alarm. */
+html[data-theme="holoquiet"] .focus-blocked {
+  background: color-mix(in oklab, var(--hq-amber) 3.5%, var(--hq-workglass));
+  border-color: var(--hq-rim-blocked);
+  border-left: 2px dashed color-mix(in oklab, var(--hq-amber) 55%, transparent);
+}
+
+/* Focus Field — an invisible desk lamp shifted toward the active work.
+   No dimming, no blur, no opacity change on anything else. */
+html[data-theme="holoquiet"] .focus-active-surface[data-focus-active="true"],
+html[data-theme="holoquiet"] [data-focus-field="active"] {
+  border-color: var(--hq-rim-active);
+  background: color-mix(in oklab, var(--hq-ion-cyan) 4%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--hq-ion-cyan) 30%, transparent),
+    var(--hq-shadow-low);
+}
+
+/* ---- Plane 3: Spectral Glass (AI / Copilot) ---------------------- */
+html[data-theme="holoquiet"] [data-surface="copilot"],
+html[data-theme="holoquiet"] .hq-spectral-glass {
+  background: linear-gradient(
+    170deg,
+    var(--hq-spectral-glass),
+    color-mix(in oklab, var(--hq-navy-smoke) 92%, transparent)
+  );
+  border-color: var(--hq-rim-ai);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--hq-spectral-violet) 16%, transparent),
+    var(--hq-shadow-elevated);
+}
+/* Faint spectral refraction along the leading edge — static when idle. */
+html[data-theme="holoquiet"] [data-surface="copilot"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklab, var(--hq-spectral-violet) 55%, transparent),
+    color-mix(in oklab, var(--hq-photon-blue) 40%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+html[data-theme="holoquiet"] [data-surface="copilot"][data-busy="true"]::before {
+  animation: hq-spectral-drift 3.6s ease-in-out infinite;
+}
+@keyframes hq-spectral-drift {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+
+/* ---- Plane 3: Safe Action Executor states (visual only) ---------- */
+html[data-theme="holoquiet"] [data-action-state="executing"] {
+  box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--hq-photon-blue) 55%, transparent);
+}
+html[data-theme="holoquiet"] [data-action-state="success"] {
+  box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--hq-signal-green) 60%, transparent);
+}
+html[data-theme="holoquiet"] [data-action-state="failed"] {
+  box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--hq-soft-rose) 60%, transparent);
+}
+html[data-theme="holoquiet"] [data-action-state="uncertain"] {
+  border-left: 2px dashed color-mix(in oklab, var(--hq-amber) 60%, transparent);
+}
+
+/* ---- Ambient telemetry (peripheral, never animated) -------------- */
+html[data-theme="holoquiet"] .hq-telemetry,
+html[data-theme="holoquiet"] header[class*="sticky"] {
+  border-bottom-color: var(--hq-rim-neutral);
+}
+html[data-theme="holoquiet"] header[class*="sticky"] {
+  background: linear-gradient(
+    180deg,
+    oklch(0.2 0.022 263 / 0.92),
+    oklch(0.185 0.022 264 / 0.88)
+  );
+  box-shadow: 0 1px 0 var(--hq-telemetry);
+  backdrop-filter: blur(10px);
+}
+
+/* ---- Architectural background (Plane 1) -------------------------- */
+.hq-architecture {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  background:
+    /* faint distant city / window glow along the lower horizon */
+    linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--hq-horizon, oklch(0.62 0.05 240)) 7%, transparent),
+      transparent 26%
+    ),
+    /* soft overhead office light */
+    radial-gradient(120% 70% at 50% -10%, oklch(0.28 0.03 258 / 0.55), transparent 60%),
+    linear-gradient(180deg, var(--hq-bg-workspace), var(--hq-bg-architecture));
+}
+/* Structural geometry: glass partitions + a single faint floor line.
+   Static CSS gradients only — nothing repaints during work. */
+.hq-architecture::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      oklch(0.8 0.02 250 / 0.028) 0 1px,
+      transparent 1px 220px
+    ),
+    linear-gradient(180deg, transparent 62%, oklch(0.8 0.02 250 / 0.035) 62.1%, transparent 62.4%);
+  mask-image: radial-gradient(120% 90% at 50% 30%, oklch(0 0 0 / 1), transparent 78%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="holoquiet"] [data-surface="copilot"][data-busy="true"]::before {
+    animation: none;
+    opacity: 0.6;
+  }
+  html[data-theme="holoquiet"] .glass-panel,
+  html[data-theme="holoquiet"] [data-slot="button"],
+  html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"] {
+    transition: none;
+  }
+}

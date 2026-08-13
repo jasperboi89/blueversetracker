@@ -151,6 +151,8 @@ export function CopilotSheet() {
   const [proposals, setProposals] = useState<AnyProposedAction[]>([]);
   const [applying, setApplying] = useState<string | null>(null);
   const [failures, setFailures] = useState<Record<string, string>>({});
+  /** Presentational only — mirrors the executor's reported outcome for styling. */
+  const [outcomes, setOutcomes] = useState<Record<string, "failed" | "uncertain">>({});
   const [showThreads, setShowThreads] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -315,6 +317,11 @@ export function CopilotSheet() {
         delete next[action.id];
         return next;
       });
+      setOutcomes((prev) => {
+        const next = { ...prev };
+        delete next[action.id];
+        return next;
+      });
       if (out.status === "duplicate") toast.info(out.message ?? "Already applied.");
       else toast.success(out.message ?? "Applied.");
       return;
@@ -322,10 +329,12 @@ export function CopilotSheet() {
     if (out.status === "uncertain") {
       // Neither applied nor safely repeatable — keep it visible for the operator.
       setFailures((prev) => ({ ...prev, [action.id]: out.message ?? "Outcome unclear." }));
+      setOutcomes((prev) => ({ ...prev, [action.id]: "uncertain" }));
       toast.warning(out.message ?? "Outcome unclear — verify before applying again.");
       return;
     }
     setFailures((prev) => ({ ...prev, [action.id]: out.message ?? "That action failed." }));
+    setOutcomes((prev) => ({ ...prev, [action.id]: "failed" }));
     toast.error(out.message ?? "That action failed.");
   };
 
@@ -341,7 +350,9 @@ export function CopilotSheet() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side="right"
-        className="glass-panel flex w-full flex-col gap-3 border-0 sm:max-w-md"
+        data-surface="copilot"
+        data-busy={busy || undefined}
+        className="glass-panel relative flex w-full flex-col gap-3 border-0 sm:max-w-md"
       >
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -527,6 +538,9 @@ export function CopilotSheet() {
               {proposals.map((p) => (
                 <div
                   key={p.id}
+                  data-action-state={
+                    applying === p.id ? "executing" : (outcomes[p.id] ?? undefined)
+                  }
                   className="rounded-md border border-border/50 bg-white/[0.04] p-2 text-xs"
                 >
                   <div className="text-foreground/90">{describeAction(p)}</div>
