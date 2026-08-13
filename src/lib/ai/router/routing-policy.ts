@@ -49,10 +49,14 @@ export const ROUTING_POLICY: Record<
     confidence: "medium",
     capabilities: { tools: true, streaming: true },
   },
+  // Amtelco / IS documentation reasoning is genuinely hard; keep it flagship
+  // with a balanced fallback when the flagship path is unavailable.
   knowledge_interpretation: {
-    tier: "balanced",
-    reasonCode: "ROUTINE_GENERATION",
-    confidence: "medium",
+    tier: "flagship",
+    reasonCode: "MULTI_SOURCE_REASONING",
+    confidence: "high",
+    capabilities: { longContext: true },
+    fallbackTier: "balanced",
   },
   handoff_generation: { tier: "balanced", reasonCode: "ROUTINE_GENERATION", confidence: "high" },
   structured_generation: {
