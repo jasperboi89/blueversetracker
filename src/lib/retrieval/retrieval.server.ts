@@ -307,6 +307,7 @@ export async function searchKnowledge(
   const results = fuseCandidates(lexical, semantic, {
     identifiers,
     ...(input.accountNumber ? { accountNumber: input.accountNumber } : {}),
+    includeHistorical: input.includeHistorical ?? false,
     limit,
   });
 
