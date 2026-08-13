@@ -218,16 +218,22 @@ describe("dedupe, cooldown and dismissal", () => {
   });
 
   it("reappears when a dismissed condition escalates", () => {
-    const first = mergeAwareness(evaluateAwareness(s()), state, NOW, SHIFT);
-    const dismissed = dismissAwareness(first.state, "long-work:ticket:t1", "warning", NOW);
+    // Start at info level, then escalate to warning after dismissal.
+    const info = snap({
+      activeWork: trackedWork({ elapsedMs: T.longWorkInfoMs + 1 }),
+      contextWorkItem: ctxFor("t1"),
+    });
+    const first = mergeAwareness(evaluateAwareness(info), state, NOW, SHIFT);
+    const dismissed = dismissAwareness(first.state, "long-work:ticket:t1", "info", NOW);
     const worse = snap({
-      activeWork: trackedWork({ elapsedMs: T.longWorkCriticalMs + 1 }),
+      activeWork: trackedWork({ elapsedMs: T.longWorkWarnMs + 1 }),
       contextWorkItem: ctxFor("t1"),
     });
     const after = mergeAwareness(evaluateAwareness(worse), dismissed, NOW + 60_000, SHIFT);
     const item = after.items.find((i) => i.dedupeKey === "long-work:ticket:t1");
-    expect(item?.severity).toBe("critical");
+    expect(item?.severity).toBe("warning");
   });
+
 
   it("clears a condition once the entity is resolved", () => {
     const first = mergeAwareness(evaluateAwareness(s()), state, NOW, SHIFT);
