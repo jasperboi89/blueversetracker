@@ -113,6 +113,60 @@ export type Database = {
         }
         Relationships: []
       }
+      action_ledger: {
+        Row: {
+          action_id: string
+          action_type: string
+          after_state: Json | null
+          before_state: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error: string | null
+          executed_at: string | null
+          id: string
+          idempotency_key: string
+          operator_user_id: string
+          origin: string
+          proposal_id: string | null
+          status: string
+        }
+        Insert: {
+          action_id: string
+          action_type: string
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          idempotency_key: string
+          operator_user_id: string
+          origin: string
+          proposal_id?: string | null
+          status?: string
+        }
+        Update: {
+          action_id?: string
+          action_type?: string
+          after_state?: Json | null
+          before_state?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          idempotency_key?: string
+          operator_user_id?: string
+          origin?: string
+          proposal_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       auth_audit_log: {
         Row: {
           created_at: string
