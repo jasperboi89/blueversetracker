@@ -48,7 +48,8 @@ export interface ShiftSummary {
 
 export interface ShiftWorkingContext {
   shiftKey: string;
-  activeTicket?: { id: string; subject?: string; accountId?: string; startedAt?: string };
+  /** No ticket body/subject here — the spine carries IDs and labels only. */
+  activeTicket?: { id: string; label?: string; accountId?: string; openedAt?: string };
   activeAccount?: { id: string; name?: string };
   activeWorkItem?: { id: string; title?: string; startedAt?: string };
   activeDispatch?: { id: string };
@@ -97,9 +98,9 @@ export function reduceShiftContext(
         ...ctx,
         activeTicket: {
           id: event.ticketId,
-          subject: str(event.metadata?.["subject"]),
+          label: label || undefined,
           accountId: event.accountId,
-          startedAt: event.timestamp,
+          openedAt: event.timestamp,
         },
         // Opening a ticket also establishes its account context, but never
         // wipes an account the operator navigated to deliberately.
