@@ -9,18 +9,43 @@ import {
 import { nightPlanStore } from "@/lib/night-plan-store";
 import { eventSpine } from "./event-spine";
 
-/** In-memory stand-in for the server ledger, enforcing the same uniqueness. */
-function fakeLedger() {
-  const rows = new Map<string, { status: string; before?: unknown; after?: unknown }>();
+const LEASE_MS = 90_000;
+
+type Row = { status: string; leaseAt: number; before?: unknown; after?: unknown };
+
+/**
+ * In-memory stand-in for the server ledger, mirroring the real reservation
+ * lease semantics: success → duplicate, failed → retry, live executing →
+ * in_flight, expired executing → uncertain.
+ */
+function fakeLedger(now: () => number = Date.now) {
+  const rows = new Map<string, Row>();
   const port: LedgerPort = {
     reserve: async ({ idempotencyKey }) => {
       const prior = rows.get(idempotencyKey);
-      if (prior) return { outcome: "duplicate", priorStatus: prior.status };
-      rows.set(idempotencyKey, { status: "executing" });
-      return { outcome: "reserved", priorStatus: null };
+      if (!prior) {
+        rows.set(idempotencyKey, { status: "executing", leaseAt: now() });
+        return { outcome: "reserved", priorStatus: null };
+      }
+      if (prior.status === "success") {
+        return { outcome: "duplicate_success", priorStatus: prior.status };
+      }
+      if (prior.status === "failed") {
+        rows.set(idempotencyKey, { ...prior, status: "executing", leaseAt: now() });
+        return { outcome: "retry", priorStatus: "failed" };
+      }
+      if (prior.status === "executing") {
+        if (now() - prior.leaseAt < LEASE_MS) {
+          return { outcome: "in_flight", priorStatus: prior.status };
+        }
+        rows.set(idempotencyKey, { ...prior, status: "uncertain" });
+        return { outcome: "uncertain", priorStatus: "executing" };
+      }
+      return { outcome: "uncertain", priorStatus: prior.status };
     },
     finalize: async ({ idempotencyKey, status, before, after }) => {
-      rows.set(idempotencyKey, { status, before, after });
+      const prior = rows.get(idempotencyKey);
+      rows.set(idempotencyKey, { status, leaseAt: prior?.leaseAt ?? now(), before, after });
     },
   };
   return { port, rows };
