@@ -34,6 +34,7 @@ function ticket(over: Record<string, unknown> = {}) {
 function ports(over: Partial<AccountContextPorts> = {}): AccountContextPorts {
   return {
     identity: () => ({ number: ACC, name: "Sheboygan", status: "active" }),
+    resolutions: async () => [],
     tickets: () => [ticket(), ticket({ id: "t2", number: "102", updatedAt: now - 1000 })],
     work: () => ({
       logged: [
