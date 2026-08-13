@@ -1,11 +1,20 @@
 import { useEffect } from "react";
 import { startShiftContext } from "@/lib/core/shift-context";
+import { startAwareness } from "@/lib/core/awareness-store";
 
 /**
  * Headless: subscribes the Shift Working Context reducer to the Event Spine
- * for the life of the authenticated shell. Renders nothing.
+ * — and the deterministic Awareness engine on top of it — for the life of the
+ * authenticated shell. Renders nothing.
  */
 export function ShiftContextWatcher() {
-  useEffect(() => startShiftContext(), []);
+  useEffect(() => {
+    const stopCtx = startShiftContext();
+    const stopAwareness = startAwareness();
+    return () => {
+      stopAwareness();
+      stopCtx();
+    };
+  }, []);
   return null;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useInsights, type Insight } from "@/lib/ai/awareness";
+import { dismissInsight, useInsights, type Insight } from "@/lib/ai/awareness";
 import { useDisplayPrefs } from "@/lib/settings/display-prefs-store";
 
 /**
@@ -30,29 +30,37 @@ export function InsightToaster() {
     for (const ins of insights) {
       if (ins.severity === "info") continue;
       if (firedRef.current.has(ins.id)) continue;
+      // Awareness engine cooldown: the item stays visible in the panel, but
+      // it must not re-alert until its cooldown has elapsed.
+      if (ins.cooldownUntil && Date.parse(ins.cooldownUntil) > now) continue;
       const last = lastAtRef.current[ins.severity] ?? 0;
       if (now - last < 20_000) continue; // per-severity debounce
 
       firedRef.current.add(ins.id);
       lastAtRef.current[ins.severity] = now;
-      fireToast(ins, () => {
-        if (!ins.to) return;
-        const to = ins.to.replace(/^\/_authenticated/, "");
-        navigate({ to: to as never, params: (ins.params ?? {}) as never });
-      });
+      fireToast(
+        ins,
+        () => {
+          if (!ins.to) return;
+          const to = ins.to.replace(/^\/_authenticated/, "");
+          navigate({ to: to as never, params: (ins.params ?? {}) as never });
+        },
+        () => dismissInsight(ins),
+      );
     }
   }, [insights, prefs.quietInsights, navigate]);
 
   return null;
 }
 
-function fireToast(ins: Insight, onOpen: () => void) {
+function fireToast(ins: Insight, onOpen: () => void, onDismiss: () => void) {
   const opts = {
     id: `insight-${ins.id}`,
     description: ins.to ? "Tap Open to jump there." : undefined,
     action: ins.to
       ? { label: "Open", onClick: onOpen }
       : undefined,
+    cancel: ins.dedupeKey ? { label: "Dismiss", onClick: onDismiss } : undefined,
     duration: ins.severity === "high" ? 9000 : 6500,
   };
   if (ins.severity === "high") toast.error(ins.text, opts);
