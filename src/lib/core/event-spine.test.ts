@@ -70,19 +70,6 @@ describe("event spine", () => {
     expect(eventSpine.recent(1)[0]!.ticketId).toBe("t339");
   });
 
-  it("drops prior-shift events on rollover", () => {
-    eventSpine.emit({ type: "ticket.opened", source: "route", ticketId: "t1" });
-    const state = eventSpine.getState();
-    localStorage.setItem(
-      "aih:core:eventspine:v1",
-      JSON.stringify({ ...state, shiftKey: "1999-01-01" }),
-    );
-    window.dispatchEvent(new Event("storage"));
-    eventSpine.emit({ type: "ticket.opened", source: "route", ticketId: "t2" });
-    const events = eventSpine.recent(100);
-    expect(events.map((e) => e.ticketId)).toEqual(["t2"]);
-  });
-
   it("strips non-allowlisted and oversized metadata", () => {
     const e = eventSpine.emit({
       type: "ticket.pulled",

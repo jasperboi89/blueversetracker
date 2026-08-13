@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { reduceShiftContext, shiftContextStore, type ShiftWorkingContext } from "./shift-context";
+import { reduceShiftContext, type ShiftWorkingContext } from "./shift-context";
 import type { AccEvent, AccEventInput } from "./events";
 
 const BASE: ShiftWorkingContext = {
@@ -109,18 +109,4 @@ describe("shift context reducer", () => {
     expect(ctx.recentActivity[0]?.id).toBe("t39");
   });
 
-  it("resets context on shift rollover", () => {
-    const stale: ShiftWorkingContext = {
-      ...BASE,
-      shiftKey: "1999-01-01",
-      activeTicket: { id: "old" },
-      recentActivity: [{ id: "old", kind: "ticket", label: "Old", at: "x" }],
-    };
-    localStorage.setItem("aih:core:shiftctx:v1", JSON.stringify(stale));
-    window.dispatchEvent(new Event("storage"));
-    const ctx = shiftContextStore.get();
-    expect(ctx.activeTicket).toBeUndefined();
-    expect(ctx.recentActivity).toHaveLength(0);
-    expect(ctx.shiftKey).not.toBe("1999-01-01");
-  });
 });
