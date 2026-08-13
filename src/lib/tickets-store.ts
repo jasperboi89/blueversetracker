@@ -848,6 +848,7 @@ export const ticketsStore = {
   setIssueClassification(ticketId: string, classification: IssueClassification | null) {
     ensureLoaded();
     const before = state.tickets.find((t) => t.id === ticketId);
+    const unchanged = (before?.issueClassification ?? null) === (classification ?? null);
     state = {
       ...state,
       tickets: state.tickets.map((t) =>
@@ -857,6 +858,7 @@ export const ticketsStore = {
       ),
     };
     persist();
+    if (unchanged) return;
     void import("./core/event-spine").then(({ eventSpine }) =>
       eventSpine.emit({
         type: "ticket.status_changed",
@@ -866,6 +868,7 @@ export const ticketsStore = {
         metadata: {
           label: before ? `Ticket #${before.number}` : undefined,
           classification: classification ?? null,
+          prevStatus: before?.issueClassification ?? null,
         },
       }),
     );
