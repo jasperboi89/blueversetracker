@@ -296,6 +296,12 @@ export function CopilotSheet() {
       else toast.success(out.message ?? "Applied.");
       return;
     }
+    if (out.status === "uncertain") {
+      // Neither applied nor safely repeatable — keep it visible for the operator.
+      setFailures((prev) => ({ ...prev, [action.id]: out.message ?? "Outcome unclear." }));
+      toast.warning(out.message ?? "Outcome unclear — verify before applying again.");
+      return;
+    }
     setFailures((prev) => ({ ...prev, [action.id]: out.message ?? "That action failed." }));
     toast.error(out.message ?? "That action failed.");
   };
