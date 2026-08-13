@@ -150,7 +150,7 @@ export async function executeAction(
     blockers.create({
       type: "action_uncertain",
       entity: { type: "action", id: action.id },
-      ...(action.context?.accountNumber ? { accountId: action.context.accountNumber } : {}),
+      ...(action.context?.accountId ? { accountId: action.context.accountId } : {}),
       reasonCode: "ACTION_OUTCOME_UNCERTAIN",
       safeLabel: "Outcome needs verification",
       source: "action_executor",
