@@ -594,27 +594,39 @@ export function CopilotSheet() {
               ))}
             </div>
 
-            <div className="flex gap-2">
+            {/* One unified composer surface: toolbar, text area and send
+                control share a single shell that owns the focus treatment. */}
+            <div className="hq-composer flex min-w-0 flex-col overflow-hidden rounded-lg border border-border/40 bg-white/[0.03]">
               <RichTextEditor
                 ref={inputRef}
-                minHeight={72}
+                bare
+                minHeight={44}
                 value={question}
                 onChange={setQuestion}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void ask(question);
                 }}
-                placeholder="Ask about tickets, accounts, your shift… (⌘/Ctrl+Enter)"
+                placeholder="Ask about tickets, accounts, your shift…"
                 className="text-sm"
+                editorClassName="max-h-40 overflow-y-auto"
               />
-              {busy ? (
-                <Button variant="secondary" onClick={stop} title="Stop">
-                  <Square className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button onClick={() => void ask(question)} disabled={!question.trim()}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              )}
+              <div className="flex items-center justify-between gap-2 border-t border-border/30 px-2 py-1.5">
+                <span className="truncate text-[10px] text-muted-foreground">⌘/Ctrl + Enter to send</span>
+                {busy ? (
+                  <Button size="sm" variant="secondary" onClick={stop} title="Stop">
+                    <Square className="h-3.5 w-3.5" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => void ask(question)}
+                    disabled={!question.trim()}
+                    aria-label="Send"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
           </>
         )}
