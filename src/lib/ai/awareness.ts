@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNow } from "@/hooks/use-now";
 import { isOverdue, useTickets } from "@/lib/tickets-store";
+import { useActiveWork } from "@/lib/workspace/active-work-store";
 import { useAwareness, awarenessStore } from "@/lib/core/awareness-store";
 import type { AwarenessItem, AwarenessSeverity } from "@/lib/core/awareness";
 
@@ -52,6 +53,7 @@ export function insightFromAwareness(a: AwarenessItem): Insight {
 export function useInsights(): Insight[] {
   const awareness = useAwareness();
   const { tickets } = useTickets();
+  const { current } = useActiveWork();
   const now = useNow(30_000);
   const nowMs = now.getTime() || Date.now();
 
@@ -74,19 +76,14 @@ export function useInsights(): Insight[] {
   }
 
   const open = tickets.filter((t) => t.status !== "completed");
-  if (!awareness.some((a) => a.type === "long_running_work" || a.type === "work_without_timer") &&
-      open.length > 0 &&
-      !insights.some((i) => i.id.startsWith("long-work"))) {
-    // Only when nothing is being tracked at all.
-    if (!awareness.some((a) => a.entity?.type === "work" || a.type === "timer_without_work")) {
-      insights.push({
-        id: "nothing-active",
-        severity: "info",
-        text: `Nothing in progress — ${open.length} open ticket${open.length === 1 ? "" : "s"} waiting.`,
-        to: "/freshdesk-tickets",
-        params: {},
-      });
-    }
+  if (!current && open.length > 0) {
+    insights.push({
+      id: "nothing-active",
+      severity: "info",
+      text: `Nothing in progress — ${open.length} open ticket${open.length === 1 ? "" : "s"} waiting.`,
+      to: "/freshdesk-tickets",
+      params: {},
+    });
   }
 
   return insights;
