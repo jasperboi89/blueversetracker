@@ -737,6 +737,23 @@ export const ticketsStore = {
       }),
     };
     persist();
+    // A waiting-state transition is a real operational blocker signal — the
+    // blocker reconciler listens for this.
+    if (payload.status && payload.status !== t.status) {
+      void import("./core/event-spine").then(({ eventSpine }) =>
+        eventSpine.emit({
+          type: "ticket.status_changed",
+          source: "tickets-store",
+          ticketId,
+          accountId: t.accountNumber || undefined,
+          metadata: {
+            label: `Ticket #${t.number}`,
+            status: payload.status ?? null,
+            prevStatus: t.status,
+          },
+        }),
+      );
+    }
     return {
       newNotes: addNotes.length,
       newAttachments: addAtts.length,

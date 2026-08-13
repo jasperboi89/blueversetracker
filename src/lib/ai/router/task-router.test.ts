@@ -244,3 +244,20 @@ describe("routing evaluation matrix", () => {
     }
   });
 });
+describe("deterministic intercept · blocked work", () => {
+  it("answers blocker questions from recorded state", () => {
+    for (const q of [
+      "what's blocked right now?",
+      "which tickets are waiting on customer service",
+      "any blockers?",
+      "blockers",
+    ]) {
+      expect(detectDeterministicIntent(q)?.intercept).toBe("blocked_work");
+    }
+  });
+
+  it("does not intercept open-ended reasoning about a blocker", () => {
+    expect(detectDeterministicIntent("why does this keep getting blocked at the router")?.intercept)
+      .not.toBe("blocked_work");
+  });
+});

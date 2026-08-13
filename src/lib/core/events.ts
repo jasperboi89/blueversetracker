@@ -31,6 +31,10 @@ export type AccEventType =
   // Coverage
   | "coverage.expiring"
   | "coverage.confirmed"
+  // Blockers (Phase 9.5) — "work cannot move forward"
+  | "blocker.created"
+  | "blocker.updated"
+  | "blocker.resolved"
   // Knowledge Vault
   | "knowledge.created"
   | "knowledge.updated"
@@ -116,6 +120,14 @@ export const EVENT_METADATA_KEYS = [
   "confidence",
   "sourceType",
   "resolutionId",
+  // Blocker routing — IDs and reason codes only.
+  "blockerId",
+  "blockerType",
+  "reasonCode",
+  "entityType",
+  "entityId",
+  "blockerSource",
+  "safeLabel",
 ] as const;
 
 export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];
@@ -125,6 +137,8 @@ export type AccEventMetadata = Partial<
 >;
 
 const MAX_STRING = 120;
+/** Blocker labels are operator-facing chips, not prose. */
+const MAX_SAFE_LABEL = 60;
 
 /** Keep only allowlisted, small, primitive metadata. */
 export function sanitizeMetadata(
@@ -139,7 +153,8 @@ export function sanitizeMetadata(
     else if (typeof v === "number" || typeof v === "boolean") out[key] = v;
     else if (typeof v === "string") {
       const t = v.trim();
-      if (t) out[key] = t.length > MAX_STRING ? `${t.slice(0, MAX_STRING)}…` : t;
+      const cap = key === "safeLabel" ? MAX_SAFE_LABEL : MAX_STRING;
+      if (t) out[key] = t.length > cap ? `${t.slice(0, cap)}…` : t;
     }
   }
   return Object.keys(out).length ? out : undefined;

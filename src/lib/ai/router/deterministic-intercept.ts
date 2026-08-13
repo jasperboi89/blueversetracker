@@ -9,6 +9,7 @@ export type InterceptKind =
   | "open_ticket"
   | "current_work"
   | "night_plan_state"
+  | "blocked_work"
   | "search_prior_work";
 
 export interface DeterministicIntercept {
@@ -26,6 +27,9 @@ const CURRENT_WORK =
   /^(?:what|which)\s+(?:ticket|work|account)\s+(?:am i|are we)\s+(?:currently\s+)?working on\b/i;
 const NIGHT_PLAN =
   /\b(how many|what)\b.*\b(must|should|could)?\s*items?\b.*\b(night plan|remain|left)\b|^night plan status\b/i;
+// Blocked work is fully recorded state (first-class blockers) — never a model call.
+const BLOCKED_WORK =
+  /\b(what(?:'s| is| are)?|which|any)\b[^?]*\b(blocked|blockers?|waiting on|stuck)\b|^blockers?\b/i;
 const SEEN_BEFORE =
   /\b(have we|has this|did we)\b.*\b(seen|dealt with|fixed|handled)\b.*\b(before|previously)\b/i;
 
@@ -44,6 +48,7 @@ export function detectDeterministicIntent(raw: string): DeterministicIntercept |
 
   if (CURRENT_WORK.test(text)) return { intercept: "current_work", taskKind: "lookup" };
   if (NIGHT_PLAN.test(text)) return { intercept: "night_plan_state", taskKind: "lookup" };
+  if (BLOCKED_WORK.test(text)) return { intercept: "blocked_work", taskKind: "lookup" };
 
   if (SEEN_BEFORE.test(text)) {
     return {

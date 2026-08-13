@@ -167,7 +167,19 @@ describe("focus · BLOCKED", () => {
     const f = buildFocusWorkspace(
       snapshot({
         context: {
-          blockers: [{ id: "b1", label: "Awaiting vendor callback", since: "2026-08-13T02:00:00Z" }],
+          blockers: [
+            {
+              id: "manual:work:w1",
+              type: "manual" as const,
+              entity: { type: "work" as const, id: "w1" },
+              reasonCode: "OPERATOR_BLOCKED",
+              safeLabel: "Awaiting vendor callback",
+              createdAt: "2026-08-13T02:00:00Z",
+              source: "operator" as const,
+              label: "Awaiting vendor callback",
+              since: "2026-08-13T02:00:00Z",
+            },
+          ],
         },
         tickets: [
           { id: "t2", number: "12114", status: "waiting-cs", updatedAt: 1, accountNumber: "4821" },
