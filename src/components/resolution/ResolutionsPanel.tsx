@@ -125,7 +125,7 @@ export function ResolutionsPanel({
                   </div>
                   <p className="truncate font-medium text-foreground">{r.problem}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    Resolved {formatCentralShort(new Date(r.updatedAt).getTime())}
+                    Resolved {formatCentralShort(new Date(r.updatedAt))}
                   </p>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setViewing(r)}>
