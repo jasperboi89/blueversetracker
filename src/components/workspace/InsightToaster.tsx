@@ -3,7 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useInsights, type Insight } from "@/lib/ai/awareness";
 import { useDisplayPrefs } from "@/lib/settings/display-prefs-store";
-import { usePresencePrefs } from "@/lib/presence/presence-prefs-store";
 
 /**
  * Mounts once inside the authenticated shell. Watches the deterministic
@@ -14,7 +13,6 @@ import { usePresencePrefs } from "@/lib/presence/presence-prefs-store";
 export function InsightToaster() {
   const insights = useInsights();
   const prefs = useDisplayPrefs();
-  const presence = usePresencePrefs();
   const navigate = useNavigate();
   const firedRef = useRef<Set<string>>(new Set());
   const lastAtRef = useRef<Record<string, number>>({});
@@ -31,8 +29,6 @@ export function InsightToaster() {
 
     for (const ins of insights) {
       if (ins.severity === "info") continue;
-      // The holographic presence handles high-severity messages when enabled.
-      if (presence.enabled && ins.severity === "high") continue;
       if (firedRef.current.has(ins.id)) continue;
       const last = lastAtRef.current[ins.severity] ?? 0;
       if (now - last < 20_000) continue; // per-severity debounce
@@ -45,7 +41,7 @@ export function InsightToaster() {
         navigate({ to: to as never, params: (ins.params ?? {}) as never });
       });
     }
-  }, [insights, prefs.quietInsights, presence.enabled, navigate]);
+  }, [insights, prefs.quietInsights, navigate]);
 
   return null;
 }
