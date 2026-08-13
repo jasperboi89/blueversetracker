@@ -276,9 +276,78 @@ export function reduceShiftContext(
       const id = `coverage:${event.accountId ?? label}`;
       return { ...ctx, warnings: ctx.warnings.filter((w) => w.id !== id) };
     }
+    case "blocker.created":
+    case "blocker.updated": {
+      const next = toBlocker(event);
+      if (!next) return ctx;
+      const existing = ctx.blockers.find((b) => b.id === next.id);
+      if (existing) {
+        const merged: ShiftBlocker = {
+          ...existing,
+          ...next,
+          createdAt: existing.createdAt,
+          since: existing.since,
+          updatedAt: event.timestamp,
+        };
+        // Meaningless refresh — keep the reference stable.
+        if (
+          existing.reasonCode === merged.reasonCode &&
+          existing.safeLabel === merged.safeLabel &&
+          existing.accountId === merged.accountId &&
+          existing.type === merged.type
+        ) {
+          return ctx;
+        }
+        return { ...ctx, blockers: ctx.blockers.map((b) => (b.id === merged.id ? merged : b)) };
+      }
+      return { ...ctx, blockers: [...ctx.blockers, next].slice(-MAX_BLOCKERS) };
+    }
+    case "blocker.resolved": {
+      const id = str(event.metadata?.["blockerId"]);
+      if (!id) return ctx;
+      if (!ctx.blockers.some((b) => b.id === id)) return ctx; // idempotent
+      return { ...ctx, blockers: ctx.blockers.filter((b) => b.id !== id) };
+    }
     default:
       return ctx;
   }
+}
+
+const BLOCKER_TYPES = new Set<string>(Object.keys(BLOCKER_TYPE_LABEL));
+const ENTITY_TYPES = new Set<string>(["ticket", "work", "dispatch", "account", "action"]);
+const BLOCKER_SOURCES = new Set<string>([
+  "ticket",
+  "work",
+  "action_executor",
+  "operator",
+  "system",
+]);
+
+/** Build a blocker record from allowlisted spine metadata only. */
+function toBlocker(event: AccEvent): ShiftBlocker | undefined {
+  const m = event.metadata ?? {};
+  const id = str(m["blockerId"]);
+  const type = str(m["blockerType"]);
+  const entityType = str(m["entityType"]);
+  const entityId = str(m["entityId"]);
+  const reasonCode = str(m["reasonCode"]);
+  if (!id || !type || !entityType || !entityId || !reasonCode) return undefined;
+  if (!BLOCKER_TYPES.has(type) || !ENTITY_TYPES.has(entityType)) return undefined;
+  const src = str(m["blockerSource"]);
+  const source = (src && BLOCKER_SOURCES.has(src) ? src : "system") as BlockerSource;
+  return {
+    id,
+    type: type as BlockerType,
+    entity: { type: entityType as BlockerEntityType, id: entityId },
+    accountId: event.accountId,
+    reasonCode,
+    safeLabel: str(m["safeLabel"]),
+    createdAt: event.timestamp,
+    source,
+    label: str(m["safeLabel"]) ?? BLOCKER_TYPE_LABEL[type as BlockerType],
+    since: event.timestamp,
+    ticketId: entityType === "ticket" ? entityId : event.ticketId,
+  };
 }
 
 function base(): ShiftWorkingContext {
