@@ -117,18 +117,26 @@ export const finalizeAction = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => finalizeSchema.parse(input))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const patch: Record<string, unknown> = {
+    const patch: {
+      status: string;
+      executed_at: string;
+      before_state: unknown;
+      after_state: unknown;
+      error: string | null;
+      entity_type?: string;
+      entity_id?: string;
+    } = {
       status: data.status,
       executed_at: new Date().toISOString(),
       before_state: data.before ?? null,
       after_state: data.after ?? null,
       error: data.error ?? null,
     };
-    if (data.entityType) patch["entity_type"] = data.entityType;
-    if (data.entityId) patch["entity_id"] = data.entityId;
+    if (data.entityType) patch.entity_type = data.entityType;
+    if (data.entityId) patch.entity_id = data.entityId;
     const { error } = await supabase
       .from("action_ledger")
-      .update(patch)
+      .update(patch as never)
       .eq("operator_user_id", userId)
       .eq("idempotency_key", data.idempotencyKey);
     if (error) throw new Error(error.message);
