@@ -63,8 +63,13 @@ describe("awareness rules", () => {
     expect(warn?.severity).toBe("warning");
     expect(warn?.message).toBe("Ticket #12345 has been active for 48m.");
     expect(warn?.dedupeKey).toBe("long-work:ticket:t1");
-    expect(at(T.longWorkCriticalMs + 1)?.severity).toBe("critical");
+
+    const veryLong = at(T.longWorkVeryLongMs + 1);
+    expect(veryLong?.severity).toBe("warning");
+    expect(veryLong?.title).toContain("extended");
+    expect(veryLong?.message).toContain("Consider wrapping up");
   });
+
 
   it("does not flag long work from a view-only open (no tracked time)", () => {
     // work.opened puts the item in context without a startedAt and banks no time.
