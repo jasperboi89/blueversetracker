@@ -47,9 +47,9 @@ export function describeRouting(entry: {
   tier: RouteTier;
   modelId?: string;
   reasonCode: RoutingReasonCode;
-  capabilities?: Record<string, boolean>;
+  capabilities?: Partial<Record<string, boolean>>;
 }): string {
-  const caps = Object.entries(entry.capabilities ?? {})
+  const caps = Object.entries((entry.capabilities ?? {}) as Record<string, boolean>)
     .filter(([, v]) => v)
     .map(([k]) => k)
     .join(", ");
