@@ -20,6 +20,7 @@ export type AccEventType =
   | "work.paused"
   | "work.completed"
   // Dispatch testing
+  | "dispatch.opened"
   | "dispatch.started"
   | "dispatch.retested"
   | "dispatch.completed"
