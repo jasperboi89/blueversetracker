@@ -89,12 +89,13 @@ describe("fusion", () => {
     expect(out[0]!.sourceId).toBe("verified");
   });
 
-  it("demotes superseded results without hiding them", () => {
+  it("demotes superseded results when historical search is requested", () => {
     const active = lex("active", 1);
     const superseded = lex("old", 2, { sourceStatus: "superseded" });
     const out = fuseCandidates([superseded, active], [], {
       identifiers: parseIdentifiers("issue"),
       limit: 5,
+      includeHistorical: true,
       now: NOW,
     });
     expect(out.map((r) => r.sourceId)).toEqual(["active", "old"]);
