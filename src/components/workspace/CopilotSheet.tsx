@@ -35,9 +35,11 @@ import { nightPlanStore } from "@/lib/night-plan-store";
 import { activitySummary } from "@/lib/workspace/activity-store";
 import { htmlToPlainText } from "@/lib/rich-text";
 import { useInsights, type InsightSeverity } from "@/lib/ai/awareness";
-import { streamCopilot, TOOL_LABEL, type ProposedAction } from "@/lib/ai/copilot-stream";
+import { streamCopilot, TOOL_LABEL } from "@/lib/ai/copilot-stream";
 import { copilotThreads, useCopilotThreads } from "@/lib/ai/copilot-threads-store";
-import { applyAction, describeAction } from "@/lib/ai/copilot-actions";
+import { describeAction, toProposedAction } from "@/lib/ai/copilot-actions";
+import { executeAction } from "@/lib/core/action-executor";
+import type { AnyProposedAction } from "@/lib/core/actions";
 
 export const COPILOT_OPEN_EVENT = "intel-copilot:open";
 export function openCopilot() {
@@ -124,7 +126,9 @@ export function CopilotSheet() {
   const [busy, setBusy] = useState(false);
   const [liveText, setLiveText] = useState("");
   const [activity, setActivity] = useState<string[]>([]);
-  const [proposals, setProposals] = useState<ProposedAction[]>([]);
+  const [proposals, setProposals] = useState<AnyProposedAction[]>([]);
+  const [applying, setApplying] = useState<string | null>(null);
+  const [failures, setFailures] = useState<Record<string, string>>({});
   const [showThreads, setShowThreads] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -197,7 +201,10 @@ export function CopilotSheet() {
           setLiveText("");
           setActivity((prev) => [...prev, TOOL_LABEL[name] ?? name]);
         },
-        onProposal: (action) => setProposals((prev) => [...prev, action]),
+        onProposal: (action) => {
+          const typed = toProposedAction(action);
+          if (typed) setProposals((prev) => [...prev, typed]);
+        },
       },
       controller.signal,
     );
@@ -268,11 +275,29 @@ export function CopilotSheet() {
     toast.success("Operator profile updated — answers will be more personal.");
   };
 
-  const confirm = (action: ProposedAction, index: number) => {
-    const out = applyAction(action);
-    setProposals((prev) => prev.filter((_, i) => i !== index));
-    if (out.ok) toast.success(out.message);
-    else toast.error(out.message);
+  /**
+   * Apply routes through the Safe Action Executor: validate → server-side
+   * idempotency claim → execute → durable ledger record. Failures keep the
+   * proposal on screen so it can be retried safely.
+   */
+  const confirm = async (action: AnyProposedAction) => {
+    if (applying) return;
+    setApplying(action.id);
+    const out = await executeAction(action, { confirmed: true });
+    setApplying(null);
+    if (out.status === "success" || out.status === "duplicate") {
+      setProposals((prev) => prev.filter((p) => p.id !== action.id));
+      setFailures((prev) => {
+        const next = { ...prev };
+        delete next[action.id];
+        return next;
+      });
+      if (out.status === "duplicate") toast.info(out.message ?? "Already applied.");
+      else toast.success(out.message ?? "Applied.");
+      return;
+    }
+    setFailures((prev) => ({ ...prev, [action.id]: out.message ?? "That action failed." }));
+    toast.error(out.message ?? "That action failed.");
   };
 
   const jump = (to?: string, params?: Record<string, string>) => {
@@ -470,22 +495,35 @@ export function CopilotSheet() {
                 </div>
               )}
 
-              {proposals.map((p, i) => (
+              {proposals.map((p) => (
                 <div
-                  key={i}
+                  key={p.id}
                   className="rounded-md border border-border/50 bg-white/[0.04] p-2 text-xs"
                 >
                   <div className="text-foreground/90">{describeAction(p)}</div>
                   {p.reason && <div className="mt-0.5 text-muted-foreground">{p.reason}</div>}
+                  {failures[p.id] && (
+                    <div className="mt-0.5 text-destructive">{failures[p.id]}</div>
+                  )}
                   <div className="mt-1.5 flex gap-1.5">
-                    <Button size="sm" className="h-6 px-2 text-[11px]" onClick={() => confirm(p, i)}>
-                      <Check className="mr-1 h-3 w-3" /> Apply
+                    <Button
+                      size="sm"
+                      className="h-6 px-2 text-[11px]"
+                      disabled={applying === p.id}
+                      onClick={() => void confirm(p)}
+                    >
+                      {applying === p.id ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Check className="mr-1 h-3 w-3" />
+                      )}
+                      {failures[p.id] ? "Retry" : "Apply"}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-[11px]"
-                      onClick={() => setProposals((prev) => prev.filter((_, x) => x !== i))}
+                      onClick={() => setProposals((prev) => prev.filter((x) => x.id !== p.id))}
                     >
                       <X className="mr-1 h-3 w-3" /> Discard
                     </Button>
