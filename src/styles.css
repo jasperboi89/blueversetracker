@@ -1771,6 +1771,9 @@ html[data-theme="holoquiet"] {
   --hq-refract-cool: color-mix(in oklab, var(--hq-ion-cyan) 22%, transparent);
   --hq-refract-warm: color-mix(in oklab, var(--hq-spectral-violet) 20%, transparent);
   --hq-lift: -1px;
+  /* Hover float: panes visibly rise off the background. */
+  --hq-lift-float: -6px;
+  --hq-scale-float: 1.008;
 }
 
 /* ---- Workglass: translucent material, not an opaque rectangle ----- */
