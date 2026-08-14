@@ -34,7 +34,10 @@ describe("theme registration", () => {
 
 describe("holoquiet stylesheet", () => {
   it("scopes every rule to the holoquiet attribute so other themes are untouched", () => {
-    const block = CSS.slice(CSS.indexOf("/* HOLOQUIET"));
+    // The trailing modal-surface contract is intentionally cross-theme.
+    const hqStart = CSS.indexOf("/* HOLOQUIET");
+    const hqEnd = CSS.indexOf("AUTHORITATIVE MODAL SURFACE CONTRACT");
+    const block = CSS.slice(hqStart, hqEnd === -1 ? undefined : hqEnd);
     const selectors = block
       .split("\n")
       .filter((l) => l.trim().endsWith("{") && !l.trim().startsWith("@") && !l.includes("("))
