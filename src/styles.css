@@ -1619,3 +1619,141 @@ html[data-motion="reduced"][data-theme="holoquiet"] [data-slot="sidebar-menu-but
 html[data-motion="reduced"][data-theme="holoquiet"] [data-slot="button"]:active {
   transform: none !important;
 }
+
+/* ================================================================== */
+/* HOLOQUIET EVOLUTION — luminous, spatial, state-aware.              */
+/* Everything below is scoped to html[data-theme="holoquiet"] so      */
+/* BlueVerse and Quantum Bloom rendering is unchanged.                */
+/* ================================================================== */
+
+/* ---- Layer 0: environment gains local illumination ---------------- */
+html[data-theme="holoquiet"] .hq-workspace {
+  position: relative;
+}
+html[data-theme="holoquiet"] .hq-workspace::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 42% at 22% 0%, oklch(0.5 0.06 250 / 0.13), transparent 68%),
+    radial-gradient(52% 40% at 88% 12%, oklch(0.45 0.07 292 / 0.1), transparent 70%);
+}
+
+/* ---- Layer 3: Command Glass -------------------------------------- */
+html[data-theme="holoquiet"] .hq-command {
+  background:
+    linear-gradient(
+      164deg,
+      color-mix(in oklab, var(--hq-spectral-glass) 96%, transparent),
+      color-mix(in oklab, var(--hq-navy-smoke) 96%, transparent)
+    );
+  border-color: color-mix(in oklab, var(--hq-spectral-violet) 26%, transparent);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    0 0 0 1px oklch(0 0 0 / 0.25),
+    var(--hq-shadow-elevated);
+}
+
+/* ---- Spectral state system --------------------------------------- */
+/* One vocabulary for meaning: put data-state on the surface that owns  */
+/* the state. Colour concentrates at that surface's leading edge only.  */
+html[data-theme="holoquiet"] [data-state-signal] {
+  position: relative;
+}
+html[data-theme="holoquiet"] [data-state-signal]::before {
+  content: "";
+  position: absolute;
+  inset-block: 10%;
+  inset-inline-start: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--hq-signal-color, transparent);
+  box-shadow: 0 0 10px -2px var(--hq-signal-color, transparent);
+  opacity: 0.9;
+  pointer-events: none;
+}
+html[data-theme="holoquiet"] [data-state-signal="active"] { --hq-signal-color: var(--hq-ion-cyan); }
+html[data-theme="holoquiet"] [data-state-signal="ai"] { --hq-signal-color: var(--hq-spectral-violet); }
+html[data-theme="holoquiet"] [data-state-signal="waiting"] { --hq-signal-color: var(--hq-amber); }
+html[data-theme="holoquiet"] [data-state-signal="success"] { --hq-signal-color: var(--hq-signal-green); }
+html[data-theme="holoquiet"] [data-state-signal="failed"] { --hq-signal-color: var(--hq-soft-rose); }
+
+/* ---- Interaction affordance -------------------------------------- */
+/* Quiet at rest, discoverable on approach, compressed on press.      */
+html[data-theme="holoquiet"] .hq-affordance,
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"],
+html[data-theme="holoquiet"] [data-slot="button"] {
+  transition:
+    transform 140ms cubic-bezier(0.2, 0.6, 0.2, 1),
+    box-shadow 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+html[data-theme="holoquiet"] .hq-affordance:hover,
+html[data-theme="holoquiet"] .hq-affordance:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--hq-ion-cyan) 30%, transparent);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.07),
+    0 6px 18px -14px oklch(0 0 0 / 0.9);
+}
+html[data-theme="holoquiet"] .hq-affordance:active {
+  transform: translateY(0) scale(0.995);
+}
+
+/* ---- Navigation discoverability ---------------------------------- */
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"]:hover {
+  transform: translateX(1px);
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"] {
+  position: relative;
+  font-weight: 600;
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 18%;
+  inset-inline-start: -2px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--hq-ion-cyan);
+  box-shadow: 0 0 10px -1px var(--hq-ion-cyan);
+}
+
+/* ---- Energy zones -------------------------------------------------- */
+/* Contact Dispatch is the most operational surface: test state reads   */
+/* strongest there. Home stays architectural and calm.                  */
+html[data-theme="holoquiet"] [data-surface="ledger"] {
+  border-color: color-mix(in oklab, var(--hq-signal-green) 16%, var(--hq-rim-neutral));
+}
+html[data-theme="holoquiet"] .hq-working[data-focus-active="true"] {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--hq-ion-cyan) 34%, transparent);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    0 0 0 1px color-mix(in oklab, var(--hq-ion-cyan) 18%, transparent),
+    var(--hq-shadow-elevated);
+}
+
+/* ---- Reduced motion folds into the existing authoritative sweep ---- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="holoquiet"] .hq-affordance,
+  html[data-theme="holoquiet"] .hq-affordance:hover,
+  html[data-theme="holoquiet"] .hq-affordance:focus-visible,
+  html[data-theme="holoquiet"] .hq-affordance:active,
+  html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"]:hover,
+  html[data-theme="holoquiet"] .hq-working[data-focus-active="true"] {
+    transform: none;
+    transition: none;
+  }
+}
+html[data-reduced-motion="true"][data-theme="holoquiet"] .hq-affordance,
+html[data-reduced-motion="true"][data-theme="holoquiet"] .hq-affordance:hover,
+html[data-reduced-motion="true"][data-theme="holoquiet"] [data-slot="sidebar-menu-button"]:hover,
+html[data-reduced-motion="true"][data-theme="holoquiet"] .hq-working[data-focus-active="true"] {
+  transform: none;
+  transition: none;
+}

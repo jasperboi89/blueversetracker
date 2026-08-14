@@ -20,6 +20,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -32,31 +33,54 @@ import { isOverdue, useTickets } from "@/lib/tickets-store";
 import { alphaMix } from "@/lib/visual-style";
 import { useAssignedUnreadCount } from "@/lib/assigned-inbox-store";
 
-const baseItems = [
-  { title: "Home", url: "/", icon: Home, accent: "var(--cyan-glow)" },
-  { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: Ticket, accent: "var(--cyan-glow)" },
-  { title: "Assigned to Me", url: "/assigned-to-me", icon: Inbox, accent: "var(--cyan-glow)" },
-  { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles, accent: "var(--violet-glow)" },
-  { title: "Knowledge Vault", url: "/knowledge-vault", icon: LibraryBig, accent: "oklch(0.8 0.16 190)" },
-  { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing, accent: "var(--violet-glow)" },
-  { title: "Additional Work", url: "/additional-work", icon: ClipboardList, accent: "var(--gold-glow)" },
-  { title: "Accounts", url: "/accounts", icon: Building2, accent: "var(--electric)" },
-  { title: "Completed Work", url: "/completed-work", icon: CheckCircle2, accent: "var(--green-glow)" },
-  { title: "Reports", url: "/reports", icon: FileBarChart, accent: "oklch(0.9 0.06 230)" },
-  { title: "Achievements", url: "/achievements", icon: Trophy, accent: "oklch(0.85 0.15 90)" },
-] as const;
+interface NavItem {
+  title: string;
+  url: string;
+  icon: typeof Home;
+  accent: string;
+}
 
-const adminItems = [
+/** Daily Work — the five surfaces the shift actually runs on. */
+const dailyWork: NavItem[] = [
+  { title: "Home", url: "/", icon: Home, accent: "var(--cyan-glow)" },
+  { title: "Assigned to Me", url: "/assigned-to-me", icon: Inbox, accent: "var(--cyan-glow)" },
+  { title: "Freshdesk Work", url: "/freshdesk-tickets", icon: Ticket, accent: "var(--cyan-glow)" },
+  { title: "Additional Work", url: "/additional-work", icon: ClipboardList, accent: "var(--gold-glow)" },
+  { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing, accent: "var(--violet-glow)" },
+  { title: "Knowledge Vault", url: "/knowledge-vault", icon: LibraryBig, accent: "oklch(0.8 0.16 190)" },
+];
+
+/** Work History / Intelligence — look back, not the live shift. */
+const historyItems: NavItem[] = [
+  { title: "Completed Work", url: "/completed-work", icon: CheckCircle2, accent: "var(--green-glow)" },
+  { title: "Accounts", url: "/accounts", icon: Building2, accent: "var(--electric)" },
+  { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles, accent: "var(--violet-glow)" },
+  { title: "Reports", url: "/reports", icon: FileBarChart, accent: "oklch(0.9 0.06 230)" },
+];
+
+/** Planning / System — secondary, always available. */
+const systemItems: NavItem[] = [
+  { title: "Achievements", url: "/achievements", icon: Trophy, accent: "oklch(0.85 0.15 90)" },
+];
+
+const adminItems: NavItem[] = [
   { title: "Audit Log", url: "/audit-log", icon: ScrollText, accent: "oklch(0.65 0.12 295)" },
   { title: "Settings", url: "/settings", icon: Settings, accent: "oklch(0.75 0.09 210)" },
-] as const;
+];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const isAdmin = useIsAdmin();
-  const items = isAdmin ? [...baseItems, ...adminItems] : baseItems;
+  const groups: Array<{ label: string; items: NavItem[] }> = [
+    { label: "Daily Work", items: dailyWork },
+    { label: "History & Intelligence", items: historyItems },
+    {
+      label: "System",
+      items: isAdmin ? [...systemItems, ...adminItems] : systemItems,
+    },
+  ];
   const { tickets } = useTickets();
   const overdueCount = tickets.filter((t) => t.status !== "completed" && isOverdue(t)).length;
   const assignedUnread = useAssignedUnreadCount();
@@ -112,10 +136,16 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
-        <SidebarGroup>
+        {groups.map((group) => (
+        <SidebarGroup key={group.label}>
+          {!collapsed && (
+            <SidebarGroupLabel className="px-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
+              {group.label}
+            </SidebarGroupLabel>
+          )}
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {items.map((item) => {
+              {group.items.map((item) => {
                 const active =
                   item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
                 const badge = item.url === "/assigned-to-me" ? assignedUnread : 0;
@@ -169,6 +199,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-4">
