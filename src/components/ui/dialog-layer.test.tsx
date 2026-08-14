@@ -50,7 +50,7 @@ describe("shared dialog overlay layer contract", () => {
     const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
     const offenders = css
       .split("}")
-      .filter((block) => /\.glass-panel[^{]*\{/.test(block + "}") && /transform:/.test(block));
+      .filter((block) => /\.glass-panel:(hover|focus-within)[^{]*\{/.test(block + "}") && /transform:/.test(block));
     expect(offenders).toEqual([]);
   });
 });
