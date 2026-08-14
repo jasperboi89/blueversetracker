@@ -53,4 +53,25 @@ describe("shared dialog overlay layer contract", () => {
       .filter((block) => /\.glass-panel:(hover|focus-within)[^{]*\{/.test(block + "}") && /transform:/.test(block));
     expect(offenders).toEqual([]);
   });
+
+  it("modal surfaces opt out of ambient decoration layers", () => {
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+    // the authoritative contract exists and kills theme pseudo-layers on modals
+    expect(css).toMatch(
+      /\[data-slot="dialog-content"\]::before,[\s\S]*?content: none !important;/,
+    );
+    // modals get an explicit opaque background so text always has ground
+    expect(css).toMatch(
+      /\[data-slot="dialog-content"\],[\s\S]*?background-color: var\(--popover\);/,
+    );
+    // no theme rule may transform a modal surface
+    const offenders = css
+      .split("}")
+      .filter(
+        (block) =>
+          /\[data-slot="(dialog|alert-dialog|sheet)-content"\][^{]*\{/.test(block + "}") &&
+          /(^|[^-])transform:/.test(block),
+      );
+    expect(offenders).toEqual([]);
+  });
 });
