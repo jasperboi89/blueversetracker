@@ -39,9 +39,12 @@ describe("shared dialog overlay layer contract", () => {
     expect(content).toBeTruthy();
     expect(zOf(content)).toBeGreaterThan(zOf(overlay));
     expect(document.body.textContent).toContain("Layer test");
-    // content keeps ownership of its centering transform
-    expect(String(content?.className)).toContain("translate-x-[-50%]");
-    expect(String(content?.className)).toContain("translate-y-[-50%]");
+    // Important utilities keep production/theme CSS from moving the modal.
+    expect(String(content?.className)).toContain("!fixed");
+    expect(String(content?.className)).toContain("!left-1/2");
+    expect(String(content?.className)).toContain("!top-1/2");
+    expect(String(content?.className)).toContain("!-translate-x-1/2");
+    expect(String(content?.className)).toContain("!-translate-y-1/2");
     // portaled outside the local React host
     expect(content?.closest("body")).toBe(document.body);
   });
@@ -77,11 +80,8 @@ describe("shared dialog overlay layer contract", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps dialog content fixed and centered above the page", () => {
+  it("keeps ambient HoloQuiet material rules away from modal content", () => {
     const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
-    expect(css).toMatch(
-      /\[data-slot="dialog-content"\],[\s\S]*?position: fixed;[\s\S]*?left: 50%;[\s\S]*?top: 50%;[\s\S]*?transform: translate\(-50%, -50%\);/,
-    );
     expect(css).toMatch(
       /\.glass-panel:not\(\[data-slot="dialog-content"\]\):not\(\[data-slot="alert-dialog-content"\]\):not\(\[data-slot="sheet-content"\]\)/,
     );

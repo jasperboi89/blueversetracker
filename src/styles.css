@@ -2662,13 +2662,6 @@ html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover {
     inset 0 1px 0 oklch(1 0 0 / 0.05);
   backdrop-filter: none;
 }
-[data-slot="dialog-content"],
-[data-slot="alert-dialog-content"] {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
 /* No ambient decoration layers on modal surfaces, in any theme. */
 [data-slot="dialog-content"]::before,
 [data-slot="dialog-content"]::after,
