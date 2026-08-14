@@ -9,6 +9,7 @@ import { UnlockToast } from "@/components/achievements/UnlockToast";
 import { AchievementsWatcher } from "@/components/achievements/AchievementsWatcher";
 import { RetrievalSyncWatcher } from "@/components/retrieval/RetrievalSyncWatcher";
 import { FocusStrip } from "@/components/focus/FocusStrip";
+import { useEffect, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 
 /** Purely visual: which workflow the environment should tint toward. */
@@ -24,6 +25,12 @@ function workflowZone(pathname: string): string | undefined {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const zone = workflowZone(pathname);
+  // Purely visual: alternating tick so the HoloQuiet plane-in transition
+  // re-runs on every navigation without remounting route content.
+  const [tick, setTick] = useState<"a" | "b">("a");
+  useEffect(() => {
+    setTick((t) => (t === "a" ? "b" : "a"));
+  }, [pathname]);
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen w-full">
@@ -71,7 +78,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <HipaaPill />
             </div>
           </header>
-          <main className="hq-workspace flex-1 px-4 py-6 sm:px-6 lg:px-8" data-workflow={zone}>
+          <main
+            className="hq-workspace flex-1 px-4 py-6 sm:px-6 lg:px-8"
+            data-workflow={zone}
+            data-nav-tick={tick}
+          >
             {children}
           </main>
         </div>

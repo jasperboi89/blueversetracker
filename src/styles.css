@@ -2032,3 +2032,320 @@ html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover,
 html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:focus-visible {
   transform: none !important;
 }
+
+/* ================================================================== */
+/* HOLOQUIET RADICAL SPATIAL REDESIGN                                 */
+/* Replaces the card-dashboard language with floating planes, partial */
+/* frames, open regions and a luminous navigation rail. Every rule is */
+/* scoped to html[data-theme="holoquiet"] or a .hq-* primitive.       */
+/* ================================================================== */
+
+html[data-theme="holoquiet"] {
+  --hq-plane-tint: oklch(0.235 0.026 262 / 0.42);
+  --hq-plane-tint-deep: oklch(0.17 0.022 265 / 0.5);
+  --hq-edge-light: color-mix(in oklab, var(--hq-ion-cyan) 42%, transparent);
+  --hq-edge-light-far: color-mix(in oklab, var(--hq-spectral-violet) 34%, transparent);
+  --hq-anchor: color-mix(in oklab, var(--hq-ion-cyan) 55%, transparent);
+  --hq-cut: 16px;
+}
+
+/* ---- 1. Planes replace cards ------------------------------------- */
+/* No enclosing rectangle: a luminous leading edge, a fading side edge */
+/* and two small corner anchors. The body is genuinely see-through.    */
+html[data-theme="holoquiet"] .glass-panel {
+  border: 0;
+  border-radius: 14px;
+  background-image:
+    linear-gradient(158deg, oklch(0.46 0.05 248 / 0.1) 0%, transparent 42%),
+    linear-gradient(158deg, var(--hq-plane-tint) 0%, var(--hq-plane-tint-deep) 100%);
+  background-color: transparent;
+  backdrop-filter: blur(14px) saturate(1.12);
+  box-shadow:
+    0 18px 46px -34px oklch(0 0 0 / 0.85),
+    0 1px 0 oklch(1 0 0 / 0.03) inset;
+}
+
+/* Partial frame: top light bar, fading leading edge, corner anchors.  */
+html[data-theme="holoquiet"] .glass-panel:not([data-surface="command-core"])::after,
+html[data-theme="holoquiet"] .hq-working:not([data-surface="command-core"])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.85;
+  -webkit-mask: none;
+  mask: none;
+  -webkit-mask-composite: initial;
+  mask-composite: add;
+  background:
+    linear-gradient(90deg, transparent 2%, var(--hq-edge-light) 16%, var(--hq-edge-light-far) 62%, transparent 96%)
+      top left / 100% 1px no-repeat,
+    linear-gradient(180deg, oklch(0.9 0.02 240 / 0.16), transparent 62%)
+      top left / 1px 100% no-repeat,
+    radial-gradient(circle at 0 0, var(--hq-anchor) 0 1.5px, transparent 2px)
+      top left / 10px 10px no-repeat,
+    radial-gradient(circle at 100% 100%, color-mix(in oklab, var(--hq-spectral-violet) 40%, transparent) 0 1.5px, transparent 2px)
+      bottom right / 10px 10px no-repeat,
+    linear-gradient(90deg, transparent, oklch(0.9 0.02 240 / 0.1) 40%, transparent)
+      bottom left / 100% 1px no-repeat;
+  transition: opacity 200ms ease, background 260ms ease;
+}
+html[data-theme="holoquiet"] .glass-panel:hover::after,
+html[data-theme="holoquiet"] .glass-panel:focus-within::after {
+  opacity: 1;
+  background:
+    linear-gradient(90deg, transparent 1%, color-mix(in oklab, var(--hq-ion-cyan) 70%, transparent) 14%, color-mix(in oklab, var(--hq-spectral-violet) 52%, transparent) 66%, transparent 97%)
+      top left / 100% 1px no-repeat,
+    linear-gradient(180deg, color-mix(in oklab, var(--hq-ion-cyan) 40%, transparent), transparent 70%)
+      top left / 1px 100% no-repeat,
+    radial-gradient(circle at 0 0, var(--hq-anchor) 0 2px, transparent 2.5px)
+      top left / 12px 12px no-repeat,
+    radial-gradient(circle at 100% 100%, color-mix(in oklab, var(--hq-spectral-violet) 55%, transparent) 0 2px, transparent 2.5px)
+      bottom right / 12px 12px no-repeat,
+    linear-gradient(90deg, transparent, oklch(0.9 0.02 240 / 0.18) 40%, transparent)
+      bottom left / 100% 1px no-repeat;
+}
+
+/* ---- 2. Ambient plane: an open region, not a container ----------- */
+html[data-theme="holoquiet"] .hq-ambient {
+  background: none;
+  background-image: none;
+  border: 0;
+  backdrop-filter: none;
+  box-shadow: none;
+  padding-left: 0.25rem;
+}
+html[data-theme="holoquiet"] .hq-ambient::after {
+  background:
+    linear-gradient(90deg, var(--hq-edge-light), transparent 42%)
+      bottom left / 100% 1px no-repeat;
+  opacity: 0.55;
+}
+html[data-theme="holoquiet"] .hq-ambient:hover {
+  transform: none;
+}
+
+/* ---- 3. Work plane: material presence, open lower edge ----------- */
+html[data-theme="holoquiet"] .hq-working {
+  border: 0;
+  border-radius: 14px;
+  background-image:
+    radial-gradient(120% 90% at 0% 0%, oklch(0.5 0.06 246 / 0.16), transparent 58%),
+    linear-gradient(160deg, oklch(0.25 0.028 261 / 0.7) 0%, oklch(0.175 0.024 265 / 0.62) 100%);
+  backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow:
+    0 26px 60px -40px oklch(0 0 0 / 0.95),
+    inset 0 1px 0 oklch(1 0 0 / 0.06);
+}
+
+/* ---- 4. Command plane: unique clipped geometry -------------------- */
+html[data-theme="holoquiet"] [data-surface="command-core"],
+html[data-theme="holoquiet"] .hq-command {
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--hq-cut)) 0,
+    100% var(--hq-cut),
+    100% 100%,
+    var(--hq-cut) 100%,
+    0 calc(100% - var(--hq-cut))
+  );
+  background-image:
+    radial-gradient(90% 140% at 4% 0%, color-mix(in oklab, var(--hq-spectral-violet) 20%, transparent), transparent 60%),
+    radial-gradient(70% 120% at 98% 100%, color-mix(in oklab, var(--hq-ion-cyan) 14%, transparent), transparent 62%),
+    linear-gradient(164deg, oklch(0.25 0.045 288 / 0.72) 0%, oklch(0.16 0.026 268 / 0.66) 100%);
+  backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: none;
+  filter: drop-shadow(0 22px 40px oklch(0 0 0 / 0.55));
+}
+/* Spectral intelligence channel across the command plane's leading edge */
+html[data-theme="holoquiet"] [data-surface="command-core"]::after {
+  height: 2px;
+  opacity: 0.8;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--hq-ion-cyan) 80%, transparent) 22%,
+    color-mix(in oklab, var(--hq-photon-blue) 62%, transparent) 48%,
+    color-mix(in oklab, var(--hq-spectral-violet) 70%, transparent) 74%,
+    transparent
+  );
+}
+
+/* ---- 5. Navigation becomes a translucent rail -------------------- */
+html[data-theme="holoquiet"] [data-slot="sidebar-container"],
+html[data-theme="holoquiet"] [data-sidebar="sidebar"] {
+  background: linear-gradient(
+    180deg,
+    oklch(0.17 0.022 264 / 0.5),
+    oklch(0.14 0.02 266 / 0.62)
+  );
+  border-right: 0;
+  backdrop-filter: blur(18px);
+  box-shadow: inset -1px 0 0 oklch(0.85 0.02 245 / 0.06);
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-group-label"] {
+  color: color-mix(in oklab, var(--hq-ion-cyan) 45%, oklch(0.78 0.01 250));
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  opacity: 0.75;
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"] {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 10px;
+  box-shadow: none !important;
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"]:hover {
+  background: linear-gradient(90deg, oklch(0.32 0.03 256 / 0.4), transparent 80%) !important;
+  transform: translateX(2px);
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--hq-ion-cyan) 20%, transparent),
+    color-mix(in oklab, var(--hq-spectral-violet) 10%, transparent) 55%,
+    transparent 100%
+  ) !important;
+  color: oklch(0.98 0.008 240);
+  transform: translateX(3px);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.06),
+    0 8px 22px -18px color-mix(in oklab, var(--hq-ion-cyan) 90%, transparent) !important;
+}
+html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"]::before {
+  inset-block: 12%;
+  inset-inline-start: -6px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--hq-ion-cyan), var(--hq-spectral-violet));
+  box-shadow: 0 0 14px -1px var(--hq-ion-cyan);
+}
+
+/* ---- 6. Header: a suspended telemetry strip ---------------------- */
+html[data-theme="holoquiet"] header[class*="sticky"] {
+  background: linear-gradient(180deg, oklch(0.16 0.02 265 / 0.55), oklch(0.16 0.02 265 / 0.2));
+  border-bottom: 0;
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--hq-ion-cyan) 14%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+/* ---- 7. Quick Start becomes a launcher deck ---------------------- */
+html[data-theme="holoquiet"] .hq-deck {
+  background: none;
+  background-image: none;
+  border: 0;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+html[data-theme="holoquiet"] .hq-deck::after {
+  display: none;
+}
+html[data-theme="holoquiet"] .hq-deck-key {
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  background: linear-gradient(150deg, oklch(0.27 0.03 258 / 0.45), oklch(0.18 0.024 265 / 0.4));
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
+  backdrop-filter: blur(10px);
+}
+html[data-theme="holoquiet"] .hq-deck-key:hover {
+  background: linear-gradient(
+    150deg,
+    color-mix(in oklab, var(--hq-ion-cyan) 16%, oklch(0.27 0.03 258 / 0.5)),
+    oklch(0.19 0.024 265 / 0.5)
+  );
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    inset 2px 0 0 var(--hq-ion-cyan);
+}
+
+/* ---- 8. Instruments: transparent bodies, luminous readouts -------- */
+html[data-theme="holoquiet"] .hq-instrument {
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  background-image:
+    radial-gradient(140% 130% at 100% 0%, color-mix(in oklab, var(--hq-instrument-color) 16%, transparent), transparent 56%),
+    linear-gradient(160deg, oklch(0.24 0.026 261 / 0.42), oklch(0.17 0.022 265 / 0.42));
+  box-shadow: inset 0 2px 0 color-mix(in oklab, var(--hq-instrument-color) 45%, transparent);
+  backdrop-filter: blur(12px);
+}
+html[data-theme="holoquiet"] .hq-instrument:hover,
+html[data-theme="holoquiet"] .hq-instrument:focus-visible {
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, var(--hq-instrument-color) 80%, transparent),
+    0 16px 34px -28px oklch(0 0 0 / 0.9);
+}
+
+/* ---- 9. Typography hierarchy ------------------------------------- */
+html[data-theme="holoquiet"] .hq-workspace h1 {
+  font-weight: 300;
+  letter-spacing: -0.015em;
+  text-shadow: 0 0 26px color-mix(in oklab, var(--hq-ion-cyan) 18%, transparent);
+}
+html[data-theme="holoquiet"] .hq-workspace h2 {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+html[data-theme="holoquiet"] .hq-workspace .font-mono {
+  letter-spacing: 0.04em;
+}
+
+/* ---- 10. Spatial page transition --------------------------------- */
+html[data-theme="holoquiet"] .hq-workspace[data-nav-tick="a"] > * {
+  animation: hq-plane-in-a 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+html[data-theme="holoquiet"] .hq-workspace[data-nav-tick="b"] > * {
+  animation: hq-plane-in-b 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes hq-plane-in-a {
+  from { opacity: 0; transform: translateZ(0) translateY(6px) scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hq-plane-in-b {
+  from { opacity: 0; transform: translateZ(0) translateY(6px) scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- 11. Mobile: compact expression ------------------------------ */
+@media (max-width: 767px) {
+  html[data-theme="holoquiet"] .glass-panel,
+  html[data-theme="holoquiet"] .hq-working {
+    backdrop-filter: blur(10px);
+    background-image: linear-gradient(160deg, oklch(0.24 0.026 261 / 0.72), oklch(0.18 0.022 265 / 0.72));
+  }
+  html[data-theme="holoquiet"] [data-surface="command-core"],
+  html[data-theme="holoquiet"] .hq-instrument,
+  html[data-theme="holoquiet"] .hq-deck-key {
+    clip-path: none;
+    border-radius: 12px;
+  }
+  html[data-theme="holoquiet"] .hq-workspace[data-nav-tick] > * {
+    animation: none;
+  }
+}
+
+/* ---- 12. Reduced motion ------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="holoquiet"] .hq-workspace[data-nav-tick="a"] > *,
+  html[data-theme="holoquiet"] .hq-workspace[data-nav-tick="b"] > *,
+  html[data-theme="holoquiet"] [data-surface="command-core"]::after {
+    animation: none !important;
+  }
+  html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"],
+  html[data-theme="holoquiet"] [data-slot="sidebar-menu-button"]:hover {
+    transform: none !important;
+  }
+}
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-workspace[data-nav-tick="a"] > *,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-workspace[data-nav-tick="b"] > * {
+  animation: none !important;
+}
+html[data-motion="reduced"][data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"] {
+  transform: none !important;
+}
