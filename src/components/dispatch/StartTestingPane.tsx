@@ -85,7 +85,7 @@ export function StartTestingPane() {
   };
 
   return (
-    <div className="glass-panel p-5">
+    <div className="glass-panel hq-working p-5">
       <div className="mb-3 flex items-center gap-2">
         <div
           className="grid h-9 w-9 place-items-center rounded-xl"

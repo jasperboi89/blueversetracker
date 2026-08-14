@@ -50,7 +50,7 @@ function AuthPage() {
   if (checking) return null;
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="relative flex min-h-screen items-center justify-center overflow-x-hidden px-4 py-10">
       <div
         aria-hidden
         className="auth-aura pointer-events-none absolute left-1/2 top-1/2 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full"
