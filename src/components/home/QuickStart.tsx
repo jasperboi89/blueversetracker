@@ -14,7 +14,7 @@ const actions = [
 export function QuickStart() {
   const assigned = useAssignedUnreadCount();
   return (
-    <section className="glass-panel hq-ambient p-4" aria-label="Quick start">
+    <section className="glass-panel hq-ambient hq-deck p-4" aria-label="Quick start">
       <div className="mb-2.5 flex items-center gap-2">
         <Zap className="h-3.5 w-3.5" style={{ color: "var(--cyan-glow)" }} />
         <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -26,7 +26,7 @@ export function QuickStart() {
           <Link
             key={a.to}
             to={a.to}
-            className="hq-affordance group flex items-center gap-2 rounded-xl border border-border/40 bg-white/[0.02] px-3 py-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="hq-affordance hq-deck-key group flex items-center gap-2 rounded-xl border border-border/40 bg-white/[0.02] px-3 py-2.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <a.icon className="h-4 w-4 shrink-0" style={{ color: a.accent }} />
             <span className="truncate">{a.label}</span>
