@@ -2567,6 +2567,7 @@ html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not(
 html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover,
 html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover {
   transform: translateY(var(--hq-lift-float)) scale(var(--hq-scale-float));
+  position: relative;
   z-index: 3;
   border-color: color-mix(in oklab, var(--hq-ion-cyan) 24%, var(--hq-glass-edge-hi));
   box-shadow:
@@ -2576,9 +2577,9 @@ html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):no
     0 34px 70px -44px oklch(0 0 0 / 0.6),
     0 0 30px -20px color-mix(in oklab, var(--hq-photon-blue) 60%, transparent);
 }
-html[data-theme="holoquiet"] .glass-panel:active,
-html[data-theme="holoquiet"] .hq-working:active,
-html[data-theme="holoquiet"] .hq-instrument:active {
+html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
+html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
+html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active {
   transform: translateY(0) scale(1);
 }
 html[data-theme="holoquiet"] .hq-working:hover::before,
