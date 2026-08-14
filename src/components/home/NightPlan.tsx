@@ -675,7 +675,8 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
 
   return (
     <>
-      <Dialog open onOpenChange={(v) => !v && onClose()}>
+      {/* Suspended (not unmounted) while Convert runs so only one overlay is live. */}
+      <Dialog open={!convertOpen} onOpenChange={(v) => !v && !convertOpen && onClose()}>
         <DialogContent className="glass-panel max-h-[85vh] overflow-y-auto border-0 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
