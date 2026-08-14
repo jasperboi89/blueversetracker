@@ -2584,7 +2584,7 @@ html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):no
 html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
 html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
 html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active {
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(1) rotateX(0);
 }
 html[data-theme="holoquiet"] .hq-working:hover::before,
 html[data-theme="holoquiet"] .glass-panel:hover::before {
