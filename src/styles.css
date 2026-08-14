@@ -2349,3 +2349,262 @@ html[data-motion="reduced"][data-theme="holoquiet"] .hq-workspace[data-nav-tick=
 html[data-motion="reduced"][data-theme="holoquiet"] [data-slot="sidebar-menu-button"][data-active="true"] {
   transform: none !important;
 }
+
+/* ================================================================== */
+/* HOLOQUIET ENVIRONMENTAL DEPTH + TRUE GLASS                         */
+/* No layout, structure or workflow changes. This pass only deepens   */
+/* the environment, makes Workglass genuinely translucent, and gives  */
+/* every surface class a distinct perceived distance. Every rule is   */
+/* scoped to html[data-theme="holoquiet"] or a .hq-* primitive.       */
+/* ================================================================== */
+
+html[data-theme="holoquiet"] {
+  /* --- Environment: dimensional darkness, never flat black -------- */
+  --hq-env-deep: oklch(0.13 0.024 268);
+  --hq-env-navy: oklch(0.165 0.03 262);
+  --hq-env-violet: oklch(0.155 0.032 292);
+  --hq-env-atmos: color-mix(in oklab, var(--hq-ion-cyan) 100%, transparent);
+
+  /* --- True-glass material layers --------------------------------- */
+  --hq-glass-outer: oklch(0.26 0.028 260 / 0.2);
+  --hq-glass-body: oklch(0.2 0.024 264 / 0.3);
+  --hq-glass-veil: oklch(0.155 0.02 266 / 0.42);
+  --hq-glass-sheen: oklch(0.95 0.02 240 / 0.07);
+
+  /* --- Depth shadows: suspension, not elevation -------------------- */
+  --hq-depth-ambient: 0 10px 30px -28px oklch(0 0 0 / 0.6);
+  --hq-depth-work:
+    0 1px 0 oklch(1 0 0 / 0.04) inset,
+    0 20px 46px -38px oklch(0 0 0 / 0.85),
+    0 2px 14px -10px color-mix(in oklab, var(--hq-photon-blue) 22%, transparent);
+  --hq-depth-command:
+    0 1px 0 oklch(1 0 0 / 0.06) inset,
+    0 28px 60px -42px oklch(0 0 0 / 0.9),
+    0 3px 20px -12px color-mix(in oklab, var(--hq-spectral-violet) 26%, transparent);
+
+  /* Reflected semantic light, applied to material — not as a fill.   */
+  --hq-reflect: var(--hq-ion-cyan);
+}
+
+/* ---- 1. The room ------------------------------------------------- */
+html[data-theme="holoquiet"] body {
+  background:
+    radial-gradient(120% 80% at 18% -10%, var(--hq-env-navy), transparent 62%),
+    radial-gradient(90% 70% at 92% 8%, var(--hq-env-violet), transparent 58%),
+    linear-gradient(180deg, oklch(0.155 0.024 265), var(--hq-env-deep) 70%, oklch(0.12 0.022 268));
+  background-attachment: fixed;
+}
+
+/* Large-scale architecture: broad distant planes at different depths. */
+html[data-theme="holoquiet"] .hq-architecture {
+  background:
+    /* faint horizon tint, still driven by the shift clock */
+    linear-gradient(0deg, color-mix(in oklab, var(--hq-horizon, oklch(0.62 0.05 240)) 9%, transparent), transparent 30%),
+    /* distant soft illumination field, far above the workspace */
+    radial-gradient(140% 60% at 50% -18%, oklch(0.34 0.04 254 / 0.4), transparent 66%),
+    /* deep atmospheric body */
+    linear-gradient(180deg, oklch(0.185 0.026 263 / 0.6), oklch(0.13 0.022 267 / 0.85));
+}
+/* Two very large diagonal structural surfaces, far behind everything. */
+html[data-theme="holoquiet"] .hq-architecture::after {
+  background:
+    linear-gradient(102deg, oklch(0.3 0.035 256 / 0.16) 0 26%, transparent 26.4% 100%),
+    linear-gradient(-96deg, oklch(0.26 0.032 288 / 0.13) 0 19%, transparent 19.4% 100%),
+    linear-gradient(180deg, transparent 68%, oklch(0.82 0.02 250 / 0.022) 68.1%, transparent 68.4%),
+    linear-gradient(180deg, oklch(0.4 0.04 250 / 0.05), transparent 34%);
+  mask-image: radial-gradient(120% 95% at 50% 34%, oklch(0 0 0 / 1), transparent 88%);
+  opacity: 0.9;
+}
+/* Light falloff: the environment darkens toward every screen edge.   */
+html[data-theme="holoquiet"] .hq-architecture::before {
+  background:
+    radial-gradient(64% 52% at 50% 40%, oklch(0.46 0.045 250 / 0.16), transparent 72%),
+    radial-gradient(120% 100% at 50% 50%, transparent 42%, oklch(0 0 0 / 0.32) 88%),
+    linear-gradient(90deg, oklch(0 0 0 / 0.3), transparent 20%, transparent 80%, oklch(0 0 0 / 0.3));
+}
+
+/* ---- 2. Z-depth ladder ------------------------------------------- */
+/* Ambient: barely above the environment.                             */
+html[data-theme="holoquiet"] .hq-ambient {
+  box-shadow: var(--hq-depth-ambient);
+}
+/* Workglass: clearly suspended, translucent body, internal veil.     */
+html[data-theme="holoquiet"] .glass-panel,
+html[data-theme="holoquiet"] .hq-working {
+  position: relative;
+  isolation: isolate;
+  background-color: transparent;
+  background-image:
+    /* reflected environmental light, upper leading region */
+    radial-gradient(120% 80% at 2% -6%, color-mix(in oklab, var(--hq-reflect) 9%, transparent), transparent 52%),
+    /* faint secondary violet reflection, opposite corner */
+    radial-gradient(90% 70% at 100% 104%, color-mix(in oklab, var(--hq-spectral-violet) 6%, transparent), transparent 56%),
+    /* material body: denser at the leading edge, fading away */
+    linear-gradient(162deg, var(--hq-glass-outer) 0%, var(--hq-glass-body) 46%, oklch(0.17 0.022 266 / 0.16) 100%);
+  backdrop-filter: blur(6px) saturate(1.12);
+  box-shadow: var(--hq-depth-work);
+}
+/* Content region: a localized darker veil so text never loses ground. */
+html[data-theme="holoquiet"] .glass-panel::before,
+html[data-theme="holoquiet"] .hq-working::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, var(--hq-glass-sheen) 0 1px, transparent 1px),
+    radial-gradient(115% 100% at 50% 55%, var(--hq-glass-veil), transparent 82%);
+  transition: opacity 180ms ease;
+}
+/* Command Glass: closest plane, strongest optical definition.        */
+html[data-theme="holoquiet"] [data-surface="command-core"],
+html[data-theme="holoquiet"] .hq-command,
+html[data-theme="holoquiet"] [data-surface="copilot"] {
+  box-shadow: var(--hq-depth-command);
+}
+
+/* ---- 3. Reflected semantic light bleeds into the material -------- */
+html[data-theme="holoquiet"] [data-state-signal="active"],
+html[data-theme="holoquiet"] [data-hq-tone="active"] { --hq-reflect: var(--hq-ion-cyan); }
+html[data-theme="holoquiet"] [data-state-signal="waiting"],
+html[data-theme="holoquiet"] [data-hq-tone="waiting"],
+html[data-theme="holoquiet"] [data-hq-tone="attention"] { --hq-reflect: var(--hq-amber); }
+html[data-theme="holoquiet"] [data-state-signal="ai"],
+html[data-theme="holoquiet"] [data-hq-tone="ai"] { --hq-reflect: var(--hq-spectral-violet); }
+html[data-theme="holoquiet"] [data-state-signal="success"],
+html[data-theme="holoquiet"] [data-hq-tone="success"] { --hq-reflect: var(--hq-signal-green); }
+html[data-theme="holoquiet"] [data-state-signal="blocked"],
+html[data-theme="holoquiet"] [data-hq-tone="blocked"] { --hq-reflect: var(--hq-soft-rose); }
+
+/* ---- 4. Status instruments: integrated optical readouts ---------- */
+html[data-theme="holoquiet"] .hq-instrument {
+  --hq-reflect: var(--hq-instrument-color, var(--hq-ion-cyan));
+  background-image:
+    radial-gradient(130% 120% at 100% 0%, color-mix(in oklab, var(--hq-instrument-color) 13%, transparent), transparent 58%),
+    radial-gradient(100% 90% at 0% 100%, color-mix(in oklab, var(--hq-instrument-color) 6%, transparent), transparent 60%),
+    linear-gradient(160deg, oklch(0.24 0.026 261 / 0.24), oklch(0.16 0.022 266 / 0.2));
+  backdrop-filter: blur(7px) saturate(1.15);
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, var(--hq-instrument-color) 50%, transparent),
+    inset 0 -20px 30px -30px color-mix(in oklab, var(--hq-instrument-color) 60%, transparent),
+    0 14px 30px -30px oklch(0 0 0 / 0.85);
+}
+html[data-theme="holoquiet"] .hq-instrument .tabular-nums,
+html[data-theme="holoquiet"] .hq-instrument .font-mono {
+  text-shadow: 0 0 16px color-mix(in oklab, var(--hq-instrument-color) 30%, transparent);
+}
+
+/* ---- 5. Active workflow illuminates the room -------------------- */
+html[data-theme="holoquiet"] .hq-workspace[data-workflow]::after {
+  background:
+    radial-gradient(58% 44% at 50% 22%, color-mix(in oklab, var(--hq-env-color, var(--hq-ion-cyan)) 9%, transparent), transparent 68%),
+    radial-gradient(90% 70% at 50% 6%, color-mix(in oklab, var(--hq-spectral-violet) 4%, transparent), transparent 74%);
+  opacity: 0.9;
+}
+
+/* ---- 6. Edge refraction 2.0 — selective, multi-tone -------------- */
+html[data-theme="holoquiet"] .hq-working:hover::after,
+html[data-theme="holoquiet"] [data-focus-field="active"]::after,
+html[data-theme="holoquiet"] .hq-instrument:hover::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent 2%,
+    color-mix(in oklab, var(--hq-ion-cyan) 65%, transparent) 18%,
+    color-mix(in oklab, var(--hq-photon-blue) 48%, transparent) 46%,
+    color-mix(in oklab, var(--hq-spectral-violet) 42%, transparent) 72%,
+    transparent 97%
+  );
+}
+
+/* ---- 7. Interaction depth ---------------------------------------- */
+html[data-theme="holoquiet"] .glass-panel,
+html[data-theme="holoquiet"] .hq-working,
+html[data-theme="holoquiet"] .hq-instrument {
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 200ms ease,
+    background-image 240ms ease;
+}
+html[data-theme="holoquiet"] .hq-working:hover,
+html[data-theme="holoquiet"] .hq-instrument:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    var(--hq-depth-work),
+    0 6px 26px -18px color-mix(in oklab, var(--hq-reflect) 40%, transparent);
+}
+html[data-theme="holoquiet"] .hq-working:active,
+html[data-theme="holoquiet"] .hq-instrument:active {
+  transform: translateY(0);
+}
+html[data-theme="holoquiet"] .hq-working:hover::before,
+html[data-theme="holoquiet"] .glass-panel:hover::before {
+  opacity: 0.9;
+}
+
+/* ---- 8. Navigation and header dissolve into the environment ------ */
+html[data-theme="holoquiet"] [data-slot="sidebar-container"],
+html[data-theme="holoquiet"] [data-sidebar="sidebar"] {
+  background: linear-gradient(
+    180deg,
+    oklch(0.185 0.026 263 / 0.34),
+    oklch(0.14 0.022 267 / 0.46)
+  );
+  backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    inset -1px 0 0 oklch(0.85 0.02 245 / 0.05),
+    18px 0 40px -40px oklch(0 0 0 / 0.9);
+}
+html[data-theme="holoquiet"] header[class*="sticky"] {
+  background: linear-gradient(180deg, oklch(0.17 0.024 264 / 0.4), oklch(0.16 0.022 265 / 0.08));
+  backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--hq-ion-cyan) 10%, transparent);
+}
+
+/* ---- 9. Layered overlap: tiny, structural, collision-free -------- */
+html[data-theme="holoquiet"] .hq-workspace > [data-surface="command-core"],
+html[data-theme="holoquiet"] .hq-workspace > .hq-command {
+  margin-top: -2px;
+  z-index: 2;
+}
+
+/* ---- 10. Mobile: same depth, less atmosphere --------------------- */
+@media (max-width: 767px) {
+  html[data-theme="holoquiet"] .hq-architecture::after {
+    display: none;
+  }
+  html[data-theme="holoquiet"] .glass-panel,
+  html[data-theme="holoquiet"] .hq-working {
+    backdrop-filter: blur(6px);
+    background-image:
+      radial-gradient(120% 80% at 2% -6%, color-mix(in oklab, var(--hq-reflect) 8%, transparent), transparent 54%),
+      linear-gradient(162deg, oklch(0.24 0.026 261 / 0.42), oklch(0.17 0.022 266 / 0.36));
+  }
+  html[data-theme="holoquiet"] .glass-panel::before,
+  html[data-theme="holoquiet"] .hq-working::before {
+    background: radial-gradient(120% 100% at 50% 55%, oklch(0.155 0.02 266 / 0.5), transparent 86%);
+  }
+}
+
+/* ---- 11. Reduced motion: keep depth, drop movement --------------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="holoquiet"] .glass-panel,
+  html[data-theme="holoquiet"] .hq-working,
+  html[data-theme="holoquiet"] .hq-instrument {
+    transition: none !important;
+  }
+  html[data-theme="holoquiet"] .hq-working:hover,
+  html[data-theme="holoquiet"] .hq-instrument:hover {
+    transform: none !important;
+  }
+}
+html[data-motion="reduced"][data-theme="holoquiet"] .glass-panel,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-working,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument {
+  transition: none !important;
+}
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-working:hover,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover {
+  transform: none !important;
+}
