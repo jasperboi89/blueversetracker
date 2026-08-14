@@ -74,7 +74,7 @@ export function ShiftCard() {
   return (
     <>
       <div
-        className="glass-panel relative overflow-hidden p-5 sm:p-6"
+        className="glass-panel hq-instrument relative overflow-hidden p-5 sm:p-6"
         style={
           isNearEnd
             ? { animation: "pulse-gold 2.4s ease-in-out infinite", borderColor: "oklch(0.85 0.16 85 / 0.5)" }

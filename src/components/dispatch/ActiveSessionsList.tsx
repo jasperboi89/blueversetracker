@@ -25,7 +25,7 @@ export function ActiveSessionsList() {
           {active.map((s) => {
             const r = computeReadiness(s);
             return (
-              <div key={s.id} className="glass-panel flex flex-wrap items-center justify-between gap-3 p-4">
+              <div key={s.id} className="glass-panel hq-working hq-affordance flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-sm font-semibold text-foreground">{s.accountName}</div>
