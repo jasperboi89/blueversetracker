@@ -2671,18 +2671,6 @@ html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover {
 [data-slot="sheet-content"]::after {
   content: none !important;
 }
-/* Positioning belongs to the dialog primitive alone — never to a theme. */
-[data-slot="dialog-content"]:hover,
-[data-slot="dialog-content"]:focus-within,
-[data-slot="dialog-content"]:active,
-[data-slot="alert-dialog-content"]:hover,
-[data-slot="alert-dialog-content"]:focus-within,
-[data-slot="alert-dialog-content"]:active,
-[data-slot="sheet-content"]:hover,
-[data-slot="sheet-content"]:focus-within,
-[data-slot="sheet-content"]:active {
-  transform: revert-layer;
-}
 html[data-theme="holoquiet"] [data-slot="dialog-content"],
 html[data-theme="holoquiet"] [data-slot="alert-dialog-content"],
 html[data-theme="holoquiet"] [data-slot="sheet-content"] {
