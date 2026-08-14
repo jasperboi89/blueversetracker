@@ -64,14 +64,26 @@ describe("shared dialog overlay layer contract", () => {
     expect(css).toMatch(
       /\[data-slot="dialog-content"\],[\s\S]*?background-color: var\(--popover\);/,
     );
-    // no theme rule may transform a modal surface
+    // no theme-scoped rule may transform a modal surface; the authoritative
+    // modal contract below intentionally owns the centering transform
     const offenders = css
       .split("}")
       .filter(
         (block) =>
+          /html\[data-theme=/.test(block) &&
           /\[data-slot="(dialog|alert-dialog|sheet)-content"\][^{]*\{/.test(block + "}") &&
           /(^|[^-])transform:/.test(block),
       );
     expect(offenders).toEqual([]);
+  });
+
+  it("keeps dialog content fixed and centered above the page", () => {
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+    expect(css).toMatch(
+      /\[data-slot="dialog-content"\],[\s\S]*?position: fixed;[\s\S]*?left: 50%;[\s\S]*?top: 50%;[\s\S]*?transform: translate\(-50%, -50%\);/,
+    );
+    expect(css).toMatch(
+      /\.glass-panel:not\(\[data-slot="dialog-content"\]\):not\(\[data-slot="alert-dialog-content"\]\):not\(\[data-slot="sheet-content"\]\)/,
+    );
   });
 });
