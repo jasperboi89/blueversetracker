@@ -207,3 +207,55 @@ describe("holoquiet radical spatial redesign", () => {
     expect(REDESIGN).not.toContain('[data-theme="blueverse"]');
   });
 });
+
+describe("holoquiet environmental depth + true glass", () => {
+  const DEPTH = CSS.slice(CSS.indexOf("HOLOQUIET ENVIRONMENTAL DEPTH"));
+
+  it("replaces the flat black environment with a dimensional field", () => {
+    expect(DEPTH).toContain("--hq-env-deep");
+    expect(DEPTH).toContain("--hq-env-navy");
+    expect(DEPTH).toContain("--hq-env-violet");
+    expect(DEPTH).toContain(`${HQ} body`);
+  });
+
+  it("builds large architectural planes with light falloff", () => {
+    expect(DEPTH).toContain(`${HQ} .hq-architecture::after`);
+    expect(DEPTH).toContain(`${HQ} .hq-architecture::before`);
+    expect(DEPTH).not.toContain("repeating-linear-gradient");
+  });
+
+  it("defines a z-depth ladder from ambient to command glass", () => {
+    for (const t of ["--hq-depth-ambient", "--hq-depth-work", "--hq-depth-command"]) {
+      expect(DEPTH).toContain(t);
+    }
+  });
+
+  it("makes workglass translucent with a readable content veil", () => {
+    expect(DEPTH).toContain("--hq-glass-outer");
+    expect(DEPTH).toContain("--hq-glass-veil");
+    expect(DEPTH).toContain(`${HQ} .glass-panel::before`);
+  });
+
+  it("bleeds semantic state color into the material", () => {
+    expect(DEPTH).toContain("--hq-reflect");
+    for (const s of ["active", "waiting", "ai", "success", "blocked"]) {
+      expect(DEPTH).toContain(`[data-state-signal="${s}"]`);
+    }
+  });
+
+  it("keeps backdrop blur restrained", () => {
+    const blurs = [...DEPTH.matchAll(/blur\((\d+)px\)/g)].map((m) => Number(m[1]));
+    expect(blurs.length).toBeGreaterThan(0);
+    expect(Math.max(...blurs)).toBeLessThanOrEqual(10);
+  });
+
+  it("keeps depth but drops motion under both reduced-motion systems", () => {
+    expect(DEPTH).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(DEPTH).toContain('html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument');
+  });
+
+  it("stays isolated from the other two themes", () => {
+    expect(DEPTH).not.toContain('[data-theme="quantum-bloom"]');
+    expect(DEPTH).not.toContain('[data-theme="blueverse"]');
+  });
+});
