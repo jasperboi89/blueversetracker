@@ -119,7 +119,7 @@ describe("shared dialog overlay layer contract", () => {
   it("HoloQuiet hover float lifts panes but never overlay surfaces", () => {
     const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
     // the float itself exists
-    expect(css).toMatch(/transform: translateY\(var\(--hq-lift-float\)\) scale\(var\(--hq-scale-float\)\)/);
+    expect(css).toMatch(/transform:.*translateY\(var\(--hq-lift-float\)\).*scale\(var\(--hq-scale-float\)\)/);
     // every hover/active block that applies the float excludes overlay slots
     const floatBlocks = css
       .split("}")

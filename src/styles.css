@@ -1772,8 +1772,11 @@ html[data-theme="holoquiet"] {
   --hq-refract-warm: color-mix(in oklab, var(--hq-spectral-violet) 20%, transparent);
   --hq-lift: -1px;
   /* Hover float: panes visibly rise off the background. */
-  --hq-lift-float: -6px;
-  --hq-scale-float: 1.008;
+  --hq-lift-float: -14px;
+  --hq-scale-float: 1.012;
+  --hq-rotate-float: 1deg;
+  --hq-glow-spread: 50px;
+  --hq-glow-falloff: 90px;
 }
 
 /* ---- Workglass: translucent material, not an opaque rectangle ----- */
@@ -2566,21 +2569,22 @@ html[data-theme="holoquiet"] .hq-instrument {
 html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover,
 html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover,
 html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover {
-  transform: translateY(var(--hq-lift-float)) scale(var(--hq-scale-float));
+  transform: perspective(1200px) translateY(var(--hq-lift-float)) scale(var(--hq-scale-float)) rotateX(var(--hq-rotate-float));
   position: relative;
   z-index: 3;
-  border-color: color-mix(in oklab, var(--hq-ion-cyan) 24%, var(--hq-glass-edge-hi));
+  border-color: color-mix(in oklab, var(--hq-ion-cyan) 34%, var(--hq-glass-edge-hi));
   box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.1),
+    inset 0 1px 0 oklch(1 0 0 / 0.14),
     var(--hq-depth-work),
-    0 18px 44px -20px oklch(0 0 0 / 0.72),
-    0 34px 70px -44px oklch(0 0 0 / 0.6),
-    0 0 30px -20px color-mix(in oklab, var(--hq-photon-blue) 60%, transparent);
+    0 8px 20px -10px oklch(0 0 0 / 0.72),
+    0 24px 56px -28px oklch(0 0 0 / 0.62),
+    0 0 var(--hq-glow-spread) -18px color-mix(in oklab, var(--hq-photon-blue) 60%, transparent),
+    0 0 var(--hq-glow-falloff) -44px color-mix(in oklab, var(--hq-ion-cyan) 32%, transparent);
 }
 html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
 html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
 html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active {
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(1) rotateX(0);
 }
 html[data-theme="holoquiet"] .hq-working:hover::before,
 html[data-theme="holoquiet"] .glass-panel:hover::before {
