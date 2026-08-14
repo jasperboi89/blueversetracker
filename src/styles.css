@@ -1771,6 +1771,9 @@ html[data-theme="holoquiet"] {
   --hq-refract-cool: color-mix(in oklab, var(--hq-ion-cyan) 22%, transparent);
   --hq-refract-warm: color-mix(in oklab, var(--hq-spectral-violet) 20%, transparent);
   --hq-lift: -1px;
+  /* Hover float: panes visibly rise off the background. */
+  --hq-lift-float: -6px;
+  --hq-scale-float: 1.008;
 }
 
 /* ---- Workglass: translucent material, not an opaque rectangle ----- */
@@ -2558,16 +2561,26 @@ html[data-theme="holoquiet"] .hq-instrument {
     box-shadow 200ms ease,
     background-image 240ms ease;
 }
-html[data-theme="holoquiet"] .hq-working:hover,
-html[data-theme="holoquiet"] .hq-instrument:hover {
-  transform: translateY(-1px);
+/* Hover float: the pane lifts off the background and stacks above siblings.
+   Portaled overlay surfaces are excluded — they own their own transform. */
+html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover,
+html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover,
+html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):hover {
+  transform: translateY(var(--hq-lift-float)) scale(var(--hq-scale-float));
+  position: relative;
+  z-index: 3;
+  border-color: color-mix(in oklab, var(--hq-ion-cyan) 24%, var(--hq-glass-edge-hi));
   box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.1),
     var(--hq-depth-work),
-    0 6px 26px -18px color-mix(in oklab, var(--hq-reflect) 40%, transparent);
+    0 18px 44px -20px oklch(0 0 0 / 0.72),
+    0 34px 70px -44px oklch(0 0 0 / 0.6),
+    0 0 30px -20px color-mix(in oklab, var(--hq-photon-blue) 60%, transparent);
 }
-html[data-theme="holoquiet"] .hq-working:active,
-html[data-theme="holoquiet"] .hq-instrument:active {
-  transform: translateY(0);
+html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
+html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active,
+html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):not([data-slot="dropdown-menu-content"]):not([data-slot="tooltip-content"]):active {
+  transform: translateY(0) scale(1);
 }
 html[data-theme="holoquiet"] .hq-working:hover::before,
 html[data-theme="holoquiet"] .glass-panel:hover::before {
@@ -2625,8 +2638,9 @@ html[data-theme="holoquiet"] .hq-workspace > .hq-command {
   html[data-theme="holoquiet"] .hq-instrument {
     transition: none !important;
   }
-  html[data-theme="holoquiet"] .hq-working:hover,
-  html[data-theme="holoquiet"] .hq-instrument:hover {
+  html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+  html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+  html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover {
     transform: none !important;
   }
 }
@@ -2635,8 +2649,9 @@ html[data-motion="reduced"][data-theme="holoquiet"] .hq-working,
 html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument {
   transition: none !important;
 }
-html[data-motion="reduced"][data-theme="holoquiet"] .hq-working:hover,
-html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover {
+html[data-motion="reduced"][data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover {
   transform: none !important;
 }
 

@@ -98,6 +98,8 @@ describe("shared dialog overlay layer contract", () => {
     // modal contract below intentionally owns the centering transform
     const offenders = css
       .split("}")
+      // exclusion selectors (":not([data-slot=...])") are not targets
+      .map((block) => block.replace(/:not\(\[data-slot="[^"]+"\]\)/g, ""))
       .filter(
         (block) =>
           /html\[data-theme=/.test(block) &&
@@ -112,5 +114,21 @@ describe("shared dialog overlay layer contract", () => {
     expect(css).toMatch(
       /\.glass-panel:not\(\[data-slot="dialog-content"\]\):not\(\[data-slot="alert-dialog-content"\]\):not\(\[data-slot="sheet-content"\]\)/,
     );
+  });
+
+  it("HoloQuiet hover float lifts panes but never overlay surfaces", () => {
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+    // the float itself exists
+    expect(css).toMatch(/transform: translateY\(var\(--hq-lift-float\)\) scale\(var\(--hq-scale-float\)\)/);
+    // every hover/active block that applies the float excludes overlay slots
+    const floatBlocks = css
+      .split("}")
+      .filter((block) => /(--hq-lift-float|translateY\(0\) scale\(1\))/.test(block) && /:hover|:active/.test(block));
+    expect(floatBlocks.length).toBeGreaterThan(0);
+    for (const block of floatBlocks) {
+      for (const slot of ["dialog-content", "alert-dialog-content", "sheet-content", "popover-content"]) {
+        expect(block).toContain(`:not([data-slot="${slot}"])`);
+      }
+    }
   });
 });
