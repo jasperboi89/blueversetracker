@@ -73,4 +73,31 @@ describe("night plan completion decision flow", () => {
     expect(spy).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain("Item Detail");
   });
+
+  it("renders visible item detail content with all actions", () => {
+    mount({ ...base, id: "n4", notes: "check tapes" });
+    const content = document.querySelector('[data-slot="dialog-content"]');
+    expect(content).toBeTruthy();
+    expect(document.querySelectorAll('[data-slot="dialog-overlay"]').length).toBe(1);
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("Verify overnight backup");
+    expect(text).toContain("Finish Task");
+    expect(text).toContain("Convert to Additional Work");
+    expect(text).toContain("Edit");
+  });
+
+  it("dismisses a task and leaves no orphan overlay", () => {
+    const spy = vi.spyOn(nightPlanStore, "setStatus").mockImplementation(() => {});
+    let open = true;
+    const { root } = mount({ ...base, id: "n5" }, () => {
+      open = false;
+    });
+    click("Finish Task");
+    click("Dismiss");
+    expect(spy).toHaveBeenCalledWith("n5", "dismissed");
+    expect(open).toBe(false);
+    act(() => root.unmount());
+    expect(document.querySelectorAll('[data-slot="dialog-overlay"]').length).toBe(0);
+    expect(document.querySelectorAll('[data-slot="dialog-content"]').length).toBe(0);
+  });
 });
