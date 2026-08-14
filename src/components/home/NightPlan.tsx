@@ -533,7 +533,7 @@ function NightPlanDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={isMobile ? "bottom" : "right"}
-        className={cn("glass-panel border-0", isMobile ? "h-[75vh]" : "w-[460px] sm:max-w-[460px]")}
+        className={cn("border-0", isMobile ? "h-[75vh]" : "w-[460px] sm:max-w-[460px]")}
       >
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
