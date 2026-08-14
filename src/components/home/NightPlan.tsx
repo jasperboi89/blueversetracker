@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -641,18 +642,19 @@ function ConvertedRow({ item, onOpen }: { item: NightPlanItem; onOpen: () => voi
   );
 }
 
-function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () => void }) {
+export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () => void }) {
   const [editing, setEditing] = useState(false);
   const [task, setTask] = useState(item.task);
   const [notes, setNotes] = useState(item.notes ?? "");
   const [priority, setPriority] = useState<Priority>(item.priority);
-  const [confirm, setConfirm] = useState<null | "done" | "carry" | "dismiss">(null);
+  const [deciding, setDeciding] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
 
   useEffect(() => {
     setTask(item.task);
     setNotes(item.notes ?? "");
     setPriority(item.priority);
+    setDeciding(false);
   }, [item.id]);
 
   const meta = priorityMeta[item.priority];
@@ -664,23 +666,71 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
     toast.success("Item updated.");
   };
 
-  const confirmMeta: Record<NonNullable<typeof confirm>, { label: string; color: string; action: () => void }> = {
-    done: { label: "Mark Done", color: "var(--green-glow)", action: () => nightPlanStore.setStatus(item.id, "done") },
-    carry: { label: "Carry Over", color: "var(--cyan-glow)", action: () => nightPlanStore.setStatus(item.id, "carried") },
-    dismiss: { label: "Dismiss", color: "var(--gold-glow)", action: () => nightPlanStore.setStatus(item.id, "dismissed") },
+  const decide = (status: Status, message: string) => {
+    nightPlanStore.setStatus(item.id, status);
+    setDeciding(false);
+    toast.success(message, { duration: 2200 });
+    onClose();
   };
 
   return (
     <>
       <Dialog open onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="glass-panel border-0 sm:max-w-md">
+        <DialogContent className="glass-panel max-h-[85vh] overflow-y-auto border-0 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <button onClick={onClose} className="rounded-md p-1 hover:bg-white/5"><ChevronLeft className="h-4 w-4" /></button>
-              Item Detail
+              <button
+                onClick={() => (deciding ? setDeciding(false) : onClose())}
+                aria-label={deciding ? "Back to item detail" : "Close item detail"}
+                className="rounded-md p-1 hover:bg-white/5"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {deciding ? "What happened with this task?" : "Item Detail"}
             </DialogTitle>
+            <DialogDescription>
+              {deciding
+                ? "Choose how this Night Plan task should be recorded for this shift."
+                : "View, edit, or finish this Night Plan task."}
+            </DialogDescription>
           </DialogHeader>
-          {!editing ? (
+          {deciding ? (
+            <div className="space-y-3">
+              <p className="text-sm text-foreground/90">“{item.task}”</p>
+              <div className="space-y-2">
+                <DecisionOption
+                  icon={CheckCircle2}
+                  color="var(--green-glow)"
+                  title="Completed"
+                  detail="I finished this task during this shift."
+                  onClick={() => decide("done", "Marked completed.")}
+                />
+                {isActive(item.status) && (
+                  <DecisionOption
+                    icon={RotateCcw}
+                    color="var(--cyan-glow)"
+                    title="Carry Over"
+                    detail="I did not finish this task. Keep it for the next shift."
+                    onClick={() => decide("carried", "Carried over to the next shift.")}
+                  />
+                )}
+                {item.status !== "dismissed" && item.status !== "converted" && (
+                  <DecisionOption
+                    icon={Trash2}
+                    color="var(--gold-glow)"
+                    title="Dismiss"
+                    detail="Remove this task from active work without marking it completed."
+                    onClick={() => decide("dismissed", "Task dismissed.")}
+                  />
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setDeciding(false)}>
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : !editing ? (
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <Icon className="mt-0.5 h-4 w-4" style={{ color: meta.color }} />
@@ -695,19 +745,9 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
                 {item.completedAt && ` · Completed ${formatCentralShort(new Date(item.completedAt))}`}
               </div>
               <div className="flex flex-wrap gap-2">
-                {item.status !== "done" && (
-                  <Button size="sm" variant="ghost" onClick={() => setConfirm("done")}>
-                    <CheckCircle2 className="mr-1 h-4 w-4" style={{ color: "var(--green-glow)" }} /> Mark Done
-                  </Button>
-                )}
-                {isActive(item.status) && (
-                  <Button size="sm" variant="ghost" onClick={() => setConfirm("carry")}>
-                    <RotateCcw className="mr-1 h-4 w-4" /> Carry Over
-                  </Button>
-                )}
-                {item.status !== "dismissed" && item.status !== "converted" && (
-                  <Button size="sm" variant="ghost" onClick={() => setConfirm("dismiss")}>
-                    <Trash2 className="mr-1 h-4 w-4" /> Dismiss
+                {item.status !== "converted" && item.status !== "done" && (
+                  <Button size="sm" variant="ghost" onClick={() => setDeciding(true)}>
+                    <CheckCircle2 className="mr-1 h-4 w-4" style={{ color: "var(--green-glow)" }} /> Finish Task
                   </Button>
                 )}
                 {item.status !== "converted" && (
@@ -746,29 +786,6 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
         </DialogContent>
       </Dialog>
 
-      {confirm && (
-        <Dialog open onOpenChange={(v) => !v && setConfirm(null)}>
-          <DialogContent className="glass-panel border-0 sm:max-w-sm" style={{ boxShadow: `0 0 28px ${confirmMeta[confirm].color}` }}>
-            <DialogHeader>
-              <DialogTitle>{confirmMeta[confirm].label}?</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">"{item.task}"</p>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button>
-              <BlueverseButton
-                onClick={() => {
-                  confirmMeta[confirm].action();
-                  setConfirm(null);
-                  onClose();
-                }}
-              >
-                Confirm
-              </BlueverseButton>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
       <ConvertFromNightPlanModal
         item={item}
         open={convertOpen}
@@ -776,5 +793,32 @@ function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () 
         onConverted={onClose}
       />
     </>
+  );
+}
+
+function DecisionOption({
+  icon: Icon,
+  color,
+  title,
+  detail,
+  onClick,
+}: {
+  icon: typeof Star;
+  color: string;
+  title: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-start gap-3 rounded-lg border border-border/40 bg-white/[0.03] p-3 text-left transition hover:border-border/70 hover:bg-white/[0.07]"
+    >
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color }} />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">{title}</span>
+        <span className="block text-xs text-muted-foreground">{detail}</span>
+      </span>
+    </button>
   );
 }
