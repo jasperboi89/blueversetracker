@@ -7,7 +7,8 @@ import { NextBestActionStrip } from "@/components/home/NextBestActionStrip";
 import { NightPlan } from "@/components/home/NightPlan";
 import { LookupCards } from "@/components/home/LookupCards";
 import { OverviewCards } from "@/components/home/OverviewCards";
-import { RecentlyCompleted } from "@/components/home/RecentlyCompleted";
+import { ShiftLedger } from "@/components/home/ShiftLedger";
+import { QuickStart } from "@/components/home/QuickStart";
 import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
 import { BriefingPanel } from "@/components/home/BriefingPanel";
 import { ShiftHandoffPanel } from "@/components/handoff/ShiftHandoffPanel";
@@ -33,7 +34,8 @@ const HOME_PANES: Array<{
   { id: "home:plan", title: "Night Plan", def: { xPct: 51, yPct: 50, wPct: 49, hPct: 34 }, body: () => <NightPlan /> },
   { id: "home:lookup", title: "Lookup", def: { xPct: 0, yPct: 75, wPct: 50, hPct: 25 }, body: () => <LookupCards /> },
   { id: "home:overview", title: "Overview", def: { xPct: 51, yPct: 85, wPct: 49, hPct: 15 }, body: () => <OverviewCards /> },
-  { id: "home:recent", title: "Recently Completed", def: { xPct: 0, yPct: 100, wPct: 100, hPct: 25 }, body: () => <RecentlyCompleted /> },
+  { id: "home:quickstart", title: "Quick Start", def: { xPct: 0, yPct: 100, wPct: 100, hPct: 12 }, body: () => <QuickStart /> },
+  { id: "home:ledger", title: "Shift Ledger", def: { xPct: 0, yPct: 113, wPct: 100, hPct: 25 }, body: () => <ShiftLedger /> },
   { id: "home:handoff", title: "Shift Handoff", def: { xPct: 0, yPct: 126, wPct: 100, hPct: 30 }, body: () => <ShiftHandoffPanel /> },
   { id: "home:coverage", title: "Coverage Watch", def: { xPct: 0, yPct: 157, wPct: 100, hPct: 26 }, body: () => <CoveragePanel /> },
 ];
@@ -76,9 +78,10 @@ function Home() {
           <BriefingPanel />
           <AlertCenter />
           <NightPlan />
+          <QuickStart />
           <LookupCards />
           <OverviewCards />
-          <RecentlyCompleted />
+          <ShiftLedger />
           <section className="glass-panel p-4">
             <ShiftHandoffPanel />
           </section>
