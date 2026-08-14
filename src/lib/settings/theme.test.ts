@@ -109,6 +109,30 @@ describe("holoquiet stylesheet", () => {
     expect(CSS).toContain('html[data-motion="reduced"] [class*="qb-"]');
   });
 
+  it("defines the Ambient / Working / Command surface hierarchy", () => {
+    for (const cls of [".hq-ambient", ".hq-working", ".hq-command"]) {
+      expect(CSS).toContain(`${HQ} ${cls}`);
+    }
+  });
+
+  it("gives Liam Command Core its own command-plane treatment and states", () => {
+    expect(CSS).toContain(`${HQ} [data-surface="command-core"]`);
+    for (const s of ["working", "attention", "ready"]) {
+      expect(CSS).toContain(`[data-core-state="${s}"]`);
+    }
+  });
+
+  it("adds architectural depth planes and ultrawide workspace width", () => {
+    expect(CSS).toContain(".hq-architecture::before");
+    expect(CSS).toContain(".hq-workspace :is(.max-w-7xl, .max-w-6xl)");
+  });
+
+  it("stops the new decorative motion under reduced motion", () => {
+    const rm = CSS.slice(CSS.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(rm).toContain('[data-surface="command-core"]::after');
+    expect(rm).toContain(`${HQ} .hq-working:hover`);
+  });
+
   it("does not restyle BlueVerse or Quantum Bloom surfaces globally", () => {
     const block = CSS.slice(CSS.indexOf("/* HOLOQUIET"));
     expect(block).not.toContain('[data-theme="quantum-bloom"]');
