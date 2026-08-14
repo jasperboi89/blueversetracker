@@ -135,10 +135,16 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2">
-        <SidebarGroup>
+        {groups.map((group) => (
+        <SidebarGroup key={group.label}>
+          {!collapsed && (
+            <SidebarGroupLabel className="px-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
+              {group.label}
+            </SidebarGroupLabel>
+          )}
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {items.map((item) => {
+              {group.items.map((item) => {
                 const active =
                   item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
                 const badge = item.url === "/assigned-to-me" ? assignedUnread : 0;
@@ -192,6 +198,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-4">
