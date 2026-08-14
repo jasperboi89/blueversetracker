@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import fs from "node:fs";
 import path from "node:path";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./dialog";
+import { Sheet, SheetContent, SheetTitle } from "./sheet";
 
 function mount(node: React.ReactNode) {
   const host = document.createElement("div");
@@ -46,6 +47,32 @@ describe("shared dialog overlay layer contract", () => {
     expect(String(content?.className)).toContain("!-translate-x-1/2");
     expect(String(content?.className)).toContain("!-translate-y-1/2");
     // portaled outside the local React host
+    expect(content?.closest("body")).toBe(document.body);
+    expect((content as HTMLElement).style.position).toBe("fixed");
+    expect((content as HTMLElement).style.transform).toBe("translate(-50%, -50%)");
+    expect((content as HTMLElement).style.zIndex).toBe("70");
+  });
+
+  it("keeps sheet content fixed to the viewport above its overlay", () => {
+    mount(
+      <Sheet open>
+        <SheetContent side="right">
+          <SheetTitle>Night Plan</SheetTitle>
+        </SheetContent>
+      </Sheet>,
+    );
+    const overlay = document.querySelector('[data-slot="sheet-overlay"]');
+    const content = document.querySelector('[data-slot="sheet-content"]') as HTMLElement | null;
+    expect(overlay).toBeTruthy();
+    expect(content).toBeTruthy();
+    expect(zOf(content)).toBeGreaterThan(zOf(overlay));
+    expect(String(content?.className)).toContain("!fixed");
+    expect(String(content?.className)).toContain("!z-[70]");
+    expect(content?.style.position).toBe("fixed");
+    expect(content?.style.top).toBe("0px");
+    expect(content?.style.right).toBe("0px");
+    expect(content?.style.bottom).toBe("0px");
+    expect(content?.style.zIndex).toBe("70");
     expect(content?.closest("body")).toBe(document.body);
   });
 
