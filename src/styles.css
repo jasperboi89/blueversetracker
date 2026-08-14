@@ -1757,3 +1757,278 @@ html[data-reduced-motion="true"][data-theme="holoquiet"] .hq-working[data-focus-
   transform: none;
   transition: none;
 }
+
+/* ================================================================== */
+/* HOLOQUIET OPTICS + SPATIAL PRESENCE PASS                           */
+/* Refines translucency, internal illumination, edge refraction and   */
+/* environmental light coupling. Scoped to the holoquiet attribute or */
+/* .hq-* classes only — BlueVerse / Quantum Bloom are untouched.      */
+/* ================================================================== */
+
+html[data-theme="holoquiet"] {
+  /* Optical constants: one place to tune the whole material system.  */
+  --hq-glass-tint: oklch(0.225 0.026 262 / 0.72);
+  --hq-glass-tint-deep: oklch(0.185 0.024 264 / 0.7);
+  --hq-glass-edge-hi: oklch(0.92 0.02 235 / 0.1);
+  --hq-glass-edge-lo: oklch(0 0 0 / 0.28);
+  --hq-refract-cool: color-mix(in oklab, var(--hq-ion-cyan) 22%, transparent);
+  --hq-refract-warm: color-mix(in oklab, var(--hq-spectral-violet) 20%, transparent);
+  --hq-lift: -1px;
+}
+
+/* ---- Workglass: translucent material, not an opaque rectangle ----- */
+html[data-theme="holoquiet"] .glass-panel,
+html[data-theme="holoquiet"] .hq-working,
+html[data-theme="holoquiet"] .hq-ambient {
+  position: relative;
+  isolation: isolate;
+  background-image:
+    /* internal illumination: leading edge cooler, far edge falls away */
+    linear-gradient(
+      162deg,
+      oklch(0.4 0.035 250 / 0.14) 0%,
+      oklch(0.3 0.03 258 / 0.05) 22%,
+      transparent 55%
+    ),
+    linear-gradient(
+      162deg,
+      var(--hq-glass-tint) 0%,
+      var(--hq-glass-tint-deep) 100%
+    );
+  background-color: transparent;
+}
+html[data-theme="holoquiet"] .hq-ambient {
+  --hq-glass-tint: oklch(0.215 0.024 263 / 0.5);
+  --hq-glass-tint-deep: oklch(0.18 0.022 264 / 0.48);
+}
+html[data-theme="holoquiet"] .hq-working {
+  --hq-glass-tint: oklch(0.245 0.026 261 / 0.8);
+  --hq-glass-tint-deep: oklch(0.195 0.024 264 / 0.78);
+}
+
+/* Edge refraction: a faint, non-uniform luminosity along the rim.    */
+html[data-theme="holoquiet"] .glass-panel:not([data-surface="command-core"])::after,
+html[data-theme="holoquiet"] .hq-working:not([data-surface="command-core"])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  padding: 1px;
+  background: linear-gradient(
+    150deg,
+    var(--hq-glass-edge-hi) 0%,
+    var(--hq-refract-cool) 18%,
+    transparent 46%,
+    transparent 62%,
+    var(--hq-refract-warm) 88%,
+    var(--hq-glass-edge-lo) 100%
+  );
+  opacity: 0.5;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  transition: opacity 200ms ease, background 260ms ease;
+}
+/* ---- Spectral migration: cyan -> blue -> violet on approach ------- */
+html[data-theme="holoquiet"] .glass-panel:hover::after,
+html[data-theme="holoquiet"] .glass-panel:focus-within::after,
+html[data-theme="holoquiet"] .hq-working:hover::after,
+html[data-theme="holoquiet"] .hq-working:focus-within::after {
+  opacity: 0.9;
+  background: linear-gradient(
+    150deg,
+    color-mix(in oklab, var(--hq-ion-cyan) 34%, transparent) 0%,
+    color-mix(in oklab, var(--hq-photon-blue) 28%, transparent) 38%,
+    transparent 58%,
+    color-mix(in oklab, var(--hq-spectral-violet) 30%, transparent) 92%,
+    var(--hq-glass-edge-lo) 100%
+  );
+}
+/* Motion and light are causally linked: the lift brightens the rim.  */
+html[data-theme="holoquiet"] .glass-panel:hover,
+html[data-theme="holoquiet"] .glass-panel:focus-within {
+  transform: translateY(var(--hq-lift));
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    var(--hq-shadow-elevated),
+    0 0 26px -20px color-mix(in oklab, var(--hq-photon-blue) 60%, transparent);
+}
+html[data-theme="holoquiet"] .glass-panel:active {
+  transform: translateY(0);
+}
+
+/* ---- Depth separation between the four spatial levels ------------- */
+html[data-theme="holoquiet"] .hq-ambient {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.03);
+}
+html[data-theme="holoquiet"] .hq-working {
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.07),
+    inset 0 -18px 30px -30px oklch(0 0 0 / 0.8),
+    var(--hq-shadow-elevated);
+}
+
+/* ---- Command Glass: the most sophisticated material --------------- */
+html[data-theme="holoquiet"] .hq-command,
+html[data-theme="holoquiet"] [data-surface="command-core"] {
+  background-image:
+    radial-gradient(120% 90% at 8% 0%, color-mix(in oklab, var(--hq-spectral-violet) 12%, transparent), transparent 62%),
+    linear-gradient(
+      164deg,
+      oklch(0.26 0.04 288 / 0.82) 0%,
+      oklch(0.19 0.028 268 / 0.8) 100%
+    );
+  background-color: transparent;
+}
+html[data-theme="holoquiet"] [data-surface="command-core"][data-core-state="ready"] {
+  background-image:
+    radial-gradient(120% 90% at 8% 0%, color-mix(in oklab, var(--hq-signal-green) 10%, transparent), transparent 62%),
+    linear-gradient(164deg, oklch(0.25 0.035 220 / 0.82), oklch(0.19 0.028 268 / 0.8));
+}
+html[data-theme="holoquiet"] [data-surface="command-core"][data-core-state="attention"] {
+  background-image:
+    radial-gradient(120% 90% at 8% 0%, color-mix(in oklab, var(--hq-amber) 10%, transparent), transparent 62%),
+    linear-gradient(164deg, oklch(0.25 0.034 280 / 0.82), oklch(0.19 0.028 268 / 0.8));
+}
+
+/* ---- Status cards become integrated holographic instruments ------- */
+html[data-theme="holoquiet"] .hq-instrument {
+  --hq-instrument-color: var(--hq-photon-blue);
+  position: relative;
+  overflow: hidden;
+  background-image:
+    radial-gradient(
+      120% 120% at 100% 0%,
+      color-mix(in oklab, var(--hq-instrument-color) 10%, transparent),
+      transparent 58%
+    ),
+    linear-gradient(162deg, oklch(0.24 0.026 261 / 0.78), oklch(0.185 0.024 264 / 0.78));
+  border-color: color-mix(in oklab, var(--hq-instrument-color) 18%, var(--hq-rim-neutral));
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.6, 0.2, 1),
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-image 240ms ease;
+}
+html[data-theme="holoquiet"] .hq-instrument:hover,
+html[data-theme="holoquiet"] .hq-instrument:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--hq-instrument-color) 34%, transparent);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.07),
+    0 0 30px -22px color-mix(in oklab, var(--hq-instrument-color) 90%, transparent),
+    var(--hq-shadow-elevated);
+}
+html[data-theme="holoquiet"] .hq-instrument[data-hq-tone="active"] { --hq-instrument-color: var(--hq-ion-cyan); }
+html[data-theme="holoquiet"] .hq-instrument[data-hq-tone="waiting"] { --hq-instrument-color: var(--hq-amber); }
+html[data-theme="holoquiet"] .hq-instrument[data-hq-tone="ai"] { --hq-instrument-color: var(--hq-spectral-violet); }
+html[data-theme="holoquiet"] .hq-instrument[data-hq-tone="success"] { --hq-instrument-color: var(--hq-signal-green); }
+html[data-theme="holoquiet"] .hq-instrument[data-hq-tone="attention"] { --hq-instrument-color: var(--hq-soft-rose); }
+/* Empty instruments read quieter than populated ones. */
+html[data-theme="holoquiet"] .hq-instrument[data-hq-empty="true"] {
+  background-image: linear-gradient(162deg, oklch(0.215 0.024 263 / 0.55), oklch(0.18 0.022 264 / 0.55));
+  border-color: oklch(0.82 0.02 250 / 0.09);
+}
+
+/* ---- Environmental light coupling --------------------------------- */
+/* The active workspace lifts the atmosphere immediately around it and */
+/* falls off fast: screen edges stay dark.                             */
+html[data-theme="holoquiet"] .hq-workspace[data-workflow]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.85;
+  transition: background 600ms ease;
+  background: radial-gradient(
+    58% 44% at 50% 34%,
+    color-mix(in oklab, var(--hq-env-color, var(--hq-photon-blue)) 9%, transparent),
+    transparent 72%
+  );
+}
+html[data-theme="holoquiet"] .hq-workspace[data-workflow="dispatch"] { --hq-env-color: var(--hq-ion-cyan); }
+html[data-theme="holoquiet"] .hq-workspace[data-workflow="knowledge"] { --hq-env-color: var(--hq-spectral-violet); }
+html[data-theme="holoquiet"] .hq-workspace[data-workflow="tickets"] { --hq-env-color: var(--hq-photon-blue); }
+html[data-theme="holoquiet"] .hq-workspace[data-workflow="additional"] { --hq-env-color: var(--hq-amber); }
+html[data-theme="holoquiet"] .hq-workspace[data-workflow="completed"] { --hq-env-color: var(--hq-signal-green); }
+
+/* ---- Background architecture: a space, not graph paper ------------ */
+html[data-theme="holoquiet"] .hq-architecture::after {
+  background:
+    /* two far structural planes, not a repeating grid */
+    linear-gradient(
+      90deg,
+      transparent 17.9%,
+      oklch(0.82 0.02 250 / 0.035) 18%,
+      transparent 18.12%,
+      transparent 81.9%,
+      oklch(0.82 0.02 250 / 0.028) 82%,
+      transparent 82.12%
+    ),
+    /* one quiet floor line */
+    linear-gradient(180deg, transparent 66%, oklch(0.8 0.02 250 / 0.03) 66.1%, transparent 66.35%),
+    /* broad tonal plane change, no small geometry */
+    linear-gradient(104deg, oklch(0.2 0.024 262 / 0.35) 0%, transparent 42%, transparent 68%, oklch(0.14 0.02 266 / 0.4) 100%);
+  mask-image: radial-gradient(105% 85% at 50% 34%, oklch(0 0 0 / 1), transparent 82%);
+}
+
+/* ---- Ultrawide: suspended inside a larger environment ------------- */
+@media (min-width: 1700px) {
+  html[data-theme="holoquiet"] .hq-architecture::before {
+    background:
+      radial-gradient(52% 62% at 50% 40%, oklch(0.44 0.04 252 / 0.2), transparent 74%),
+      linear-gradient(90deg, oklch(0 0 0 / 0.38), transparent 18%, transparent 82%, oklch(0 0 0 / 0.38));
+  }
+}
+
+/* ---- Mobile: compact HoloQuiet, fewer environmental effects ------- */
+@media (max-width: 767px) {
+  html[data-theme="holoquiet"] .hq-workspace::before,
+  html[data-theme="holoquiet"] .hq-workspace[data-workflow]::after {
+    display: none;
+  }
+  html[data-theme="holoquiet"] .glass-panel::after,
+  html[data-theme="holoquiet"] .hq-working::after {
+    opacity: 0.65;
+  }
+  html[data-theme="holoquiet"] .glass-panel:hover,
+  html[data-theme="holoquiet"] .hq-working:hover {
+    transform: none;
+  }
+}
+
+/* ---- Reduced motion folds into the authoritative sweep ------------ */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="holoquiet"] .glass-panel::after,
+  html[data-theme="holoquiet"] .hq-working::after,
+  html[data-theme="holoquiet"] .hq-instrument,
+  html[data-theme="holoquiet"] .hq-workspace[data-workflow]::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  html[data-theme="holoquiet"] .hq-instrument:hover,
+  html[data-theme="holoquiet"] .hq-instrument:focus-visible,
+  html[data-theme="holoquiet"] .glass-panel:hover,
+  html[data-theme="holoquiet"] .glass-panel:focus-within {
+    transform: none !important;
+  }
+}
+html[data-motion="reduced"][data-theme="holoquiet"] .glass-panel::after,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-working::after,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-workspace[data-workflow]::after {
+  transition: none !important;
+  animation: none !important;
+}
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:focus-visible {
+  transform: none !important;
+}

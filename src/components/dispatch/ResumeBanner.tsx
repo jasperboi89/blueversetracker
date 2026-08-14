@@ -25,7 +25,7 @@ export function ResumeBanner() {
 
   return (
     <div
-      className="glass-panel flex flex-wrap items-center gap-3 p-4"
+      className="glass-panel hq-working flex flex-wrap items-center gap-3 p-4"
       style={{ borderColor: "oklch(0.78 0.18 220 / 0.35)" }}
     >
       <PlayCircle className="h-5 w-5 shrink-0" style={{ color: "var(--cyan-glow)" }} />

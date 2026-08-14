@@ -139,3 +139,41 @@ describe("holoquiet stylesheet", () => {
     expect(block.match(/^\.glass-panel/m)).toBeNull();
   });
 });
+
+describe("holoquiet optics pass", () => {
+  it("makes Workglass translucent with internal illumination", () => {
+    const optics = CSS.slice(CSS.indexOf("HOLOQUIET OPTICS"));
+    expect(optics).toContain("--hq-glass-tint");
+    expect(optics).toContain("--hq-glass-tint-deep");
+    expect(optics).toContain(`${HQ} .hq-working`);
+  });
+
+  it("adds an edge-refraction film that migrates spectrally on approach", () => {
+    const optics = CSS.slice(CSS.indexOf("HOLOQUIET OPTICS"));
+    expect(optics).toContain("--hq-refract-cool");
+    expect(optics).toContain("--hq-refract-warm");
+    expect(optics).toContain("mask-composite: exclude");
+  });
+
+  it("couples environmental light to the active workflow zone", () => {
+    const optics = CSS.slice(CSS.indexOf("HOLOQUIET OPTICS"));
+    for (const zone of ["dispatch", "knowledge", "tickets", "additional", "completed"]) {
+      expect(optics).toContain(`.hq-workspace[data-workflow="${zone}"]`);
+    }
+  });
+
+  it("treats status cards as integrated instruments with semantic tones", () => {
+    const optics = CSS.slice(CSS.indexOf("HOLOQUIET OPTICS"));
+    expect(optics).toContain(`${HQ} .hq-instrument`);
+    for (const tone of ["active", "waiting", "ai", "success", "attention"]) {
+      expect(optics).toContain(`.hq-instrument[data-hq-tone="${tone}"]`);
+    }
+  });
+
+  it("keeps the optics pass scoped and reduced-motion aware", () => {
+    const optics = CSS.slice(CSS.indexOf("HOLOQUIET OPTICS"));
+    expect(optics).not.toContain('[data-theme="quantum-bloom"]');
+    expect(optics).not.toContain('[data-theme="blueverse"]');
+    expect(optics).toContain('html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument');
+  });
+});

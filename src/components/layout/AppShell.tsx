@@ -9,8 +9,21 @@ import { UnlockToast } from "@/components/achievements/UnlockToast";
 import { AchievementsWatcher } from "@/components/achievements/AchievementsWatcher";
 import { RetrievalSyncWatcher } from "@/components/retrieval/RetrievalSyncWatcher";
 import { FocusStrip } from "@/components/focus/FocusStrip";
+import { useRouterState } from "@tanstack/react-router";
+
+/** Purely visual: which workflow the environment should tint toward. */
+function workflowZone(pathname: string): string | undefined {
+  if (pathname.startsWith("/contact-dispatch")) return "dispatch";
+  if (pathname.startsWith("/knowledge-vault")) return "knowledge";
+  if (pathname.startsWith("/freshdesk") || pathname.startsWith("/assigned-to-me")) return "tickets";
+  if (pathname.startsWith("/additional-work")) return "additional";
+  if (pathname.startsWith("/completed-work")) return "completed";
+  return undefined;
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const zone = workflowZone(pathname);
   return (
     <SidebarProvider defaultOpen>
       <div className="flex min-h-screen w-full">
@@ -58,7 +71,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <HipaaPill />
             </div>
           </header>
-          <main className="hq-workspace flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <main className="hq-workspace flex-1 px-4 py-6 sm:px-6 lg:px-8" data-workflow={zone}>
+            {children}
+          </main>
         </div>
         <InsightToaster />
         <AssignedInboxPoller />

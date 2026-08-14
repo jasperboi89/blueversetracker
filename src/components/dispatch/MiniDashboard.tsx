@@ -11,6 +11,15 @@ import { alphaMix } from "@/lib/visual-style";
 
 type Key = "active" | "waiting-cs" | "waiting-prog" | "not-ready" | "ready";
 
+/** Visual-only mapping of each card to a HoloQuiet spectral tone. */
+const TONE: Record<Key, string> = {
+  active: "active",
+  "waiting-cs": "waiting",
+  "waiting-prog": "ai",
+  "not-ready": "attention",
+  ready: "success",
+};
+
 const cards: { key: Key; label: string; icon: typeof Clock; color: string }[] = [
   { key: "active",       label: "Active Testing Sessions", icon: Radio,               color: "var(--electric)" },
   { key: "waiting-cs",   label: "Waiting CS Review",       icon: MessageSquareWarning, color: "var(--gold-glow)" },
@@ -43,7 +52,9 @@ export function MiniDashboard() {
             <button
               key={c.key}
               onClick={() => setOpen(c.key)}
-              className={cn("glass-panel shimmer group p-4 text-left transition")}
+              className={cn("glass-panel hq-instrument shimmer group p-4 text-left transition")}
+              data-hq-tone={TONE[c.key]}
+              data-hq-empty={list.length === 0 ? "true" : undefined}
             >
               <div className="flex items-start justify-between">
                 <div>

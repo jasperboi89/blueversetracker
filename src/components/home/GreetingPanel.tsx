@@ -21,7 +21,7 @@ export function GreetingPanel({ name = "Luke" }: { name?: string }) {
   const greeting = getGreeting(now);
 
   return (
-    <div className="glass-panel shimmer relative overflow-hidden p-5 sm:p-6">
+    <div className="glass-panel hq-ambient shimmer relative overflow-hidden p-5 sm:p-6">
       <div className="flex items-center gap-4">
         <div
           className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl"
