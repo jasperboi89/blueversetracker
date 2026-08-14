@@ -177,3 +177,33 @@ describe("holoquiet optics pass", () => {
     expect(optics).toContain('html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument');
   });
 });
+
+describe("holoquiet radical spatial redesign", () => {
+  const REDESIGN = CSS.slice(CSS.indexOf("HOLOQUIET RADICAL SPATIAL REDESIGN"));
+
+  it("replaces enclosing card frames with partial-frame planes", () => {
+    expect(REDESIGN).toContain(`${HQ} .glass-panel`);
+    expect(REDESIGN).toContain("--hq-plane-tint");
+    expect(REDESIGN).toContain("--hq-anchor");
+  });
+
+  it("gives the command plane its own clipped geometry", () => {
+    expect(REDESIGN).toContain(`${HQ} [data-surface="command-core"]`);
+    expect(REDESIGN).toContain("clip-path: polygon(");
+  });
+
+  it("redesigns the navigation rail and launcher deck", () => {
+    expect(REDESIGN).toContain(`${HQ} [data-slot="sidebar-menu-button"][data-active="true"]`);
+    expect(REDESIGN).toContain(`${HQ} .hq-deck-key`);
+  });
+
+  it("adds a spatial page transition that reduced motion disables", () => {
+    expect(REDESIGN).toContain("hq-plane-in-a");
+    expect(REDESIGN).toContain('html[data-motion="reduced"][data-theme="holoquiet"] .hq-workspace[data-nav-tick="a"] > *');
+  });
+
+  it("stays scoped away from the other two themes", () => {
+    expect(REDESIGN).not.toContain('[data-theme="quantum-bloom"]');
+    expect(REDESIGN).not.toContain('[data-theme="blueverse"]');
+  });
+});
