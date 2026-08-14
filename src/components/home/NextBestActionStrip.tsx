@@ -123,9 +123,18 @@ export function NextBestActionStrip() {
     },
   ];
 
+  const coreState: "idle" | "working" | "attention" | "ready" =
+    overdueTickets.length > 0
+      ? "attention"
+      : activeDispatchSessions.length > 0 || activeNightItems.length > 0
+        ? "working"
+        : "ready";
+
   return (
     <section
-      className="glass-panel holo-card holo-scan active-breathe relative overflow-hidden p-4 sm:p-5"
+      className="glass-panel hq-command holo-card holo-scan active-breathe relative overflow-hidden p-4 sm:p-5"
+      data-surface="command-core"
+      data-core-state={coreState}
       aria-label="Liam Command Core — suggested next action"
     >
       {/* Accent wash keyed to the current recommendation */}

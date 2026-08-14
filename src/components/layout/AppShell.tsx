@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <HipaaPill />
             </div>
           </header>
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+          <main className="hq-workspace flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
         </div>
         <InsightToaster />
         <AssignedInboxPoller />
