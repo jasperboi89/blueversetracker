@@ -1807,14 +1807,14 @@ html[data-theme="holoquiet"] .hq-working {
 }
 
 /* Edge refraction: a faint, non-uniform luminosity along the rim.    */
-html[data-theme="holoquiet"] .glass-panel::after,
-html[data-theme="holoquiet"] .hq-working::after {
+html[data-theme="holoquiet"] .glass-panel:not([data-surface="command-core"])::after,
+html[data-theme="holoquiet"] .hq-working:not([data-surface="command-core"])::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
   padding: 1px;
   background: linear-gradient(
     150deg,
@@ -1836,13 +1836,6 @@ html[data-theme="holoquiet"] .hq-working::after {
   mask-composite: exclude;
   transition: opacity 200ms ease, background 260ms ease;
 }
-/* Panel children must sit above the refraction film. */
-html[data-theme="holoquiet"] .glass-panel > *,
-html[data-theme="holoquiet"] .hq-working > * {
-  position: relative;
-  z-index: 1;
-}
-
 /* ---- Spectral migration: cyan -> blue -> violet on approach ------- */
 html[data-theme="holoquiet"] .glass-panel:hover::after,
 html[data-theme="holoquiet"] .glass-panel:focus-within::after,
