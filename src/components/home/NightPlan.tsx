@@ -642,7 +642,7 @@ function ConvertedRow({ item, onOpen }: { item: NightPlanItem; onOpen: () => voi
   );
 }
 
-function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () => void }) {
+export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClose: () => void }) {
   const [editing, setEditing] = useState(false);
   const [task, setTask] = useState(item.task);
   const [notes, setNotes] = useState(item.notes ?? "");
