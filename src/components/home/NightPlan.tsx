@@ -87,6 +87,7 @@ export function NightPlan() {
   const done = items.filter((i) => i.status === "done");
   const dismissed = items.filter((i) => i.status === "dismissed");
   const converted = items.filter((i) => i.status === "converted");
+  const detailItem = detail ? items.find((item) => item.id === detail.id) : undefined;
 
   // counted denominator: items not converted
   const counted = items.filter((i) => i.status !== "converted");
@@ -232,9 +233,9 @@ export function NightPlan() {
       />
 
       {/* Detail */}
-      {detail && (
+      {detailItem && (
         <ItemDetailDialog
-          item={items.find((i) => i.id === detail.id)!}
+          item={detailItem}
           onClose={() => setDetail(null)}
         />
       )}
@@ -390,7 +391,7 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
           else onOpenChange(v);
         }}
       >
-        <DialogContent className="glass-panel border-0 sm:max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add Night Plan Item</DialogTitle>
           </DialogHeader>
@@ -471,7 +472,7 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
       </Dialog>
 
       <Dialog open={!!confirmDiscard} onOpenChange={(v) => !v && setConfirmDiscard(null)}>
-        <DialogContent className="glass-panel border-0 sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Unsaved Night Plan Item</DialogTitle>
           </DialogHeader>
@@ -677,7 +678,7 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
     <>
       {/* Suspended (not unmounted) while Convert runs so only one overlay is live. */}
       <Dialog open={!convertOpen} onOpenChange={(v) => !v && !convertOpen && onClose()}>
-        <DialogContent className="glass-panel max-h-[85vh] overflow-y-auto border-0 sm:max-w-md">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <button

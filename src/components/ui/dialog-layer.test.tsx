@@ -74,4 +74,14 @@ describe("shared dialog overlay layer contract", () => {
       );
     expect(offenders).toEqual([]);
   });
+
+  it("keeps dialog content fixed and centered above the page", () => {
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+    expect(css).toMatch(
+      /\[data-slot="dialog-content"\],[\s\S]*?position: fixed;[\s\S]*?left: 50%;[\s\S]*?top: 50%;[\s\S]*?transform: translate\(-50%, -50%\);/,
+    );
+    expect(css).toMatch(
+      /\.glass-panel:not\(\[data-slot="dialog-content"\]\):not\(\[data-slot="alert-dialog-content"\]\):not\(\[data-slot="sheet-content"\]\)/,
+    );
+  });
 });

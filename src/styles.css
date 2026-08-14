@@ -1774,9 +1774,9 @@ html[data-theme="holoquiet"] {
 }
 
 /* ---- Workglass: translucent material, not an opaque rectangle ----- */
-html[data-theme="holoquiet"] .glass-panel,
-html[data-theme="holoquiet"] .hq-working,
-html[data-theme="holoquiet"] .hq-ambient {
+html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]),
+html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]),
+html[data-theme="holoquiet"] .hq-ambient:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]) {
   position: relative;
   isolation: isolate;
   background-image:
@@ -2661,6 +2661,13 @@ html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover {
     0 24px 60px -28px oklch(0 0 0 / 0.85),
     inset 0 1px 0 oklch(1 0 0 / 0.05);
   backdrop-filter: none;
+}
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 /* No ambient decoration layers on modal surfaces, in any theme. */
 [data-slot="dialog-content"]::before,
