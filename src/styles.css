@@ -2638,8 +2638,9 @@ html[data-theme="holoquiet"] .hq-workspace > .hq-command {
   html[data-theme="holoquiet"] .hq-instrument {
     transition: none !important;
   }
-  html[data-theme="holoquiet"] .hq-working:hover,
-  html[data-theme="holoquiet"] .hq-instrument:hover {
+  html[data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+  html[data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+  html[data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover {
     transform: none !important;
   }
 }
@@ -2648,8 +2649,9 @@ html[data-motion="reduced"][data-theme="holoquiet"] .hq-working,
 html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument {
   transition: none !important;
 }
-html[data-motion="reduced"][data-theme="holoquiet"] .hq-working:hover,
-html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:hover {
+html[data-motion="reduced"][data-theme="holoquiet"] .glass-panel:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-working:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover,
+html[data-motion="reduced"][data-theme="holoquiet"] .hq-instrument:not([data-slot="dialog-content"]):not([data-slot="alert-dialog-content"]):not([data-slot="sheet-content"]):not([data-slot="popover-content"]):hover {
   transform: none !important;
 }
 
