@@ -98,6 +98,8 @@ describe("shared dialog overlay layer contract", () => {
     // modal contract below intentionally owns the centering transform
     const offenders = css
       .split("}")
+      // exclusion selectors (":not([data-slot=...])") are not targets
+      .map((block) => block.replace(/:not\(\[data-slot="[^"]+"\]\)/g, ""))
       .filter(
         (block) =>
           /html\[data-theme=/.test(block) &&
