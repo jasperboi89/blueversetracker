@@ -1075,7 +1075,7 @@ export function KnowledgeVault() {
           section !== "notes" && "hidden",
         )}
       >
-        {workspace.navCollapsed ? (
+        {focusMode ? null : workspace.navCollapsed ? (
           <div className="glass-panel hidden w-11 shrink-0 flex-col items-center gap-2 p-2 xl:flex">
             <Button
               size="sm"
@@ -1238,7 +1238,7 @@ export function KnowledgeVault() {
           </aside>
         )}
 
-        {!workspace.navCollapsed && (
+        {!workspace.navCollapsed && !focusMode && (
           <PaneDivider
             label="Resize vault navigator"
             value={workspace.navWidth}
