@@ -41,11 +41,41 @@ import {
   Maximize2,
   PinOff,
 } from "lucide-react";
+import {
+  BookMarked,
+  Eye,
+  LayoutList,
+  Minimize2,
+  PanelLeft,
+  PanelLeftClose,
+  PanelRight,
+  Rows3,
+  SquareStack,
+  Undo2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PrintableNote } from "@/components/knowledge/PrintableNote";
 import { IsScriptWorkspace } from "@/components/knowledge/is-scripts/IsScriptWorkspace";
+import { PaneDivider } from "@/components/knowledge/workspace/PaneDivider";
+import { NoteReader } from "@/components/knowledge/workspace/NoteReader";
+import { ContextDrawer } from "@/components/knowledge/workspace/ContextDrawer";
+import { BookMode } from "@/components/knowledge/workspace/BookMode";
+import { CollectionShelf } from "@/components/knowledge/workspace/CollectionShelf";
+import {
+  NAV_MAX,
+  NAV_MIN,
+  STACK_MAX,
+  STACK_MIN,
+  noteStatus,
+  orderedForBook,
+  useVaultWorkspace,
+  vaultWorkspace,
+  type ContextTab,
+  type NoteStatus,
+  type VaultDensity,
+} from "@/lib/knowledge/vault-workspace-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
