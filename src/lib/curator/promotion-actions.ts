@@ -24,6 +24,15 @@ import { resolutionService } from "@/lib/resolution/resolution-service";
 import type { ResolutionMemory } from "@/lib/resolution/resolution-types";
 import { appendHistory, getCandidate, patchCandidate, recordDecision } from "./curator-store";
 import type { PromotionDestination } from "./curator-contract";
+import type {
+  CandidateDecisionPayload,
+  CreateKnowledgeDraftPayload,
+  CreateResolutionPayload,
+  PromotionPayloadBase,
+  ReinforceResolutionPayload,
+  SupersedeKnowledgePayload,
+  UpdateKnowledgeNotePayload,
+} from "./promotion-payloads";
 
 /* ------------------------------------------------------------------ */
 /* Ports (test seams)                                                  */
@@ -75,35 +84,15 @@ export function setKnowledgePort(next: KnowledgePort | null): void {
 /* Payloads                                                            */
 /* ------------------------------------------------------------------ */
 
-export interface PromotionPayloadBase {
-  candidateId: string;
-  packetId: string;
-}
-export interface CreateKnowledgeDraftPayload extends PromotionPayloadBase {
-  title: string;
-  body: string;
-}
-export interface UpdateKnowledgeNotePayload extends PromotionPayloadBase {
-  noteId: string;
-  body: string;
-  merge?: boolean;
-}
-export interface SupersedeKnowledgePayload extends PromotionPayloadBase {
-  noteId: string;
-  title: string;
-  body: string;
-}
-export interface ReinforceResolutionPayload extends PromotionPayloadBase {
-  resolutionId: string;
-}
-export interface CreateResolutionPayload extends PromotionPayloadBase {
-  accountNumber: string;
-  problem: string;
-  resolution: string;
-}
-export interface CandidateDecisionPayload extends PromotionPayloadBase {
-  note?: string;
-}
+export type {
+  CandidateDecisionPayload,
+  CreateKnowledgeDraftPayload,
+  CreateResolutionPayload,
+  PromotionPayloadBase,
+  ReinforceResolutionPayload,
+  SupersedeKnowledgePayload,
+  UpdateKnowledgeNotePayload,
+} from "./promotion-payloads";
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
