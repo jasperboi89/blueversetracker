@@ -44,17 +44,28 @@ describe("shared dialog overlay layer contract", () => {
     // Important utilities keep production/theme CSS from moving the modal.
     expect(String(content?.className)).toContain("!fixed");
     expect(String(content?.className)).toContain("!left-1/2");
-    expect(String(content?.className)).toContain("!top-1/2");
-    expect(String(content?.className)).toContain("!-translate-x-1/2");
-    expect(String(content?.className)).toContain("!-translate-y-1/2");
+    expect(String(content?.className)).toContain("!top-4");
+    expect(String(content?.className)).toContain("!bottom-4");
+    // Tailwind v4 translate utilities emit the standalone `translate` property and would
+    // stack on top of the inline centering transform — they must not be present.
+    expect(String(content?.className)).not.toContain("translate-x-1/2");
+    expect((content as HTMLElement).style.translate).toBe("none");
     // portaled outside the local React host
     expect(content?.closest("body")).toBe(document.body);
     expect((content as HTMLElement).style.position).toBe("fixed");
-    expect((content as HTMLElement).style.transform).toBe("translate(-50%, -50%)");
+    expect((content as HTMLElement).style.transform).toBe("translateX(-50%)");
     expect((content as HTMLElement).style.zIndex).toBe("70");
-    // clamp keeps tall dialogs inside the viewport with internal scroll
-    expect((content as HTMLElement).style.maxHeight).toContain("90vh");
-    expect((content as HTMLElement).style.overflowY).toBe("auto");
+    // anchored to both viewport edges: the panel can never overflow the screen
+    expect((content as HTMLElement).style.top).toBe("1rem");
+    expect((content as HTMLElement).style.bottom).toBe("1rem");
+    expect((content as HTMLElement).style.overflow).toBe("hidden");
+    expect((content as HTMLElement).style.maxHeight).toContain("100dvh");
+    // short dialogs stay vertically centred inside the inset box
+    expect((content as HTMLElement).style.marginTop).toBe("auto");
+    expect((content as HTMLElement).style.marginBottom).toBe("auto");
+    // content scrolls in the body, not the panel
+    const body = document.querySelector('[data-slot="dialog-body"]');
+    expect(String(body?.className)).toContain("overflow-y-auto");
   });
 
   it("renders select poppers above modal surfaces", () => {

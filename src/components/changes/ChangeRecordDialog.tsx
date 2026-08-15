@@ -111,12 +111,12 @@ export function ChangeRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader className="sticky -top-6 z-10 -mx-6 -mt-6 bg-[var(--popover)] px-6 pb-3 pt-6">
+      <DialogContent className="max-w-3xl" scrollBody={false}>
+        <DialogHeader className="pb-3">
           <DialogTitle>Change record</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="-mx-1 min-h-0 flex-1 space-y-4 overflow-y-auto px-1 pb-2">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Label className="text-xs">What changed</Label>
@@ -271,7 +271,7 @@ export function ChangeRecordDialog({
           </div>
         </div>
 
-        <DialogFooter className="sticky -bottom-6 z-10 -mx-6 -mb-6 flex-wrap gap-2 border-t border-border/40 bg-[var(--popover)] px-6 py-4 sm:justify-between">
+        <DialogFooter className="-mx-6 -mb-6 mt-2 flex-wrap gap-2 border-t border-border/40 bg-[var(--popover)] px-6 py-4 sm:justify-between">
           <Button variant="ghost" className="text-destructive" onClick={remove}>
             <Trash2 className="mr-1.5 h-4 w-4" /> Delete
           </Button>
