@@ -4,6 +4,7 @@ import { useIsAdmin } from "@/lib/auth/role-context";
 import type { PortalContextEnvelope } from "@/lib/core/portal-context";
 import { isSafeForOperationalGuidance } from "@/lib/core/evidence-contract";
 import { realityLabel } from "@/lib/core/reality-boundary";
+import { computeNextBestAction } from "@/lib/nba/nba-engine";
 
 /**
  * Context Inspector — admin-only view of the Portal Context Envelope.
@@ -22,6 +23,13 @@ export function ContextInspector({ envelope }: { envelope: PortalContextEnvelope
   const sources = Array.from(new Set(e.evidence.map((x) => x.sourceType)));
   const facts = e.facts ?? [];
   const conflicts = e.evidenceConflicts ?? [];
+  // Admin-only score inspector (§54). Deterministic, cheap, no AI call.
+  let nba: ReturnType<typeof computeNextBestAction> | null = null;
+  try {
+    nba = computeNextBestAction({ envelope: e, episode: e.episode });
+  } catch {
+    nba = null;
+  }
 
   return (
     <div className="rounded-md border border-border/30 bg-white/[0.02]">
@@ -123,6 +131,23 @@ export function ContextInspector({ envelope }: { envelope: PortalContextEnvelope
             ))}
             {e.warnings.length === 0 && <div>none</div>}
           </div>
+          {nba && (
+            <div>
+              <div className="font-medium text-foreground/80">
+                Next-best action ({nba.outcome}, {nba.candidates.length} candidates)
+              </div>
+              {nba.candidates.slice(0, 10).map((c) => (
+                <div key={c.id} className="break-words">
+                  {c.state === "blocked" ? "BLOCKED" : c.score.toFixed(2)} · {c.kind} · {c.title} —{" "}
+                  {c.reasonCodes.join(",")} · risk {c.risk} · {c.state}
+                  {c.blockers.length ? ` · blocked by ${c.blockers.map((b) => b.type).join(",")}` : ""}
+                </div>
+              ))}
+              {nba.candidates.length === 0 && (
+                <div>{nba.noRecommendationReason ?? nba.waitReason ?? "no candidates"}</div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
