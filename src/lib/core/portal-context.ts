@@ -213,6 +213,27 @@ export interface ContextEvidence {
 /* Warnings + budget                                                   */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Phase 12 — bounded projection of an Operational Memory into the envelope.
+ * Experience of past work, never a claim about current state.
+ */
+export interface ContextMemory {
+  id: string;
+  memoryClass: string;
+  title: string;
+  summary: string;
+  occurredAt: string;
+  status: string;
+  origin: ContextOrigin;
+  confidence?: EvidenceConfidence;
+  importance: number;
+  relevance: number;
+  /** Why this memory matched the current situation. */
+  reasons: string[];
+  accountNumber?: string;
+  ticketId?: string;
+}
+
 export type ContextWarningCode =
   | "source_unavailable"
   | "context_degraded"
@@ -264,6 +285,8 @@ export interface PortalContextEnvelope {
   facts?: EvidenceFact[];
   /** Unresolved contradictions between current facts. Never auto-resolved. */
   evidenceConflicts?: EvidenceConflict[];
+  /** Phase 12 — prior experience relevant to the current work. */
+  memory?: ContextMemory[];
   warnings: ContextWarning[];
   budget: ContextBudgetMetadata;
 }
