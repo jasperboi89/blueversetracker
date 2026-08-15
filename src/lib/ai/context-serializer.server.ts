@@ -3,6 +3,8 @@ import { trimEvidence, activeEntityIds } from "@/lib/core/context-priority";
 import type { ContextEvidence, PortalContextEnvelope } from "@/lib/core/portal-context";
 import { isSafeForOperationalGuidance, type EvidenceFact } from "@/lib/core/evidence-contract";
 import { realityLabel } from "@/lib/core/reality-boundary";
+import { computeNextBestAction } from "@/lib/nba/nba-engine";
+import { serializeNextBestAction } from "@/lib/nba/nba-serializer";
 
 /**
  * Portal Context -> Copilot prompt sections (Phase 10 §16).
@@ -206,6 +208,14 @@ export function serializeEnvelope(
       .map((e) => `- ${e.title ?? e.sourceId}: ${e.summary} (${e.origin})`),
   ].filter(Boolean) as string[];
   if (inferred.length) sections.push(`## INFERENCES\n${inferred.join("\n")}`);
+
+  /* NEXT-BEST-ACTION STATE — deterministic engine output (Phase 14). */
+  try {
+    const nba = computeNextBestAction({ envelope: env, episode: env.episode });
+    sections.push(serializeNextBestAction(nba));
+  } catch {
+    // Recommendation failure must never break an answer.
+  }
 
   let text = sections.join("\n\n");
   let truncated = false;

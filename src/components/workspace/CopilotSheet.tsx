@@ -202,6 +202,17 @@ export function CopilotSheet() {
     } catch {
       portalContext = envelope;
     }
+    // Phase 14 — bounded episode signals so the engine knows what was tried.
+    try {
+      const { episodeKeyFor } = await import("@/lib/nba/nba-engine");
+      const { nbaStore } = await import("@/lib/nba/nba-store");
+      portalContext = {
+        ...portalContext,
+        episode: nbaStore.getEpisode(episodeKeyFor(portalContext)),
+      };
+    } catch {
+      /* recommendations degrade quietly */
+    }
     const res = await streamCopilot(
       {
         messages: history,

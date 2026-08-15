@@ -2,6 +2,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { Timer, X } from "lucide-react";
 import { awarenessStore } from "@/lib/core/awareness-store";
 import { useAccountContext } from "@/lib/core/use-account-context";
+import { NextBestActionCard } from "@/components/nba/NextBestActionCard";
+import { WorkStateSection } from "@/components/nba/WorkStateSection";
 import type { FocusAction, FocusItem, FocusWorkspaceState } from "@/lib/core/focus-workspace";
 
 /**
@@ -171,6 +173,9 @@ export function FocusPanel({
       </Section>
 
       {focus.current?.accountId && <AccountSummary accountNumber={focus.current.accountId} />}
+
+      <WorkStateSection />
+      <NextBestActionCard />
 
       <div className="flex justify-end">
         <button

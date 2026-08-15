@@ -15,6 +15,9 @@ export interface ContextSuggestion {
 const BY_AREA: Record<string, ContextSuggestion[]> = {
   freshdesk_work: [
     { label: "Summarize issue", prompt: "Summarize the issue on the ticket I'm working." },
+    { label: "What should I check next?", prompt: "What should I check next on this ticket?" },
+    { label: "What remains unverified?", prompt: "Show what remains unverified on this ticket." },
+    { label: "Compare with previous resolution", prompt: "Compare this ticket with the previous resolution that looks relevant." },
     { label: "Similar prior work", prompt: "Find similar prior work for this ticket." },
     { label: "Account instructions", prompt: "Find account instructions relevant to this ticket." },
     { label: "What next?", prompt: "What should I check next on this ticket?" },
@@ -29,12 +32,18 @@ const BY_AREA: Record<string, ContextSuggestion[]> = {
     { label: "Account risks", prompt: "Explain the operational risks on this account." },
   ],
   contact_dispatch: [
+    { label: "What remains to verify?", prompt: "What remains to verify in this dispatch session?" },
+    { label: "Show prior failures", prompt: "Show prior dispatch failures for this account." },
+    { label: "Explain current test state", prompt: "Explain the current test state of this dispatch session." },
     { label: "Related account history", prompt: "Check related account history for this dispatch session." },
     { label: "Prior dispatch issues", prompt: "Find prior dispatch issues for this account." },
     { label: "Testing state", prompt: "Summarize the testing state of this dispatch session." },
     { label: "What's left?", prompt: "What remains to verify in this dispatch session?" },
   ],
   knowledge_vault: [
+    { label: "Check against recent work", prompt: "Check this procedure against recent work." },
+    { label: "Show conflicting evidence", prompt: "Show conflicting evidence for the note I have open." },
+    { label: "What needs review?", prompt: "What in this note needs review?" },
     { label: "Related notes", prompt: "Find notes related to the note I have open." },
     { label: "Related tickets", prompt: "Find tickets related to the note I have open." },
     { label: "Improve this guide", prompt: "Suggest improvements to the note I have open." },
@@ -42,6 +51,8 @@ const BY_AREA: Record<string, ContextSuggestion[]> = {
     { label: "Conflicting guidance", prompt: "Check for guidance that conflicts with the note I have open." },
   ],
   additional_work: [
+    { label: "Remaining information", prompt: "What information is still missing on this work item?" },
+    { label: "Recommended follow-up", prompt: "What follow-up should I record for this work item?" },
     { label: "Summarize work", prompt: "Summarize the additional work item I'm on." },
     { label: "Related documentation", prompt: "Find documentation related to this work item." },
     { label: "Prior fixes", prompt: "Find prior fixes related to this work item." },
