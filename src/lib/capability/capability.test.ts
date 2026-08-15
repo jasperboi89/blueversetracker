@@ -138,14 +138,14 @@ describe("capability permissions", () => {
 
 describe("capability health", () => {
   it("is healthy with no reported problems", () => {
-    expect(deriveHealth(anyRead(), {})).toBe("healthy");
+    expect(deriveHealth(anyRead(), {}, () => "healthy")).toBe("healthy");
   });
 
   it("degrades when a dependency is degraded", () => {
     const def = allCapabilities().find((d) => deps(d).length > 0);
     if (def) {
-      const health = deriveHealth(def, { [deps(def)[0]!]: "degraded" });
-      expect(health === "degraded" || health === "unavailable").toBe(true);
+      const health = deriveHealth(def, {}, () => "unavailable");
+      expect(health).toBe("degraded");
     }
   });
 
@@ -183,7 +183,7 @@ describe("capability resolution", () => {
     if (def) {
       const res = resolveCapabilities({
         operator: admin,
-        sourceHealth: { [deps(def)[0]!]: "unavailable" },
+        sourceHealth: { database: "unavailable", freshdesk: "unavailable" },
       });
       expect(["unavailable", "blocked"]).toContain(res.byId[def.id]?.availability);
     }
