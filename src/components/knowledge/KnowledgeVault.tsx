@@ -416,6 +416,34 @@ export function KnowledgeVault() {
       });
   }, [folderById, notes, query, view, sortMode]);
 
+  const draftStatus: NoteStatus = draft ? noteStatus(workspace, draft.id) : "saved";
+  const isReference = draftStatus === "reference";
+
+  const relatedNotes = useMemo(() => {
+    if (!draft) return [];
+    return notes
+      .filter(
+        (note) =>
+          note.id !== draft.id &&
+          !note.isArchived &&
+          ((draft.folderId && note.folderId === draft.folderId) ||
+            note.tags.some((tag) => draft.tags.includes(tag))),
+      )
+      .slice(0, 8);
+  }, [notes, draft]);
+
+  const bookFolder = bookFolderId ? (folderById.get(bookFolderId) ?? null) : null;
+  const bookNotes = useMemo(() => {
+    if (!bookFolderId) return [];
+    const inside = notes.filter((note) => note.folderId === bookFolderId && !note.isArchived);
+    return orderedForBook(inside, workspace.bookOrder[bookFolderId]);
+  }, [notes, bookFolderId, workspace.bookOrder]);
+
+  // Persist the last collection/view the operator was browsing.
+  useEffect(() => {
+    vaultWorkspace.setLastView(view);
+  }, [view]);
+
   const changeDraft = (changes: Partial<KnowledgeNote>) => {
     setDraft((current) => {
       if (!current) return current;
