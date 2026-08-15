@@ -2701,3 +2701,69 @@ html[data-theme="holoquiet"] [data-slot="sheet-content"] {
   );
   border-color: color-mix(in oklab, var(--hq-ion-cyan, oklch(0.85 0.12 210)) 18%, transparent);
 }
+
+/* ── Knowledge Vault workspace ─────────────────────────────────────────────
+   Reader typography and Book Mode page transitions. Motion is opt-out via the
+   global reduced-motion preference. */
+.vault-reader h1,
+.vault-reader h2,
+.vault-reader h3 {
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+.vault-reader h2 { margin-top: 1.6em; }
+.vault-reader h3 { margin-top: 1.3em; }
+.vault-reader p { margin: 0 0 1em; }
+.vault-reader ul,
+.vault-reader ol { margin: 0 0 1em 1.2em; }
+.vault-reader li { margin-bottom: 0.35em; }
+.vault-reader blockquote {
+  margin: 1.2em 0;
+  padding: 0.6em 1em;
+  border-left: 2px solid color-mix(in oklab, var(--cyan-glow, oklch(0.8 0.15 210)) 45%, transparent);
+  background: oklch(1 0 0 / 0.03);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+.vault-reader pre,
+.vault-reader code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.vault-reader pre {
+  padding: 0.85em 1em;
+  border-radius: 0.6rem;
+  background: oklch(0 0 0 / 0.28);
+  overflow-x: auto;
+}
+.vault-reader table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+.vault-reader th,
+.vault-reader td {
+  border: 1px solid oklch(1 0 0 / 0.08);
+  padding: 0.45em 0.6em;
+  text-align: left;
+}
+.vault-reader img { max-width: 100%; border-radius: 0.6rem; }
+
+@keyframes vault-page-in-next {
+  from { opacity: 0; transform: perspective(1400px) rotateY(-6deg) translateX(2.5%); }
+  to { opacity: 1; transform: perspective(1400px) rotateY(0) translateX(0); }
+}
+@keyframes vault-page-in-prev {
+  from { opacity: 0; transform: perspective(1400px) rotateY(6deg) translateX(-2.5%); }
+  to { opacity: 1; transform: perspective(1400px) rotateY(0) translateX(0); }
+}
+.vault-page-turn {
+  transform-origin: left center;
+  will-change: transform, opacity;
+  animation: vault-page-in-next 220ms cubic-bezier(0.22, 0.68, 0.3, 1) both;
+}
+.vault-page-turn[data-direction="prev"] {
+  transform-origin: right center;
+  animation-name: vault-page-in-prev;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-page-turn {
+    animation: none !important;
+    transform: none !important;
+  }
+}
