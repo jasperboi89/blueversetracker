@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Activity, ChevronDown, ChevronRight } from "lucide-react";
 import { useIsAdmin } from "@/lib/auth/role-context";
 import type { PortalContextEnvelope } from "@/lib/core/portal-context";
+import { isSafeForOperationalGuidance } from "@/lib/core/evidence-contract";
+import { realityLabel } from "@/lib/core/reality-boundary";
 
 /**
  * Context Inspector — admin-only view of the Portal Context Envelope.
@@ -18,6 +20,8 @@ export function ContextInspector({ envelope }: { envelope: PortalContextEnvelope
 
   const e = envelope;
   const sources = Array.from(new Set(e.evidence.map((x) => x.sourceType)));
+  const facts = e.facts ?? [];
+  const conflicts = e.evidenceConflicts ?? [];
 
   return (
     <div className="rounded-md border border-border/30 bg-white/[0.02]">
@@ -92,6 +96,26 @@ export function ContextInspector({ envelope }: { envelope: PortalContextEnvelope
               e.budget.assemblyMs !== undefined ? ` · assembled in ${e.budget.assemblyMs}ms` : ""
             } · trimming happens server-side against the router budget`}
           />
+          <div>
+            <div className="font-medium text-foreground/80">Reality boundary ({facts.length})</div>
+            {facts.slice(0, 14).map((f) => (
+              <div key={f.id} className="truncate">
+                {isSafeForOperationalGuidance(f) ? "✓" : "·"} {realityLabel(f)} {f.subject.type}:{f.subject.id} —{" "}
+                {f.predicate} = {String(f.value)}
+              </div>
+            ))}
+            {facts.length === 0 && <div>no facts projected</div>}
+          </div>
+          <div>
+            <div className="font-medium text-foreground/80">Conflicts ({conflicts.length})</div>
+            {conflicts.map((c) => (
+              <div key={c.id} className="break-words">
+                • {c.subject.type}:{c.subject.id} {c.predicate} —{" "}
+                {c.values.map((v) => `"${v.value}" (${v.origin}/${v.confidence})`).join(" vs ")}
+              </div>
+            ))}
+            {conflicts.length === 0 && <div>none detected</div>}
+          </div>
           <div>
             <div className="font-medium text-foreground/80">Warnings ({e.warnings.length})</div>
             {e.warnings.map((w, i) => (
