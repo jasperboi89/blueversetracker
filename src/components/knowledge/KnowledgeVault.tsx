@@ -1241,8 +1241,23 @@ export function KnowledgeVault() {
             </div>
           </ScrollArea>
         </aside>
+        )}
 
-        <section className="glass-panel flex min-h-0 flex-col overflow-hidden">
+        {!workspace.navCollapsed && (
+          <PaneDivider
+            label="Resize vault navigator"
+            value={workspace.navWidth}
+            min={NAV_MIN}
+            max={NAV_MAX}
+            onChange={(next) => vaultWorkspace.setNavWidth(next)}
+          />
+        )}
+
+        {focusMode ? null : (
+        <section
+          className="glass-panel flex min-h-0 shrink-0 flex-col overflow-hidden xl:w-[var(--stack-w)]"
+          style={{ ["--stack-w" as string]: `${workspace.stackWidth}px` }}
+        >
           <div className="space-y-3 border-b border-white/10 p-3">
             <div className="flex items-center gap-2">
               <div className="relative min-w-0 flex-1">
