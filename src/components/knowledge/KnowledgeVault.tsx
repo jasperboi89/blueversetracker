@@ -620,6 +620,38 @@ export function KnowledgeVault() {
     return () => window.clearTimeout(timer);
   }, [dirty, draft, persistDraft]);
 
+  /** Explicit save from Edit Mode; returns to Reader unless the user keeps editing. */
+  const saveAndRead = useCallback(async () => {
+    const snapshot = draftRef.current;
+    if (snapshot) await persistDraft(snapshot);
+    setDocMode("reader");
+  }, [persistDraft]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        if (docMode === "edit" && draftRef.current) {
+          event.preventDefault();
+          void persistDraft(draftRef.current);
+        }
+        return;
+      }
+      if (event.key !== "Escape") return;
+      if (versionPreview) {
+        setVersionPreview(null);
+        setCompareVersion(false);
+        return;
+      }
+      if (focusMode) {
+        setFocusMode(false);
+        return;
+      }
+      if (workspace.drawerOpen) vaultWorkspace.setDrawer(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [docMode, focusMode, versionPreview, workspace.drawerOpen, persistDraft]);
+
   const selectNote = (id: string) => {
     if (dirty && draft) void persistDraft(draft);
     setSelectedId(id);
