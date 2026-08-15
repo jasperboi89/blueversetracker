@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { PortalContextEnvelope } from "@/lib/core/portal-context";
 
 /** A change the Copilot proposed; nothing happens until the operator applies it. */
 export interface ProposedAction {
@@ -28,6 +29,8 @@ export interface StreamRequest {
   profile?: string;
   /** Bounded deterministic Focus snapshot (CURRENT/NEXT/WATCH/BLOCKED). */
   focus?: string;
+  /** Portal Context Envelope — where the operator is and what matters to it. */
+  portalContext?: PortalContextEnvelope;
   nowIso?: string;
 }
 
