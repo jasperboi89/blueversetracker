@@ -209,6 +209,14 @@ export function serializeEnvelope(
   ].filter(Boolean) as string[];
   if (inferred.length) sections.push(`## INFERENCES\n${inferred.join("\n")}`);
 
+  /* NEXT-BEST-ACTION STATE — deterministic engine output (Phase 14). */
+  try {
+    const nba = computeNextBestAction({ envelope: env, episode: env.episode });
+    sections.push(serializeNextBestAction(nba));
+  } catch {
+    // Recommendation failure must never break an answer.
+  }
+
   let text = sections.join("\n\n");
   let truncated = false;
   if (text.length > budget.maxContextChars) {
