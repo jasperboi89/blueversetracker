@@ -271,3 +271,33 @@ export function factFromActionResult(input: {
     ...(input.accountNumber ? { scope: { accountNumber: input.accountNumber } } : {}),
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Envelope -> graph                                                   */
+/* ------------------------------------------------------------------ */
+
+import { buildEvidenceGraph, type EvidenceGraph } from "./evidence-graph";
+
+/**
+ * Deterministic projection of one envelope into the Evidence Graph. Called at
+ * ask time only — nothing polls, and no fact is fabricated for a source that
+ * did not answer (unavailable stays unknown, never empty).
+ */
+export function graphFromEnvelope(
+  env: PortalContextEnvelope,
+  extraFacts: EvidenceFact[] = [],
+  now = Date.now(),
+): EvidenceGraph {
+  const scope = {
+    ...(env.active.account?.id ? { accountNumber: env.active.account.id } : {}),
+    shiftKey: env.shiftKey,
+  };
+  const facts = [
+    ...factsFromActiveEntities(env, now),
+    ...factsFromContextEvidence(env.evidence, scope, now),
+    ...extraFacts,
+  ];
+  // Same subject+predicate+source is one fact; last projection wins.
+  const deduped = Array.from(new Map(facts.map((f) => [f.id, f])).values());
+  return buildEvidenceGraph(deduped, edgesFromEnvelope(env, deduped), now);
+}

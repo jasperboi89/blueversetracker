@@ -98,5 +98,22 @@ export async function buildPortalContextWithEvidence(
     failures,
     evidence,
   });
-  return { ...full, evidence: full.evidence.slice(0, max) };
+  const bounded: PortalContextEnvelope = { ...full, evidence: full.evidence.slice(0, max) };
+
+  // Phase 11 — project the bounded envelope through the Reality Boundary.
+  const { graphFromEnvelope } = await import("./evidence-adapters");
+  const graph = graphFromEnvelope(bounded);
+  const warnings = graph.conflicts.length
+    ? [
+        ...bounded.warnings,
+        {
+          code: "evidence_conflict" as const,
+          message: `${graph.conflicts.length} unresolved evidence conflict(s): ${graph.conflicts
+            .map((c) => c.predicate)
+            .join(", ")}. Surface the disagreement; do not resolve it silently.`,
+        },
+      ]
+    : bounded.warnings;
+
+  return { ...bounded, facts: graph.facts, evidenceConflicts: graph.conflicts, warnings };
 }
