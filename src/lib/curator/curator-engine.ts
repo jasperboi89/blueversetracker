@@ -243,7 +243,9 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 export function curateMemories(input: CurationInput): CurationOutcome {
   const now = input.now ?? Date.now();
   const at = new Date(now).toISOString();
-  const byId = new Map(input.existing.map((c) => [c.id, { ...c }] as const));
+  const byId = new Map<string, Mutable<CuratedMemoryCandidate>>(
+    input.existing.map((c) => [c.id, { ...c }] as const),
+  );
   const created: string[] = [];
   const strengthened: string[] = [];
   const revived: string[] = [];

@@ -28,6 +28,8 @@ function payloadFor(kind: ActionType, a: WireProposal): Record<string, unknown> 
     case "start_timer":
       return { ticketNumber: a.ticketNumber ?? "" };
   }
+    default:
+      return {};
 }
 
 /** Convert a streamed proposal into a typed, idempotency-keyed action. */
