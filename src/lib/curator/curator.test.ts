@@ -145,6 +145,7 @@ describe("conflict gating", () => {
     kind: "contradiction",
     status: "unresolved",
     summary: "Account instructions say route to the answering pod instead.",
+    subject: { type: "account", id: "A100", label: "Acme" },
     factIds: [],
   } as EvidenceConflict;
 
@@ -221,7 +222,7 @@ describe("diffs and matching", () => {
 describe("decay", () => {
   it("decays unused candidates but never below the retrieval floor", () => {
     const w = retrievalWeight(
-      { recurrenceScore: 0.4, importanceScore: 0.4, lastObservedAt: new Date(T0).toISOString() },
+      { importance: 0.4, lastSupportedAt: new Date(T0).toISOString() },
       T0 + 400 * DAY,
     );
     expect(w).toBeGreaterThanOrEqual(0.05);
@@ -230,11 +231,11 @@ describe("decay", () => {
 
   it("recent, recurring candidates outrank stale ones", () => {
     const recent = retrievalWeight(
-      { recurrenceScore: 0.6, importanceScore: 0.6, lastObservedAt: new Date(T0 + 390 * DAY).toISOString() },
+      { importance: 0.6, lastSupportedAt: new Date(T0 + 390 * DAY).toISOString() },
       T0 + 400 * DAY,
     );
     const stale = retrievalWeight(
-      { recurrenceScore: 0.6, importanceScore: 0.6, lastObservedAt: new Date(T0).toISOString() },
+      { importance: 0.6, lastSupportedAt: new Date(T0).toISOString() },
       T0 + 400 * DAY,
     );
     expect(recent).toBeGreaterThan(stale);

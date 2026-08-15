@@ -363,7 +363,7 @@ export function applyConflicts(
   now = Date.now(),
 ): CuratedMemoryCandidate {
   const keys = new Set(c.relatedEntities.map((e) => `${e.type}:${e.id}`));
-  const relevant = conflicts.filter((x) => keys.has(`${x.subject.type}:${x.subject.id}`));
+  const relevant = conflicts.filter((x) => x.subject && keys.has(`${x.subject.type}:${x.subject.id}`));
   const next: CuratedMemoryCandidate = { ...c, conflicts: relevant };
   next.support = { ...next.support, conflictingEvidenceCount: relevant.filter((x) => x.status === "unresolved").length };
   next.reality = { ...next.reality, confidence: confidenceFromSupport(next.support) };
