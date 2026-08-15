@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { portalPresence } from "@/lib/core/portal-presence";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PrintableNote } from "@/components/knowledge/PrintableNote";
 import { IsScriptWorkspace } from "@/components/knowledge/is-scripts/IsScriptWorkspace";
@@ -296,6 +297,32 @@ export function KnowledgeVault() {
   const [bookIndex, setBookIndex] = useState(0);
   const [versionPreview, setVersionPreview] = useState<KnowledgeNoteVersion | null>(null);
   const [compareVersion, setCompareVersion] = useState(false);
+
+  /**
+   * Publish Knowledge Vault presence to the Portal Context layer: which note is
+   * open, whether the operator is editing it, and whether there is unsaved
+   * work. Only identifiers and state flags — never note content.
+   */
+  const selectedNote = notes.find((note) => note.id === selectedId) ?? null;
+  useEffect(() => {
+    portalPresence.setKnowledgeNote(
+      selectedNote ? { id: selectedNote.id, title: selectedNote.title, collection: selectedNote.folderId ?? undefined, noteType: selectedNote.noteType, presentation: focusMode ? "focus" : docMode } : null,
+    );
+  }, [selectedNote?.id, selectedNote?.title, selectedNote?.folderId, selectedNote?.noteType, docMode, focusMode]);
+  useEffect(() => {
+    portalPresence.setEditMode(docMode === "edit");
+  }, [docMode]);
+  useEffect(() => {
+    portalPresence.setUnsaved("knowledge_note", selectedId ?? "draft", dirty);
+  }, [dirty, selectedId]);
+  useEffect(
+    () => () => {
+      portalPresence.setKnowledgeNote(null);
+      portalPresence.setEditMode(false);
+      portalPresence.reset();
+    },
+    [],
+  );
 
   useEffect(() => {
     draftRef.current = draft;

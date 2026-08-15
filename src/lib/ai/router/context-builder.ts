@@ -65,4 +65,10 @@ export const GROUNDING_RULES = [
   "Label statements as: known (stated by a source), inferred (reasoned from evidence), or uncertain.",
   "A probable or unverified resolution memory is never presented as verified fact.",
   "If the evidence does not answer the question, say so plainly.",
+  "Absence of retrieved information is not proof that the information does not exist — say what you could not check.",
+  "When a context source is reported unavailable, treat it as unknown, never as empty.",
+  "Historical or superseded records are labelled as such and must never be presented as current guidance.",
+  "Two similar tickets do not imply the same root cause; say what is shared and what is unproven.",
+  "Never invent account instructions, scripting rules or procedures that are not in the evidence.",
+  "When evidence conflicts, state the conflict and which record is more current or better confirmed.",
 ].join(" ");

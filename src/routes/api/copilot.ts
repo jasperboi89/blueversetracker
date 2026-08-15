@@ -6,6 +6,8 @@ import { classifyOperatorMessage, detectDeterministicIntent } from "@/lib/ai/rou
 import { routeTask } from "@/lib/ai/router/task-router";
 import { GROUNDING_RULES } from "@/lib/ai/router/context-builder";
 import type { TaskKind } from "@/lib/ai/router/task-types";
+import { PortalContextEnvelopeSchema } from "@/lib/ai/portal-context-schema";
+import { recordContextAssembly } from "@/lib/ai/context-telemetry";
 
 /**
  * Streaming Copilot endpoint. Same tool loop as the buffered server function,
@@ -34,6 +36,8 @@ const Body = z.object({
   pageContext: z.string().max(600).optional(),
   profile: z.string().max(2000).optional(),
   focus: z.string().max(1200).optional(),
+  /** Portal Context Envelope — re-validated and stripped server-side. */
+  portalContext: PortalContextEnvelopeSchema.optional(),
   nowIso: z.string().max(40).optional(),
 });
 
@@ -122,6 +126,40 @@ export const Route = createFileRoute("/api/copilot")({
         const modelTaskKind: TaskKind =
           decision.route === "deterministic" ? "operational_question" : taskKind;
 
+        // Portal Context: bounded, prioritised, budgeted by the router.
+        let portalSection = "";
+        if (body.portalContext) {
+          const { serializeEnvelope } = await import("@/lib/ai/context-serializer.server");
+          const envelope = body.portalContext as unknown as Parameters<typeof serializeEnvelope>[0];
+          try {
+            const built = serializeEnvelope(envelope, decision.contextBudget);
+            portalSection = built.text;
+            recordContextAssembly({
+              at: new Date().toISOString(),
+              taskKind,
+              tier: decision.tier,
+              routeId: envelope.location.routeId,
+              area: envelope.location.area,
+              contextChars: built.contextChars,
+              evidenceAvailable: envelope.evidence.length,
+              evidenceIncluded: built.evidenceIncluded,
+              evidenceTrimmed: built.evidenceTrimmed,
+              sourceTypes: Array.from(new Set(envelope.evidence.map((e) => e.sourceType))),
+              sections: built.sections,
+              accountContextIncluded: built.accountContextIncluded,
+              retrievalUsed: built.retrievalUsed,
+              degraded: built.degraded,
+              truncated: built.truncated,
+              ...(envelope.budget?.assemblyMs !== undefined
+                ? { assemblyMs: envelope.budget.assemblyMs }
+                : {}),
+            });
+          } catch {
+            // Context failure must never break the answer.
+            portalSection = "";
+          }
+        }
+
         const system = [
           "You are Intel Copilot for a night-shift support/programming operator in the Account Intel Hub.",
           "Use the read-only tools to look up the operator's real Hub data before answering — never guess ticket numbers, accounts, statuses, or times.",
@@ -133,7 +171,16 @@ export const Route = createFileRoute("/api/copilot")({
             ? `The request maps to a deterministic Hub lookup (${intercept.intercept}${intercept.target ? ` ${intercept.target}` : ""}). Answer from that lookup's tool result only — do not speculate.`
             : "",
           body.nowIso ? `Current time (ISO): ${body.nowIso}.` : "",
-          body.pageContext ? `The operator is currently viewing: ${body.pageContext}.` : "",
+          portalSection
+            ? [
+                "PORTAL CONTEXT — assembled by the Hub from its authoritative systems. Trust it, do not re-derive it, and do not ask the operator to restate what is already here.",
+                "Sections are bounded projections: absence of a fact here does NOT prove it does not exist — use a tool to look deeper.",
+                portalSection,
+                "## OPERATOR QUESTION follows in the conversation.",
+              ].join("\n\n")
+            : body.pageContext
+              ? `The operator is currently viewing: ${body.pageContext}.`
+              : "",
           body.profile ? `Operator profile (learned patterns):\n${body.profile}` : "",
           body.focus ? `Deterministic focus state (already computed by the portal — trust it, do not re-derive):\n${body.focus}` : "",
           body.signals ? `Detected signals from the Hub:\n${body.signals}` : "",
