@@ -257,6 +257,7 @@ function formatBytes(bytes: number) {
 
 export function KnowledgeVault() {
   const aiSettings = useAISettings();
+  const workspace = useVaultWorkspace();
   const [section, setSection] = useState<"notes" | "is-scripts">("notes");
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [notes, setNotes] = useState<KnowledgeNote[]>([]);
@@ -295,6 +296,13 @@ export function KnowledgeVault() {
   const [attachmentPreview, setAttachmentPreview] = useState<KnowledgeAttachment | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [aiOrganizing, setAiOrganizing] = useState(false);
+  /** Document presentation state — Reader is the default for an existing note. */
+  const [docMode, setDocMode] = useState<"reader" | "edit">("reader");
+  const [focusMode, setFocusMode] = useState(false);
+  const [bookFolderId, setBookFolderId] = useState<string | null>(null);
+  const [bookIndex, setBookIndex] = useState(0);
+  const [versionPreview, setVersionPreview] = useState<KnowledgeNoteVersion | null>(null);
+  const [compareVersion, setCompareVersion] = useState(false);
 
   useEffect(() => {
     draftRef.current = draft;
