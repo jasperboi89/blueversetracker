@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import fs from "node:fs";
@@ -7,11 +7,14 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./dialog"
 import { Sheet, SheetContent, SheetTitle } from "./sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "./select";
 
+const mounted: Array<{ root: ReturnType<typeof createRoot>; host: HTMLElement }> = [];
+
 function mount(node: React.ReactNode) {
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
   act(() => root.render(node));
+  mounted.push({ root, host });
   return root;
 }
 
@@ -22,8 +25,16 @@ const zOf = (el: Element | null) => {
 };
 
 describe("shared dialog overlay layer contract", () => {
-  beforeEach(() => {
-    document.body.innerHTML = "";
+  // Unmount through React instead of wiping innerHTML: blowing away the body
+  // detaches Radix portals behind React's back, and the later cleanup throws
+  // "The node to be removed is not a child of this node" into whatever test is
+  // running next. That was the source of the intermittent suite failure.
+  afterEach(() => {
+    while (mounted.length) {
+      const entry = mounted.pop()!;
+      act(() => entry.root.unmount());
+      entry.host.remove();
+    }
   });
 
   it("emits stable data-slot hooks and keeps content above its overlay", () => {

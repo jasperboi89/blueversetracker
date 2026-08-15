@@ -5,6 +5,8 @@ import { isSafeForOperationalGuidance, type EvidenceFact } from "@/lib/core/evid
 import { realityLabel } from "@/lib/core/reality-boundary";
 import { computeNextBestAction } from "@/lib/nba/nba-engine";
 import { serializeNextBestAction } from "@/lib/nba/nba-serializer";
+import { buildGuardedPlan } from "@/lib/plan/plan-builder";
+import { serializeGuardedPlan } from "@/lib/plan/plan-serializer";
 
 /**
  * Portal Context -> Copilot prompt sections (Phase 10 §16).
@@ -215,6 +217,13 @@ export function serializeEnvelope(
     sections.push(serializeNextBestAction(nba));
   } catch {
     // Recommendation failure must never break an answer.
+  }
+
+  /* GUARDED PLAN — derived route + verification state (Phase 15). */
+  try {
+    sections.push(serializeGuardedPlan(buildGuardedPlan({ envelope: env, episode: env.episode })));
+  } catch {
+    // Plan derivation failure must never break an answer.
   }
 
   let text = sections.join("\n\n");
