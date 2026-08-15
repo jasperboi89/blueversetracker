@@ -222,6 +222,26 @@ export const PortalContextEnvelopeSchema = z.object({
     )
     .max(10)
     .optional(),
+  memory: z
+    .array(
+      z.object({
+        id: z.string().max(120),
+        memoryClass: z.string().max(40),
+        title: z.string().max(160),
+        summary: z.string().max(900),
+        occurredAt: z.string().max(40),
+        status: z.string().max(20),
+        origin,
+        confidence: z.enum(["verified", "probable", "unknown"]).optional(),
+        importance: z.number(),
+        relevance: z.number(),
+        reasons: z.array(z.string().max(60)).max(6).default([]),
+        accountNumber: z.string().max(40).optional(),
+        ticketId: z.string().max(40).optional(),
+      }),
+    )
+    .max(5)
+    .optional(),
   warnings: z
     .array(
       z.object({

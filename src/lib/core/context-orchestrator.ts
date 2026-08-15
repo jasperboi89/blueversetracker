@@ -13,6 +13,7 @@ import {
   type ContextAwarenessItem,
   type ContextBlocker,
   type ContextEvidence,
+  type ContextMemory,
   type ContextWarning,
   type PortalContextEnvelope,
   type PortalEntityType,
@@ -41,6 +42,8 @@ export interface PortalContextInput {
   /** Sources that failed while gathering — surfaced, never silently dropped. */
   failures?: Array<{ source: string; message: string }>;
   evidence?: ContextEvidence[];
+  /** Phase 12 — relevant prior experience, already projected and bounded. */
+  memory?: ContextMemory[];
 }
 
 const MAX_ACTIVITY = 8;
@@ -271,6 +274,7 @@ export function assemblePortalContext(input: PortalContextInput): PortalContextE
     recentActivity,
     ...(accountContext ? { accountContext } : {}),
     evidence: [],
+    ...(input.memory?.length ? { memory: input.memory.slice(0, 5) } : {}),
     warnings,
     budget: { evidenceAvailable: 0 },
   };

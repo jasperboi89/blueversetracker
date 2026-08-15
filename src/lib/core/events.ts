@@ -51,7 +51,11 @@ export type AccEventType =
   | "resolution.archived"
   // Night plan
   | "night_plan.item_added"
-  | "night_plan.item_completed";
+  | "night_plan.item_completed"
+  // Operational Memory Cortex (Phase 12)
+  | "memory.captured"
+  | "memory.candidate_created"
+  | "memory.promoted";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =
@@ -67,6 +71,7 @@ export type AccEventSource =
   | "resolution"
   | "handoff"
   | "copilot"
+  | "memory"
   | "route"
   | "system";
 

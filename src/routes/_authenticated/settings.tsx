@@ -45,6 +45,7 @@ import { useQuery } from "@tanstack/react-query";
 import { adminGetAccessSummary } from "@/lib/auth/admin-users.functions";
 import { INACTIVITY_LOGOUT_MS } from "@/lib/auth/inactivity-config";
 import { ThemesSection } from "@/components/settings/ThemesSection";
+import { OperationalMemoryPanel } from "@/components/memory/OperationalMemoryPanel";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Account Intel Hub" }] }),
@@ -92,6 +93,7 @@ function SettingsPage() {
             <ThemesSection />
             <FreshdeskSection />
             <AISection />
+            <OperationalMemoryPanel />
             <TemplatesSection />
             <DropdownsSection />
             <ShiftSection />
