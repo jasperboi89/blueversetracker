@@ -2252,6 +2252,8 @@ function VaultNavItem({
 function NoteCard({
   note,
   folder,
+  density = "comfortable",
+  status = "saved",
   selected,
   onClick,
   checked,
@@ -2267,6 +2269,8 @@ function NoteCard({
 }: {
   note: KnowledgeNote;
   folder?: KnowledgeFolder;
+  density?: VaultDensity;
+  status?: NoteStatus;
   selected: boolean;
   onClick: () => void;
   checked: boolean;
@@ -2287,6 +2291,8 @@ function NoteCard({
   const config = typeConfig(note.noteType);
   const Icon = config.icon;
   const preview = htmlToPlainText(note.contentHtml) || "Empty note — open it and start writing.";
+  const compact = density === "compact";
+  const cards = density === "cards";
   const [renameValue, setRenameValue] = useState(note.title);
   useEffect(() => {
     if (isRenaming) setRenameValue(note.title);
@@ -2306,7 +2312,8 @@ function NoteCard({
         }
       }}
       className={cn(
-        "group relative w-full cursor-pointer overflow-hidden rounded-xl border p-3 text-left transition",
+        "group relative w-full cursor-pointer overflow-hidden rounded-xl border text-left transition",
+        compact ? "p-2" : cards ? "p-4" : "p-3",
         selected
           ? "border-cyan-300/25 bg-cyan-300/[0.07] shadow-[0_0_22px_oklch(0.75_0.18_225_/_0.1)]"
           : "border-white/[0.07] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.045]",
@@ -2374,9 +2381,21 @@ function NoteCard({
               />
             )}
           </div>
-          <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-            {preview}
-          </div>
+          {!compact && (
+            <div
+              className={cn(
+                "mt-1 text-[11px] leading-relaxed text-muted-foreground",
+                cards ? "line-clamp-4" : "line-clamp-2",
+              )}
+            >
+              {preview}
+            </div>
+          )}
+          {status === "reference" && (
+            <span className="mt-1 inline-block rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-100">
+              Reference
+            </span>
+          )}
         </div>
         <div
           className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
