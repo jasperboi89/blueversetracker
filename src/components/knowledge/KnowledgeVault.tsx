@@ -1250,7 +1250,7 @@ export function KnowledgeVault() {
             min={NAV_MIN}
             max={NAV_MAX}
             onChange={(next) => vaultWorkspace.setNavWidth(next)}
-            onReset={() => vaultWorkspace.resetPanes()}
+            onReset={() => vaultWorkspace.resetNavWidth()}
           />
         )}
 
