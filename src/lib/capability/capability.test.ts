@@ -93,16 +93,18 @@ describe("capability registry", () => {
   });
 
   it("maps safe action types back to a capability", () => {
-    const write = anyWrite();
-    if (write.execution.kind === "safe_action") {
+    const write = allCapabilities().find(
+      (d) => d.execution.type === "safe_action" && d.execution.actionType,
+    );
+    if (write?.execution.actionType) {
       expect(capabilityForActionType(write.execution.actionType)?.id).toBe(write.id);
     }
   });
 
   it("maps copilot tool names back to a capability", () => {
-    const read = allCapabilities().find((d) => d.execution.kind === "copilot_tool");
-    if (read && read.execution.kind === "copilot_tool") {
-      expect(capabilityForToolName(read.execution.tool)?.id).toBe(read.id);
+    const read = allCapabilities().find((d) => d.execution.type === "copilot_tool");
+    if (read) {
+      expect(capabilityForToolName(read.execution.handlerId)?.id).toBe(read.id);
     }
   });
 });
@@ -216,7 +218,7 @@ describe("capability invocation", () => {
       capabilityId: id,
       input,
       contextRef: "ctx#1",
-      requestedBy: { kind: "ai", id: "copilot" },
+      requestedBy: "copilot",
     })!;
   }
 
@@ -232,7 +234,7 @@ describe("capability invocation", () => {
         capabilityId: "nope",
         input: {},
         contextRef: "c",
-        requestedBy: { kind: "ai", id: "copilot" },
+        requestedBy: "copilot",
       }),
     ).toBeNull();
   });
@@ -314,9 +316,9 @@ describe("capability projection", () => {
   });
 
   it("blocks a governed read tool for an unpermitted operator", () => {
-    const def = allCapabilities().find((d) => d.execution.kind === "copilot_tool");
-    if (def && def.execution.kind === "copilot_tool") {
-      const verdict = guardToolCall(def.execution.tool, {}, {
+    const def = allCapabilities().find((d) => d.execution.type === "copilot_tool");
+    if (def) {
+      const verdict = guardToolCall(def.execution.handlerId, {}, {
         operator: { role: null },
         ledger: new InvocationLedger(),
         correlationId: "c1",
