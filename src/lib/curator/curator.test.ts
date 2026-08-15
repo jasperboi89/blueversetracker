@@ -85,8 +85,8 @@ describe("clustering", () => {
   });
 
   it("produces a stable fingerprint for the same topic", () => {
-    const a = candidateFingerprint({ type: "procedure", topic: "on call group routing", accountNumber: "A100" });
-    const b = candidateFingerprint({ type: "procedure", topic: "On-Call  Group Routing", accountNumber: "A100" });
+    const a = candidateFingerprint({ type: "procedural", topic: "on call group routing", accountNumber: "A100" });
+    const b = candidateFingerprint({ type: "procedural", topic: "On-Call  Group Routing", accountNumber: "A100" });
     expect(a).toBe(b);
   });
 
@@ -147,7 +147,7 @@ describe("conflict gating", () => {
     summary: "Account instructions say route to the answering pod instead.",
     subject: { type: "account", id: "A100", label: "Acme" },
     factIds: [],
-  } as EvidenceConflict;
+  } as unknown as EvidenceConflict;
 
   it("blocks a candidate that contradicts current evidence", () => {
     const c = applyConflicts(curate([mem(0), mem(1), mem(2)]).candidates[0]!, [conflict], T0 + 5 * DAY);
@@ -163,7 +163,7 @@ describe("conflict gating", () => {
 
   it("risk is blocked whenever unresolved conflicts exist", () => {
     const c = applyConflicts(curate([mem(0), mem(1), mem(2)]).candidates[0]!, [conflict], T0 + 5 * DAY);
-    expect(assessRisk(c, [])).toBe("blocked");
+    expect(assessRisk(c, "create")).toBe("blocked");
   });
 });
 
