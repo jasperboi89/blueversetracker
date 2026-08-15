@@ -519,10 +519,7 @@ export const PROMOTION_HANDLERS = {
   create_resolution: createResolutionAction,
   dismiss_candidate: decisionHandler("dismiss_candidate"),
   archive_candidate: decisionHandler("archive_candidate"),
-} satisfies Partial<Record<ActionType, ActionHandler<ActionType>>> as unknown as Record<
-  ActionType,
-  ActionHandler<ActionType>
->;
+} as unknown as Partial<Record<ActionType, ActionHandler<ActionType>>>;
 
 export type PromotionPayloads = Pick<
   ActionPayloadMap,

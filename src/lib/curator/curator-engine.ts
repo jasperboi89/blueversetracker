@@ -238,6 +238,8 @@ export interface CurationOutcome {
  * near-equivalent ones cluster by deterministic token overlap before any AI
  * is considered. Original memories are never mutated.
  */
+type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+
 export function curateMemories(input: CurationInput): CurationOutcome {
   const now = input.now ?? Date.now();
   const at = new Date(now).toISOString();
@@ -286,7 +288,7 @@ export function curateMemories(input: CurationInput): CurationOutcome {
 
     if (!target) {
       const id = `cand_${hash(fingerprint)}`;
-      const candidate: CuratedMemoryCandidate = {
+      const candidate: Mutable<CuratedMemoryCandidate> = {
         id,
         type,
         title: memory.title.slice(0, 140),
