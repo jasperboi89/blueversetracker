@@ -979,6 +979,7 @@ export function KnowledgeVault() {
         className="pointer-events-none absolute -left-40 -top-48 h-[34rem] w-[34rem] rounded-full opacity-20 blur-3xl"
         style={{ background: "radial-gradient(circle, var(--violet-glow), transparent 68%)" }}
       />
+      {!focusMode && (
       <header className="glass-panel relative overflow-hidden p-4">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,oklch(0.72_0.2_285_/_0.14),transparent_38%)]" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
@@ -1028,7 +1029,9 @@ export function KnowledgeVault() {
           </div>
         </div>
       </header>
+      )}
 
+      {!focusMode && (
       <div className="flex flex-wrap items-center gap-2">
         <SectionTab
           active={section === "notes"}
@@ -1042,30 +1045,85 @@ export function KnowledgeVault() {
           label="IS Script Work"
           onClick={() => setSection("is-scripts")}
         />
+        {section === "notes" && (
+          <SectionTab
+            active={workspace.shelfOpen}
+            icon={BookMarked}
+            label="Shelf"
+            onClick={() => vaultWorkspace.setShelfOpen(!workspace.shelfOpen)}
+          />
+        )}
       </div>
+      )}
 
       {section === "is-scripts" && <IsScriptWorkspace />}
 
+      {section === "notes" && workspace.shelfOpen && !focusMode && (
+        <CollectionShelf
+          folders={folders}
+          notes={notes}
+          onOpen={(folderId) => {
+            setView(`folder:${folderId}`);
+            vaultWorkspace.setShelfOpen(false);
+          }}
+          onOpenBook={(folderId) => {
+            setBookFolderId(folderId);
+            setBookIndex(0);
+            vaultWorkspace.setShelfOpen(false);
+          }}
+        />
+      )}
+
       <div
         className={cn(
-          "relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-12rem)] xl:grid-cols-[244px_350px_minmax(0,1fr)]",
+          "relative flex min-h-[690px] flex-col gap-3 xl:h-[calc(100vh-12rem)] xl:flex-row xl:items-stretch",
           section !== "notes" && "hidden",
         )}
       >
-        <aside className="glass-panel flex min-h-0 flex-col overflow-hidden p-3">
+        {workspace.navCollapsed ? (
+          <div className="glass-panel hidden w-11 shrink-0 flex-col items-center gap-2 p-2 xl:flex">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              aria-label="Expand vault navigator"
+              onClick={() => vaultWorkspace.setNavCollapsed(false)}
+            >
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+            <Boxes className="h-4 w-4 text-cyan-200/70" />
+            <Folder className="h-4 w-4 text-muted-foreground" />
+            <Archive className="h-4 w-4 text-muted-foreground" />
+          </div>
+        ) : (
+        <aside
+          className="glass-panel flex min-h-0 shrink-0 flex-col overflow-hidden p-3"
+          style={{ width: workspace.navWidth }}
+        >
           <div className="mb-2 flex items-center justify-between px-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Vault
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0"
-              onClick={() => openFolderDialog()}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="sr-only">New folder</span>
-            </Button>
+            <div className="flex items-center">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={() => openFolderDialog()}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="sr-only">New folder</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="hidden h-7 w-7 p-0 xl:inline-flex"
+                aria-label="Collapse vault navigator"
+                onClick={() => vaultWorkspace.setNavCollapsed(true)}
+              >
+                <PanelLeftClose className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           <ScrollArea className="min-h-0 flex-1 pr-1">
             <div className="space-y-1">
