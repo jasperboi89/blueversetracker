@@ -174,6 +174,9 @@ export function FocusPanel({
 
       {focus.current?.accountId && <AccountSummary accountNumber={focus.current.accountId} />}
 
+      <WorkStateSection />
+      <NextBestActionCard />
+
       <div className="flex justify-end">
         <button
           type="button"
