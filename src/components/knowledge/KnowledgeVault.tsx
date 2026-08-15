@@ -1296,6 +1296,35 @@ export function KnowledgeVault() {
             <span>
               {filteredNotes.length} note{filteredNotes.length === 1 ? "" : "s"}
             </span>
+            <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                  aria-label="List density"
+                >
+                  {workspace.density === "compact" ? (
+                    <Rows3 className="h-3 w-3" />
+                  ) : workspace.density === "cards" ? (
+                    <SquareStack className="h-3 w-3" />
+                  ) : (
+                    <LayoutList className="h-3 w-3" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(["compact", "comfortable", "cards"] as VaultDensity[]).map((d) => (
+                  <DropdownMenuItem key={d} onClick={() => vaultWorkspace.setDensity(d)}>
+                    {workspace.density === d ? (
+                      <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                    ) : (
+                      <span className="mr-2 inline-block h-4 w-4" />
+                    )}
+                    <span className="capitalize">{d}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 tracking-[0.16em] text-muted-foreground hover:bg-white/5 hover:text-foreground">
@@ -1316,6 +1345,7 @@ export function KnowledgeVault() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
           {selectedIds.size > 0 && (
             <div className="mx-3 mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-cyan-300/25 bg-cyan-300/[0.06] px-2 py-1.5 text-[11px]">
@@ -1376,6 +1406,8 @@ export function KnowledgeVault() {
                   key={note.id}
                   note={note}
                   folder={folderById.get(note.folderId ?? "")}
+                  density={workspace.density}
+                  status={noteStatus(workspace, note.id)}
                   selected={note.id === selectedId}
                   checked={selectedIds.has(note.id)}
                   onToggleChecked={() => toggleSelected(note.id)}
