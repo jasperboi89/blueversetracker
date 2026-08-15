@@ -245,11 +245,24 @@ describe("plan safety gate", () => {
         },
       ],
     });
-    const plan = build(env);
-    const nonReview = plan.steps.filter((s) => s.kind !== "REVIEW");
-    expect(nonReview.length).toBeGreaterThan(0);
-    expect(nonReview.every((s) => s.status === "blocked" || s.status === "pending")).toBe(true);
-    expect(nonReview.some((s) => s.status === "blocked")).toBe(true);
+    const base = build(env);
+    // Reviewing the blocker itself stays allowed; nothing else may start.
+    expect(base.steps.filter((s) => s.kind !== "REVIEW").every((s) => s.status !== "ready")).toBe(true);
+    // Once the review step is settled, the next operational step is blocked,
+    // not silently promoted to ready.
+    const afterReview = build(env, {
+      ...emptyPlanState(episodeKeyFor(env)),
+      decisions: base.steps
+        .filter((s) => s.kind === "REVIEW")
+        .map((s) => ({
+          fingerprint: s.fingerprint,
+          kind: "verified" as const,
+          at: new Date(NOW).toISOString(),
+          by: "operator" as const,
+        })),
+    });
+    const next = afterReview.steps.find((s) => s.kind !== "REVIEW");
+    expect(next?.status).toBe("blocked");
   });
 
   it("never attaches a prepared action to a step that is not ready", () => {
