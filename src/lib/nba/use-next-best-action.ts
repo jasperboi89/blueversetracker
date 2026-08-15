@@ -11,10 +11,12 @@ import { usePortalContext } from "@/hooks/use-portal-context";
 import { computeNextBestAction, contextKeyFor, episodeKeyFor } from "./nba-engine";
 import { nbaStore, useEpisodeSignals } from "./nba-store";
 import type { NbaResult } from "./nba-contract";
+import { buildWorkProgress, type WorkProgressState } from "./work-progress";
 import type { PortalContextEnvelope } from "@/lib/core/portal-context";
 
 export interface UseNextBestAction {
   result: NbaResult;
+  progress: WorkProgressState;
   envelope: PortalContextEnvelope;
   episodeKey: string;
   complete: (fingerprint: string) => void;
@@ -31,6 +33,12 @@ export function useNextBestAction(): UseNextBestAction {
   const result = useMemo(
     () => computeNextBestAction({ envelope, episode }),
     // contextKey captures every meaningful invalidation trigger (§48).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contextKey, episode],
+  );
+
+  const progress = useMemo(
+    () => buildWorkProgress(envelope, episode),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [contextKey, episode],
   );
@@ -52,6 +60,7 @@ export function useNextBestAction(): UseNextBestAction {
 
   return {
     result,
+    progress,
     envelope,
     episodeKey,
     complete: (fingerprint) => {
