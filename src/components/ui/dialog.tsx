@@ -45,7 +45,10 @@ const DialogContent = React.forwardRef<
       ref={ref}
       data-slot="dialog-content"
       className={cn(
-        "!fixed !left-1/2 !top-4 !bottom-4 !-translate-x-1/2 z-[70] flex w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg",
+        // NOTE: no `-translate-x-1/2` utility here. Tailwind v4 emits the standalone
+        // `translate` property, which stacks on top of the inline `transform` below and
+        // shifts the panel a second half-width/height off screen.
+        "!fixed !left-1/2 !top-4 !bottom-4 z-[70] flex w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg",
         className,
       )}
       style={{
@@ -54,9 +57,10 @@ const DialogContent = React.forwardRef<
         left: "50%",
         top: "1rem",
         bottom: "1rem",
+        translate: "none",
         transform: "translateX(-50%)",
         height: "fit-content",
-        maxHeight: "none",
+        maxHeight: "calc(100dvh - 2rem)",
         marginTop: "auto",
         marginBottom: "auto",
         display: "flex",
