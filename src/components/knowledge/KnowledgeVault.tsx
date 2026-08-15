@@ -335,6 +335,9 @@ export function KnowledgeVault() {
     setLastSaved(null);
     setTagInput("");
     setVersionsOpen(false);
+    setDocMode("reader");
+    setVersionPreview(null);
+    setCompareVersion(false);
     // Note list updates are handled explicitly so an autosave never overwrites an active draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
