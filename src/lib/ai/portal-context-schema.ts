@@ -252,6 +252,40 @@ export const PortalContextEnvelopeSchema = z.object({
     )
     .max(12)
     .default([]),
+  episode: z
+    .object({
+      episodeKey: z.string().max(120),
+      startedAt: z.string().max(40).optional(),
+      completedChecks: z.array(z.string().max(120)).max(40).default([]),
+      attempts: z
+        .array(
+          z.object({
+            fingerprint: z.string().max(120),
+            outcome: z.enum(["attempted", "succeeded", "failed", "no_effect"]),
+            at: z.string().max(40),
+            label: z.string().max(120).optional(),
+            conditionsChangedAt: z.string().max(40).optional(),
+          }),
+        )
+        .max(30)
+        .default([]),
+      dismissed: z
+        .array(
+          z.object({
+            fingerprint: z.string().max(120),
+            at: z.string().max(40),
+            reason: z
+              .enum(["already_checked", "not_relevant", "not_applicable", "wrong_context", "other"])
+              .optional(),
+          }),
+        )
+        .max(30)
+        .default([]),
+      lastTransitionAt: z.string().max(40).optional(),
+      explicitRequest: z.boolean().optional(),
+      resumed: z.boolean().optional(),
+    })
+    .optional(),
   budget: z
     .object({
       evidenceAvailable: z.number().default(0),
