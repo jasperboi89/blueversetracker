@@ -17,6 +17,7 @@ import {
   type EvidenceSourceType,
 } from "./evidence-contract";
 import { confidenceAtMost, freshnessFor, sanitizeEvidenceValue } from "./reality-boundary";
+import { buildEvidenceGraph, type EvidenceGraph } from "./evidence-graph";
 
 const SOURCE_MAP: Record<ContextEvidence["sourceType"], EvidenceSourceType> = {
   account_context: "account_context",
@@ -276,7 +277,6 @@ export function factFromActionResult(input: {
 /* Envelope -> graph                                                   */
 /* ------------------------------------------------------------------ */
 
-import { buildEvidenceGraph, type EvidenceGraph } from "./evidence-graph";
 
 /**
  * Deterministic projection of one envelope into the Evidence Graph. Called at
