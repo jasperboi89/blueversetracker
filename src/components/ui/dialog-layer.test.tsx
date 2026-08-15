@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "./dialog";
 import { Sheet, SheetContent, SheetTitle } from "./sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "./select";
 
 function mount(node: React.ReactNode) {
   const host = document.createElement("div");
@@ -51,6 +52,30 @@ describe("shared dialog overlay layer contract", () => {
     expect((content as HTMLElement).style.position).toBe("fixed");
     expect((content as HTMLElement).style.transform).toBe("translate(-50%, -50%)");
     expect((content as HTMLElement).style.zIndex).toBe("70");
+    // clamp keeps tall dialogs inside the viewport with internal scroll
+    expect((content as HTMLElement).style.maxHeight).toContain("90vh");
+    expect((content as HTMLElement).style.overflowY).toBe("auto");
+  });
+
+  it("renders select poppers above modal surfaces", () => {
+    mount(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Popper layer</DialogTitle>
+          <Select open defaultValue="a">
+            <SelectTrigger />
+            <SelectContent>
+              <SelectItem value="a">A</SelectItem>
+            </SelectContent>
+          </Select>
+        </DialogContent>
+      </Dialog>,
+    );
+    const dialog = document.querySelector('[data-slot="dialog-content"]') as HTMLElement;
+    const popper = document.querySelector('[data-slot="select-content"]') as HTMLElement | null;
+    expect(popper).toBeTruthy();
+    expect(Number(popper!.style.zIndex)).toBeGreaterThan(Number(dialog.style.zIndex));
+    expect(String(popper!.className)).toContain("!z-[80]");
   });
 
   it("keeps sheet content fixed to the viewport above its overlay", () => {
