@@ -27,7 +27,12 @@ const admin = { role: "admin" as const, userId: "u1" };
 const viewer = { role: "viewer" as const, userId: "u2" };
 
 function anyWrite() {
-  return allCapabilities().find((d) => isMutatingOperation(d.operation))!;
+  return allCapabilities().find(
+    (d) => isMutatingOperation(d.operation) && d.lifecycle === "active" && d.permissions.length > 0,
+  )!;
+}
+function deps(d: { dependencies?: readonly string[] }): readonly string[] {
+  return d.dependencies ?? [];
 }
 function anyRead() {
   return allCapabilities().find((d) => d.operation === "read" || d.operation === "search")!;
@@ -134,9 +139,9 @@ describe("capability health", () => {
   });
 
   it("degrades when a dependency is degraded", () => {
-    const def = allCapabilities().find((d) => d.dependencies.length > 0);
+    const def = allCapabilities().find((d) => deps(d).length > 0);
     if (def) {
-      const health = deriveHealth(def, { [def.dependencies[0]!]: "degraded" });
+      const health = deriveHealth(def, { [deps(def)[0]!]: "degraded" });
       expect(health === "degraded" || health === "unavailable").toBe(true);
     }
   });
@@ -171,11 +176,11 @@ describe("capability resolution", () => {
   });
 
   it("marks source-unavailable capabilities unavailable, not blocked", () => {
-    const def = allCapabilities().find((d) => d.dependencies.length > 0);
+    const def = allCapabilities().find((d) => deps(d).length > 0);
     if (def) {
       const res = resolveCapabilities({
         operator: admin,
-        sourceHealth: { [def.dependencies[0]!]: "unavailable" },
+        sourceHealth: { [deps(def)[0]!]: "unavailable" },
       });
       expect(["unavailable", "blocked"]).toContain(res.byId[def.id]?.availability);
     }
