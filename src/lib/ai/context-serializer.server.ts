@@ -3,6 +3,8 @@ import { trimEvidence, activeEntityIds } from "@/lib/core/context-priority";
 import type { ContextEvidence, PortalContextEnvelope } from "@/lib/core/portal-context";
 import { isSafeForOperationalGuidance, type EvidenceFact } from "@/lib/core/evidence-contract";
 import { realityLabel } from "@/lib/core/reality-boundary";
+import { computeNextBestAction } from "@/lib/nba/nba-engine";
+import { serializeNextBestAction } from "@/lib/nba/nba-serializer";
 
 /**
  * Portal Context -> Copilot prompt sections (Phase 10 §16).
