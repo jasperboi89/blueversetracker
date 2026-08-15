@@ -28,11 +28,14 @@ const viewer = { role: "viewer" as const, userId: "u2" };
 
 function anyWrite() {
   return allCapabilities().find(
-    (d) => isMutatingOperation(d.operation) && d.lifecycle === "active" && d.permissions.length > 0,
+    (d) =>
+      isMutatingOperation(d.operation) &&
+      d.lifecycle === "active" &&
+      d.permissions.minimumRole !== "viewer",
   )!;
 }
-function deps(d: { dependencies?: readonly string[] }): readonly string[] {
-  return d.dependencies ?? [];
+function deps(d: { dependsOn?: readonly string[] }): readonly string[] {
+  return d.dependsOn ?? [];
 }
 function anyRead() {
   return allCapabilities().find((d) => d.operation === "read" || d.operation === "search")!;
@@ -311,9 +314,7 @@ describe("capability projection", () => {
   });
 
   it("blocks a governed read tool for an unpermitted operator", () => {
-    const def = allCapabilities().find(
-      (d) => d.execution.kind === "copilot_tool" && d.permissions.length > 0,
-    );
+    const def = allCapabilities().find((d) => d.execution.kind === "copilot_tool");
     if (def && def.execution.kind === "copilot_tool") {
       const verdict = guardToolCall(def.execution.tool, {}, {
         operator: { role: null },
