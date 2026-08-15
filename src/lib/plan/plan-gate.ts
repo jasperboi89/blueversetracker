@@ -18,6 +18,12 @@ export interface PlanGateContext {
   prerequisitesSatisfied: boolean;
   /** The plan itself is halted or abandoned. */
   planStopped: boolean;
+  /**
+   * Phase 16 — resolved capability availability. The gate reads risk,
+   * permission and confirmation metadata from the registry instead of each
+   * plan step restating those rules.
+   */
+  capabilities?: Record<string, { availability: "available" | "unavailable" | "blocked"; note?: string }>;
 }
 
 export interface PlanGateVerdict {
@@ -27,10 +33,29 @@ export interface PlanGateVerdict {
 }
 
 export function evaluatePlanGate(
-  step: Pick<GuardedPlanStep, "mutating" | "kind" | "label" | "sourceId">,
+  step: Pick<GuardedPlanStep, "mutating" | "kind" | "label" | "sourceId"> & { capabilityId?: string },
   ctx: PlanGateContext,
 ): PlanGateVerdict {
   const blockers: PlanStepBlocker[] = [];
+
+  // Phase 16 — a step bound to a capability that is not currently available
+  // can never be "ready", regardless of everything else.
+  if (step.capabilityId && ctx.capabilities) {
+    const cap = ctx.capabilities[step.capabilityId];
+    if (cap && cap.availability !== "available") {
+      return {
+        status: "blocked",
+        blockers: [
+          {
+            id: `capability:${step.capabilityId}`,
+            type: "capability_unavailable",
+            label: cap.note ?? "The capability this step needs is not available.",
+          },
+        ],
+        note: cap.note ?? "The capability this step needs is not available right now.",
+      };
+    }
+  }
 
   if (ctx.planStopped) {
     return {

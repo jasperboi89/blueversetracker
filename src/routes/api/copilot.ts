@@ -78,7 +78,7 @@ export const Route = createFileRoute("/api/copilot")({
 
         const { data: authorized } = await supabase
           .from("authorized_users")
-          .select("status")
+          .select("status, role")
           .eq("user_id", userId)
           .maybeSingle();
         if (!authorized || authorized.status !== "active") {
@@ -91,6 +91,8 @@ export const Route = createFileRoute("/api/copilot")({
         } catch {
           return new Response("Bad request", { status: 400 });
         }
+
+        const operatorRole = (authorized.role ?? "viewer") as "admin" | "programmer" | "viewer";
 
         const { aiRespondWithTools } = await import("@/lib/ai/ai-client.server");
         const { COPILOT_TOOLS, runCopilotTool } = await import("@/lib/ai/copilot-tools.server");
@@ -160,6 +162,44 @@ export const Route = createFileRoute("/api/copilot")({
           }
         }
 
+        /* ---- Phase 16: bounded capability toolbelt ---------------------
+         * Resolved deterministically BEFORE the model reasons. Discovery is
+         * not authorization: every tool call is re-checked at invocation.
+         */
+        const { getCapabilitiesForContext } = await import("@/lib/capability/capability-resolver");
+        const { serializeCapabilities } = await import("@/lib/capability/capability-projection");
+        const { guardToolCall } = await import("@/lib/capability/capability-tool-adapter");
+        const { InvocationLedger, newCorrelationId } = await import(
+          "@/lib/capability/capability-invocation"
+        );
+        const { capabilityForToolName } = await import("@/lib/capability/capability-registry");
+
+        const operator = { userId, role: operatorRole };
+        const capabilityEnvelope = (body.portalContext ?? null) as unknown as Parameters<
+          typeof getCapabilitiesForContext
+        >[0]["envelope"];
+        const toolbelt = getCapabilitiesForContext({
+          operator,
+          taskKind,
+          envelope: capabilityEnvelope,
+        });
+        const capabilitySection = serializeCapabilities({
+          relevant: toolbelt.relevant,
+          withheld: toolbelt.withheld,
+        });
+        const allowedCapabilityIds = new Set(toolbelt.relevant.map((c) => c.id));
+        const invocationLedger = new InvocationLedger();
+        const correlationId = newCorrelationId("copilot");
+
+        // Only callable capabilities reach the model; writes stay behind
+        // propose_action -> Safe Action Executor.
+        const exposedTools = COPILOT_TOOLS.filter((tool) => {
+          const name = (tool as { name?: string }).name ?? "";
+          const cap = capabilityForToolName(name);
+          if (!cap) return true;
+          return allowedCapabilityIds.size ? allowedCapabilityIds.has(cap.id) : true;
+        });
+
         const system = [
           "You are Intel Copilot for a night-shift support/programming operator in the Account Intel Hub.",
           "Use the read-only tools to look up the operator's real Hub data before answering — never guess ticket numbers, accounts, statuses, or times.",
@@ -167,6 +207,7 @@ export const Route = createFileRoute("/api/copilot")({
           "When the operator would clearly benefit from a change (a night plan item, a classification, a timer), call propose_action — it only queues a card they confirm.",
           "Short markdown: bold labels and bullets. No preamble, no closing pleasantries.",
           GROUNDING_RULES,
+          capabilitySection,
           intercept
             ? `The request maps to a deterministic Hub lookup (${intercept.intercept}${intercept.target ? ` ${intercept.target}` : ""}). Answer from that lookup's tool result only — do not speculate.`
             : "",
@@ -221,12 +262,30 @@ export const Route = createFileRoute("/api/copilot")({
             const res = await aiRespondWithTools({
               system,
               input: input as Record<string, unknown>[],
-              tools: COPILOT_TOOLS,
+              tools: exposedTools,
               task: modelTaskKind,
               maxSteps: body.mode === "briefing" ? 8 : 6,
               onEvent: send,
               runTool: async (name, args) => {
+                // AUTHORITATIVE check: permission, scope, health, budget and
+                // loop detection, re-derived at invocation time.
+                const guard = guardToolCall(name, args, {
+                  operator,
+                  ledger: invocationLedger,
+                  correlationId,
+                  envelope: capabilityEnvelope,
+                });
+                if (!guard.ok) {
+                  return {
+                    capabilityUnavailable: true,
+                    reasonCodes: guard.reasonCodes,
+                    message: guard.message,
+                  };
+                }
                 const result = await runCopilotTool(supabase, userId, name, args);
+                if (guard.capabilityId) {
+                  return { capability: guard.provenance, result };
+                }
                 if (name === "propose_action") send({ type: "proposal", action: result });
                 return result;
               },

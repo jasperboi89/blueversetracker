@@ -68,7 +68,16 @@ export type AccEventType =
   | "curator.promotion.completed"
   | "curator.promotion.failed"
   | "knowledge.reinforced"
-  | "knowledge.superseded";
+  | "knowledge.superseded"
+  // Capability Registry / Agent Nervous System (Phase 16)
+  | "capability.resolved"
+  | "capability.blocked"
+  | "capability.invoked"
+  | "capability.completed"
+  | "capability.failed"
+  | "capability.verification_pending"
+  | "capability.verified"
+  | "capability.deprecated";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =
@@ -86,6 +95,7 @@ export type AccEventSource =
   | "copilot"
   | "memory"
   | "curator"
+  | "capability"
   | "route"
   | "system";
 
@@ -154,6 +164,14 @@ export const EVENT_METADATA_KEYS = [
   "entityId",
   "blockerSource",
   "safeLabel",
+  // Capability routing — ids, versions and reason codes only.
+  "capabilityId",
+  "capabilityVersion",
+  "correlationId",
+  "availability",
+  "health",
+  "requestedBy",
+  "verificationStatus",
 ] as const;
 
 export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];
