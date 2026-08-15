@@ -12,7 +12,15 @@ export type ActionType =
   | "add_night_plan_item"
   | "complete_night_plan_item"
   | "set_ticket_classification"
-  | "start_timer";
+  | "start_timer"
+  // Phase 13 — knowledge promotion (Memory Curator)
+  | "create_knowledge_draft"
+  | "update_knowledge_note"
+  | "supersede_knowledge"
+  | "reinforce_resolution"
+  | "create_resolution"
+  | "dismiss_candidate"
+  | "archive_candidate";
 
 /** Risk tiers — read-only actions never reach the executor today. */
 export type ActionRisk = "read" | "low_write" | "high_write";
@@ -33,11 +41,27 @@ export interface StartTimerPayload {
   ticketNumber: string;
 }
 
+import type {
+  CandidateDecisionPayload,
+  CreateKnowledgeDraftPayload,
+  CreateResolutionPayload,
+  ReinforceResolutionPayload,
+  SupersedeKnowledgePayload,
+  UpdateKnowledgeNotePayload,
+} from "@/lib/curator/promotion-payloads";
+
 export type ActionPayloadMap = {
   add_night_plan_item: AddNightPlanItemPayload;
   complete_night_plan_item: CompleteNightPlanItemPayload;
   set_ticket_classification: SetTicketClassificationPayload;
   start_timer: StartTimerPayload;
+  create_knowledge_draft: CreateKnowledgeDraftPayload;
+  update_knowledge_note: UpdateKnowledgeNotePayload;
+  supersede_knowledge: SupersedeKnowledgePayload;
+  reinforce_resolution: ReinforceResolutionPayload;
+  create_resolution: CreateResolutionPayload;
+  dismiss_candidate: CandidateDecisionPayload;
+  archive_candidate: CandidateDecisionPayload;
 };
 
 export interface ActionContext {
@@ -95,6 +119,8 @@ export const LEDGER_SNAPSHOT_KEYS = [
   "status",
   "priority",
   "itemId",
+  "candidateId",
+  "packetId",
   "ticketId",
   "ticketNumber",
   "workItemId",
@@ -134,6 +160,13 @@ export const ACTION_TYPES: readonly ActionType[] = [
   "complete_night_plan_item",
   "set_ticket_classification",
   "start_timer",
+  "create_knowledge_draft",
+  "update_knowledge_note",
+  "supersede_knowledge",
+  "reinforce_resolution",
+  "create_resolution",
+  "dismiss_candidate",
+  "archive_candidate",
 ];
 
 export function isActionType(v: unknown): v is ActionType {

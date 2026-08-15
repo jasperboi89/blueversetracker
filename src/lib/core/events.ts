@@ -55,7 +55,20 @@ export type AccEventType =
   // Operational Memory Cortex (Phase 12)
   | "memory.captured"
   | "memory.candidate_created"
-  | "memory.promoted";
+  | "memory.promoted"
+  // Memory Curator + Knowledge Promotion (Phase 13)
+  | "curator.candidate.clustered"
+  | "curator.candidate.supported"
+  | "curator.candidate.review_ready"
+  | "curator.candidate.blocked"
+  | "curator.candidate.merged"
+  | "curator.promotion.prepared"
+  | "curator.promotion.approved"
+  | "curator.promotion.rejected"
+  | "curator.promotion.completed"
+  | "curator.promotion.failed"
+  | "knowledge.reinforced"
+  | "knowledge.superseded";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =
@@ -72,6 +85,7 @@ export type AccEventSource =
   | "handoff"
   | "copilot"
   | "memory"
+  | "curator"
   | "route"
   | "system";
 
@@ -125,6 +139,13 @@ export const EVENT_METADATA_KEYS = [
   "confidence",
   "sourceType",
   "resolutionId",
+  // Curator routing — ids and safe counts only.
+  "candidateId",
+  "packetId",
+  "destination",
+  "operation",
+  "risk",
+  "lifecycle",
   // Blocker routing — IDs and reason codes only.
   "blockerId",
   "blockerType",

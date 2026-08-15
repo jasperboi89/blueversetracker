@@ -46,6 +46,7 @@ import { adminGetAccessSummary } from "@/lib/auth/admin-users.functions";
 import { INACTIVITY_LOGOUT_MS } from "@/lib/auth/inactivity-config";
 import { ThemesSection } from "@/components/settings/ThemesSection";
 import { OperationalMemoryPanel } from "@/components/memory/OperationalMemoryPanel";
+import { PromotionReviewPanel } from "@/components/memory/PromotionReviewPanel";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Account Intel Hub" }] }),
@@ -94,6 +95,7 @@ function SettingsPage() {
             <FreshdeskSection />
             <AISection />
             <OperationalMemoryPanel />
+            <PromotionReviewPanel />
             <TemplatesSection />
             <DropdownsSection />
             <ShiftSection />

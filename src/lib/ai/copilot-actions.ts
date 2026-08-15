@@ -15,6 +15,9 @@ import { describeProposedAction } from "@/lib/core/action-executor";
 import type { ProposedAction as WireProposal } from "./copilot-stream";
 
 function payloadFor(kind: ActionType, a: WireProposal): Record<string, unknown> {
+  // Curator/promotion actions are operator-initiated only — never proposed
+  // over the wire by the Copilot, so they fall through to an empty payload
+  // and are rejected by their validators.
   switch (kind) {
     case "add_night_plan_item":
       return { task: a.task ?? "", notes: a.notes ?? "", priority: a.priority ?? "normal" };
@@ -24,6 +27,8 @@ function payloadFor(kind: ActionType, a: WireProposal): Record<string, unknown> 
       return { ticketNumber: a.ticketNumber ?? "", classification: a.classification ?? "" };
     case "start_timer":
       return { ticketNumber: a.ticketNumber ?? "" };
+    default:
+      return {};
   }
 }
 
