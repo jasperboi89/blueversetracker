@@ -313,13 +313,13 @@ export function KnowledgeVault() {
     portalPresence.setEditMode(docMode === "edit");
   }, [docMode]);
   useEffect(() => {
-    portalPresence.setUnsaved("knowledge_note", dirty);
-  }, [dirty]);
+    portalPresence.setUnsaved("knowledge_note", selectedId ?? "draft", dirty);
+  }, [dirty, selectedId]);
   useEffect(
     () => () => {
       portalPresence.setKnowledgeNote(null);
       portalPresence.setEditMode(false);
-      portalPresence.setUnsaved("knowledge_note", false);
+      portalPresence.reset();
     },
     [],
   );
