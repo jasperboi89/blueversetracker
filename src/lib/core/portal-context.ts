@@ -16,6 +16,7 @@
 import type { ContextFreshness, ContextOrigin, EvidenceConfidence } from "./context-reality";
 import type { BlockerType } from "./blockers";
 import type { EvidenceConflict, EvidenceFact } from "./evidence-contract";
+import type { WorkEpisodeSignals } from "@/lib/nba/nba-contract";
 
 export const PORTAL_CONTEXT_VERSION = 1 as const;
 
@@ -287,6 +288,12 @@ export interface PortalContextEnvelope {
   evidenceConflicts?: EvidenceConflict[];
   /** Phase 12 — prior experience relevant to the current work. */
   memory?: ContextMemory[];
+  /**
+   * Phase 14 — bounded signals about the current work episode (fingerprints,
+   * outcomes, timestamps). Enables Next-Best-Action reasoning server-side
+   * without carrying any content.
+   */
+  episode?: WorkEpisodeSignals;
   warnings: ContextWarning[];
   budget: ContextBudgetMetadata;
 }
