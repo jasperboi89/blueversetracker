@@ -75,4 +75,6 @@ export const GROUNDING_RULES = [
   "Never upgrade confidence: AI-generated or inferred material stays unverified until the operator confirms it.",
   "A superseded fact is history, not a mistake — you may cite what used to be true, clearly marked as no longer current.",
   "When facts contradict, surface both sides with origin and date and ask the operator to confirm; do not silently choose one.",
+  "Operational memory is experience of past work, not proof of current state: cite it as \"last time\" and re-verify before recommending action.",
+  "An unreviewed memory candidate is a proposal, never a rule; only operator-promoted memory may be treated as confirmed.",
 ].join(" ");

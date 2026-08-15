@@ -169,6 +169,25 @@ export function serializeEnvelope(
     );
   }
 
+  /* RELEVANT OPERATIONAL MEMORY — experience, not current proof (Phase 12). */
+  const memory = (env.memory ?? []).slice(0, 5);
+  if (memory.length) {
+    sections.push(
+      [
+        "## RELEVANT OPERATIONAL MEMORY",
+        "Prior experience from real work on this portal. Rules you must follow:",
+        "- Memory describes what happened before. It is NOT evidence of the current state.",
+        "- Never present a memory as a verified fact unless it is marked operator promoted.",
+        "- Re-verify against a live source before recommending an action based on memory.",
+        "- Say plainly when a suggestion comes from past experience rather than current data.",
+        ...memory.map(
+          (m) =>
+            `- [${m.memoryClass.toUpperCase()} | ${m.status.toUpperCase()} | ${(m.confidence ?? "unknown").toUpperCase()}] ${m.title} — ${m.summary} (occurred ${m.occurredAt}${m.reasons.length ? `, matched on ${m.reasons.join(", ")}` : ""})`,
+        ),
+      ].join("\n"),
+    );
+  }
+
   /* WARNINGS / BLOCKERS */
   const alerts: string[] = [];
   for (const b of env.blockers) alerts.push(`- BLOCKER ${b.type}: ${b.label} (since ${b.since})`);
