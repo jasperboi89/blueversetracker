@@ -25,6 +25,7 @@ const TooltipContent = React.forwardRef<
         className,
       )}
       {...props}
+      style={{ zIndex: 80, ...props.style }}
     />
   </TooltipPrimitive.Portal>
 ));

@@ -52,6 +52,7 @@ const DropdownMenuSubContent = React.forwardRef<
         className,
       )}
       {...props}
+      style={{ zIndex: 80, ...props.style }}
     />
   </DropdownMenuPrimitive.Portal>
 ));
@@ -72,6 +73,7 @@ const DropdownMenuContent = React.forwardRef<
         className,
       )}
       {...props}
+      style={{ zIndex: 80, ...props.style }}
     />
   </DropdownMenuPrimitive.Portal>
 ));

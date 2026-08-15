@@ -48,6 +48,7 @@ const ContextMenuSubContent = React.forwardRef<
       className,
     )}
     {...props}
+      style={{ zIndex: 80, ...props.style }}
   />
 ));
 ContextMenuSubContent.displayName = ContextMenuPrimitive.SubContent.displayName;
@@ -64,6 +65,7 @@ const ContextMenuContent = React.forwardRef<
         className,
       )}
       {...props}
+      style={{ zIndex: 80, ...props.style }}
     />
   </ContextMenuPrimitive.Portal>
 ));

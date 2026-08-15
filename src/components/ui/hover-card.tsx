@@ -20,6 +20,7 @@ const HoverCardContent = React.forwardRef<
       className,
     )}
     {...props}
+      style={{ zIndex: 80, ...props.style }}
   />
 ));
 HoverCardContent.displayName = HoverCardPrimitive.Content.displayName;

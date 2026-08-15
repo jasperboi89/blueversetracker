@@ -24,6 +24,7 @@ const PopoverContent = React.forwardRef<
         className,
       )}
       {...props}
+      style={{ zIndex: 80, ...props.style }}
     />
   </PopoverPrimitive.Portal>
 ));
