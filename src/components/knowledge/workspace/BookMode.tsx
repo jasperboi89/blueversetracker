@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  BookOpen,
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  Columns2,
-  List,
-  X,
-} from "lucide-react";
+import { BookOpen, Bookmark, ChevronLeft, ChevronRight, Columns2, List, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -124,11 +116,7 @@ export function BookMode({
           >
             <BookPage note={current} position={safeIndex + 1} total={notes.length} />
             {twoUp && notes[safeIndex + 1] && (
-              <BookPage
-                note={notes[safeIndex + 1]}
-                position={safeIndex + 2}
-                total={notes.length}
-              />
+              <BookPage note={notes[safeIndex + 1]} position={safeIndex + 2} total={notes.length} />
             )}
           </div>
         </ScrollArea>

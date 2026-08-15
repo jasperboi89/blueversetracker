@@ -208,9 +208,7 @@ export function IsManualsPane({
     <div
       className={cn(
         "grid min-h-[640px] gap-3 xl:h-[calc(100vh-16rem)]",
-        explain
-          ? "xl:grid-cols-[300px_minmax(0,1fr)_360px]"
-          : "xl:grid-cols-[330px_minmax(0,1fr)]",
+        explain ? "xl:grid-cols-[300px_minmax(0,1fr)_360px]" : "xl:grid-cols-[330px_minmax(0,1fr)]",
       )}
     >
       <aside className="glass-panel flex min-h-0 flex-col overflow-hidden p-3">
@@ -419,10 +417,7 @@ export function IsManualsPane({
                         size="sm"
                         className="h-7 px-2 text-[11px] text-violet-200"
                         onClick={() =>
-                          void runExplain(
-                            [hit],
-                            `${hit.manualName} — page ${hit.pageNumber}`,
-                          )
+                          void runExplain([hit], `${hit.manualName} — page ${hit.pageNumber}`)
                         }
                       >
                         <Sparkles className="mr-1 h-3 w-3" /> Explain for my script

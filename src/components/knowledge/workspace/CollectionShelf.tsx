@@ -54,12 +54,15 @@ export function CollectionShelf({
               <span>
                 {inside.length} note{inside.length === 1 ? "" : "s"}
               </span>
-              {latest && (
-                <span>{formatDistanceToNow(new Date(latest), { addSuffix: true })}</span>
-              )}
+              {latest && <span>{formatDistanceToNow(new Date(latest), { addSuffix: true })}</span>}
             </div>
             <div className="mt-3 flex gap-2">
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onOpen(folder.id)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                onClick={() => onOpen(folder.id)}
+              >
                 Open
               </Button>
               <Button
