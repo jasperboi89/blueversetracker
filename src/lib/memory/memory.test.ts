@@ -58,7 +58,9 @@ describe("experience compiler", () => {
       ev("work.started", 0, { ticketId: "9", metadata: { label: "call 555-123-4567 back" } }),
       ev("work.completed", 5, { ticketId: "9", metadata: { label: "done" } }),
     ];
-    expect(compileEpisode({ events: leaky, scope: { ticketId: "9" }, trigger: "work_completed" })).toBeNull();
+    const m = compileEpisode({ events: leaky, scope: { ticketId: "9" }, trigger: "work_completed" });
+    // The label is dropped at the boundary, so nothing sensitive can reach storage.
+    expect(JSON.stringify(m)).not.toContain("555-123-4567");
   });
 
   it("is deterministic", () => {
