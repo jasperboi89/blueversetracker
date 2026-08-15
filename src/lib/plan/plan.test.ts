@@ -180,11 +180,14 @@ describe("verification loop", () => {
 });
 
 describe("plan safety gate", () => {
-  function verifyUpTo(env: PortalContextEnvelope, count: number): PlanEpisodeState {
+  /** Verify every step BEFORE the first mutating one, so the gate is exercised. */
+  function verifyUpToMutation(env: PortalContextEnvelope): PlanEpisodeState {
     const base = build(env);
+    const firstMutating = base.steps.findIndex((s) => s.mutating);
+    const upTo = firstMutating === -1 ? base.steps.length : firstMutating;
     return {
       ...emptyPlanState(episodeKeyFor(env)),
-      decisions: base.steps.slice(0, count).map((s) => ({
+      decisions: base.steps.slice(0, upTo).map((s) => ({
         fingerprint: s.fingerprint,
         kind: "verified" as const,
         at: new Date(NOW).toISOString(),
@@ -203,7 +206,7 @@ describe("plan safety gate", () => {
       detectedAt: new Date(NOW).toISOString(),
     } as unknown as EvidenceConflict;
     const env = envelope({ evidenceConflicts: [conflict] });
-    const plan = build(env, verifyUpTo(env, 10));
+    const plan = build(env, verifyUpToMutation(env));
     const mutating = plan.steps.find((s) => s.mutating);
     expect(mutating?.status).toBe("blocked");
     expect(mutating?.blockers[0].type).toBe("evidence_conflict");
@@ -213,7 +216,7 @@ describe("plan safety gate", () => {
     const env = envelope();
     const plan = buildGuardedPlan({
       envelope: env,
-      planState: verifyUpTo(env, 10),
+      planState: verifyUpToMutation(env),
       permissions: { canPrepareWrites: false },
       now: NOW,
     });
@@ -224,7 +227,7 @@ describe("plan safety gate", () => {
 
   it("blocks a mutating step when nothing is verified about the current state", () => {
     const env = envelope({ facts: [] });
-    const plan = build(env, verifyUpTo(env, 10));
+    const plan = build(env, verifyUpToMutation(env));
     const mutating = plan.steps.find((s) => s.mutating);
     expect(mutating?.status).toBe("blocked");
     expect(mutating?.blockers[0].type).toBe("unverified_state");
