@@ -1703,8 +1703,8 @@ export function KnowledgeVault() {
                     {versionPreview ? (
                       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
                         <History className="h-3.5 w-3.5" />
-                        Viewing version from{" "}
-                        {formatDistanceToNow(new Date(versionPreview.savedAt), {
+                        Viewing “{versionPreview.label}” from{" "}
+                        {formatDistanceToNow(new Date(versionPreview.createdAt), {
                           addSuffix: true,
                         })}
                         <Button
@@ -1730,11 +1730,11 @@ export function KnowledgeVault() {
                     ) : null}
                     {versionPreview && compareVersion ? (
                       <div className="grid gap-6 lg:grid-cols-2">
-                        <NoteReader html={versionPreview.contentHtml} compact />
+                        <NoteReader html={versionPreview.html} compact />
                         <NoteReader html={draft.contentHtml} compact />
                       </div>
                     ) : (
-                      <NoteReader html={versionPreview?.contentHtml ?? draft.contentHtml} />
+                      <NoteReader html={versionPreview?.html ?? draft.contentHtml} />
                     )}
                   </div>
                 ) : (
