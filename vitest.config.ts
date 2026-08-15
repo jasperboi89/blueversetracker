@@ -10,6 +10,7 @@ export default defineConfig({
   define: { "globalThis.IS_REACT_ACT_ENVIRONMENT": "true" },
   test: {
     environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });

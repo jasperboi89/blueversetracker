@@ -41,19 +41,36 @@ interface State {
 let state: State = { episodes: {}, telemetry: [] };
 const listeners = new Set<() => void>();
 
+/**
+ * useSyncExternalStore requires a *stable* snapshot. Episodes that have no
+ * recorded signals yet must therefore hand back the same empty object every
+ * time, or React re-renders forever ("The result of getSnapshot should be
+ * cached to avoid an infinite loop").
+ */
+const emptyCache = new Map<string, WorkEpisodeSignals>();
+
+function emptyFor(episodeKey: string): WorkEpisodeSignals {
+  let cached = emptyCache.get(episodeKey);
+  if (!cached) {
+    cached = emptyEpisode(episodeKey);
+    emptyCache.set(episodeKey, cached);
+  }
+  return cached;
+}
+
 function emit() {
   for (const l of listeners) l();
 }
 
 function mutate(episodeKey: string, fn: (e: WorkEpisodeSignals) => WorkEpisodeSignals) {
-  const current = state.episodes[episodeKey] ?? emptyEpisode(episodeKey);
+  const current = state.episodes[episodeKey] ?? emptyFor(episodeKey);
   state = { ...state, episodes: { ...state.episodes, [episodeKey]: fn(current) } };
   emit();
 }
 
 export const nbaStore = {
   getEpisode(episodeKey: string): WorkEpisodeSignals {
-    return state.episodes[episodeKey] ?? emptyEpisode(episodeKey);
+    return state.episodes[episodeKey] ?? emptyFor(episodeKey);
   },
 
   /** Mark a check as established in this episode. */
@@ -118,6 +135,7 @@ export const nbaStore = {
 
   reset() {
     state = { episodes: {}, telemetry: [] };
+    emptyCache.clear();
     emit();
   },
 

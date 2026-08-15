@@ -5,7 +5,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { FocusPanel } from "./FocusPanel";
 import { buildFocusWorkspace, type FocusSnapshot } from "@/lib/core/focus-workspace";
 
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+  // FocusPanel now hosts the Phase 14 work-state section, which reads the
+  // Portal Context Envelope through the router location.
+  useRouterState: (opts?: { select?: (s: unknown) => unknown }) => {
+    const state = { location: { pathname: "/" } };
+    return opts?.select ? opts.select(state) : state;
+  },
+}));
 vi.mock("@/lib/core/use-account-context", () => ({ useAccountContext: () => ({ pack: null }) }));
 
 const EMPTY: FocusSnapshot = {
