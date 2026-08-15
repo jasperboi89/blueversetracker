@@ -45,6 +45,9 @@ import type { AnyProposedAction } from "@/lib/core/actions";
 import { shiftContextStore } from "@/lib/core/shift-context";
 import { getAccountContext } from "@/lib/core/account-context-service";
 import { toCopilotAccountContext } from "@/lib/core/account-context-projection";
+import { usePortalContext } from "@/hooks/use-portal-context";
+import { suggestionsForContext } from "@/lib/ai/context-suggestions";
+import { ContextInspector } from "@/components/workspace/ContextInspector";
 
 export const COPILOT_OPEN_EVENT = "intel-copilot:open";
 export function openCopilot() {
@@ -110,26 +113,6 @@ const SEVERITY_TONE: Record<InsightSeverity, string> = {
   info: "var(--cyan-glow)",
 };
 
-/** Page-aware suggestions: what you can ask changes with where you are. */
-function suggestionsFor(path: string): string[] {
-  if (path.startsWith("/freshdesk-tickets"))
-    return [
-      "What's overdue right now?",
-      "Any past tickets like this one?",
-      "Classify my open tickets",
-    ];
-  if (path.startsWith("/accounts"))
-    return ["What keeps breaking for this account?", "Show this account's ticket history"];
-  if (path.startsWith("/contact-dispatch"))
-    return ["Which dispatches are still open?", "Summarize tonight's dispatch results"];
-  return [
-    "What's overdue right now?",
-    "Summarize my shift so far",
-    "What should I work next?",
-    "Add my top 3 to the night plan",
-  ];
-}
-
 function pageLabel(path: string): string {
   const seg = path.split("/").filter(Boolean);
   if (seg.length === 0) return "the home deck";
@@ -141,6 +124,7 @@ export function CopilotSheet() {
   const navigate = useNavigate();
   const insights = useInsights();
   const focus = useFocusWorkspace();
+  const { envelope, withEvidence } = usePortalContext();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const threadState = useCopilotThreads();
   const [open, setOpen] = useState(false);
@@ -210,9 +194,18 @@ export function CopilotSheet() {
       .map((m) => ({ role: m.role, content: m.content }));
 
     const used: string[] = [];
+    // Portal Context is assembled at ask time only — no ambient AI chatter.
+    // A context failure must never block the question.
+    let portalContext = envelope;
+    try {
+      portalContext = await withEvidence();
+    } catch {
+      portalContext = envelope;
+    }
     const res = await streamCopilot(
       {
         messages: history,
+        portalContext,
         signals: insights.map((i) => `- ${i.text}`).join("\n") || undefined,
         style: aiStyleHint(ai),
         pageContext: pageLabel(path),
@@ -344,7 +337,7 @@ export function CopilotSheet() {
     navigate({ to: to as never, params: (params ?? {}) as never });
   };
 
-  const suggestions = suggestionsFor(path);
+  const suggestions = suggestionsForContext(envelope);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -383,6 +376,8 @@ export function CopilotSheet() {
             work time itself, and can propose changes you confirm. Chats are saved to your account.
           </SheetDescription>
         </SheetHeader>
+
+        <ContextInspector envelope={envelope} />
 
         {showThreads && (
           <div className="max-h-40 space-y-1 overflow-auto rounded-md border border-border/30 bg-white/[0.02] p-2">
@@ -460,11 +455,12 @@ export function CopilotSheet() {
             <div className="flex flex-wrap items-center gap-1.5">
               {suggestions.map((s) => (
                 <button
-                  key={s}
+                  key={s.label}
                   className="rounded-full border border-border/40 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-                  onClick={() => void ask(s)}
+                  title={s.prompt}
+                  onClick={() => void ask(s.prompt)}
                 >
-                  {s}
+                  {s.label}
                 </button>
               ))}
               <button
