@@ -24,13 +24,7 @@ const TYPE_LABEL: Record<string, string> = {
  * Paper-styled render of a knowledge note. Hidden on screen; only visible in
  * the print stylesheet (see the @media print block in src/styles.css).
  */
-export function PrintableNote({
-  note,
-  folderName,
-}: {
-  note: KnowledgeNote;
-  folderName?: string;
-}) {
+export function PrintableNote({ note, folderName }: { note: KnowledgeNote; folderName?: string }) {
   const attachments = note.attachments ?? [];
   const images = attachments.filter((a) => a.isImage);
   const files = attachments.filter((a) => !a.isImage);
@@ -60,10 +54,7 @@ export function PrintableNote({
       </header>
 
       <section className="kp-section">
-        <div
-          className="kp-body"
-          dangerouslySetInnerHTML={{ __html: sanitize(note.contentHtml) }}
-        />
+        <div className="kp-body" dangerouslySetInnerHTML={{ __html: sanitize(note.contentHtml) }} />
       </section>
 
       {images.length > 0 && (

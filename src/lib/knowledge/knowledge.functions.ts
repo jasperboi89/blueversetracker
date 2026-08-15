@@ -311,12 +311,8 @@ export const updateKnowledgeNote = createServerFn({ method: "POST" })
       ...(changes.isFavorite !== undefined ? { is_favorite: changes.isFavorite } : {}),
       ...(changes.isArchived !== undefined ? { is_archived: changes.isArchived } : {}),
       ...(changes.attachments !== undefined ? { attachments: changes.attachments } : {}),
-      ...(changes.aiContentHtml !== undefined
-        ? { ai_content_html: changes.aiContentHtml }
-        : {}),
-      ...(changes.aiGeneratedAt !== undefined
-        ? { ai_generated_at: changes.aiGeneratedAt }
-        : {}),
+      ...(changes.aiContentHtml !== undefined ? { ai_content_html: changes.aiContentHtml } : {}),
+      ...(changes.aiGeneratedAt !== undefined ? { ai_generated_at: changes.aiGeneratedAt } : {}),
       ...(changes.aiSourceFingerprint !== undefined
         ? { ai_source_fingerprint: changes.aiSourceFingerprint }
         : {}),

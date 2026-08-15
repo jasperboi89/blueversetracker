@@ -34,18 +34,42 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { ArrowUpDown, Check, FolderInput, Maximize2, PinOff } from "lucide-react";
 import {
-  ArrowUpDown,
-  Check,
-  FolderInput,
-  Maximize2,
-  PinOff,
+  BookMarked,
+  Eye,
+  LayoutList,
+  Minimize2,
+  PanelLeft,
+  PanelLeftClose,
+  PanelRight,
+  Rows3,
+  SquareStack,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PrintableNote } from "@/components/knowledge/PrintableNote";
 import { IsScriptWorkspace } from "@/components/knowledge/is-scripts/IsScriptWorkspace";
+import { PaneDivider } from "@/components/knowledge/workspace/PaneDivider";
+import { NoteReader } from "@/components/knowledge/workspace/NoteReader";
+import { ContextDrawer } from "@/components/knowledge/workspace/ContextDrawer";
+import { BookMode } from "@/components/knowledge/workspace/BookMode";
+import { CollectionShelf } from "@/components/knowledge/workspace/CollectionShelf";
+import {
+  NAV_MAX,
+  NAV_MIN,
+  STACK_MAX,
+  STACK_MIN,
+  noteStatus,
+  orderedForBook,
+  useVaultWorkspace,
+  vaultWorkspace,
+  type ContextTab,
+  type NoteStatus,
+  type VaultDensity,
+} from "@/lib/knowledge/vault-workspace-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -151,7 +175,6 @@ type VaultView =
 
 type SortMode = "updated" | "created" | "title" | "type" | "folder";
 
-
 const SORT_LABELS: Record<SortMode, string> = {
   updated: "Recently updated",
   created: "Recently created",
@@ -204,9 +227,9 @@ function readFileAsAttachment(file: File): Promise<KnowledgeAttachment> {
       const dataUrl = String(reader.result);
       resolve({
         id:
-          (typeof crypto !== "undefined" && "randomUUID" in crypto
+          typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(36).slice(2)}`),
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         name: file.name || "attachment",
         mimeType: file.type || "application/octet-stream",
         isImage: (file.type || "").startsWith("image/"),
@@ -227,6 +250,7 @@ function formatBytes(bytes: number) {
 
 export function KnowledgeVault() {
   const aiSettings = useAISettings();
+  const workspace = useVaultWorkspace();
   const [section, setSection] = useState<"notes" | "is-scripts">("notes");
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [notes, setNotes] = useState<KnowledgeNote[]>([]);
@@ -265,6 +289,13 @@ export function KnowledgeVault() {
   const [attachmentPreview, setAttachmentPreview] = useState<KnowledgeAttachment | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [aiOrganizing, setAiOrganizing] = useState(false);
+  /** Document presentation state — Reader is the default for an existing note. */
+  const [docMode, setDocMode] = useState<"reader" | "edit">("reader");
+  const [focusMode, setFocusMode] = useState(false);
+  const [bookFolderId, setBookFolderId] = useState<string | null>(null);
+  const [bookIndex, setBookIndex] = useState(0);
+  const [versionPreview, setVersionPreview] = useState<KnowledgeNoteVersion | null>(null);
+  const [compareVersion, setCompareVersion] = useState(false);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -297,6 +328,9 @@ export function KnowledgeVault() {
     setLastSaved(null);
     setTagInput("");
     setVersionsOpen(false);
+    setDocMode("reader");
+    setVersionPreview(null);
+    setCompareVersion(false);
     // Note list updates are handled explicitly so an autosave never overwrites an active draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
@@ -315,8 +349,7 @@ export function KnowledgeVault() {
       ? 100
       : Math.round(((activeNotes.length - unfiledCount) / activeNotes.length) * 100);
   const aiIsStale = Boolean(
-    draft?.aiContentHtml &&
-      draft.aiSourceFingerprint !== contentFingerprint(draft.contentHtml),
+    draft?.aiContentHtml && draft.aiSourceFingerprint !== contentFingerprint(draft.contentHtml),
   );
 
   const filteredNotes = useMemo(() => {
@@ -357,9 +390,7 @@ export function KnowledgeVault() {
           case "title":
             return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
           case "type":
-            return (
-              a.noteType.localeCompare(b.noteType) || b.updatedAt.localeCompare(a.updatedAt)
-            );
+            return a.noteType.localeCompare(b.noteType) || b.updatedAt.localeCompare(a.updatedAt);
           case "folder": {
             const af = folderById.get(a.folderId ?? "")?.name ?? "\uffff";
             const bf = folderById.get(b.folderId ?? "")?.name ?? "\uffff";
@@ -374,6 +405,34 @@ export function KnowledgeVault() {
         }
       });
   }, [folderById, notes, query, view, sortMode]);
+
+  const draftStatus: NoteStatus = draft ? noteStatus(workspace, draft.id) : "saved";
+  const isReference = draftStatus === "reference";
+
+  const relatedNotes = useMemo(() => {
+    if (!draft) return [];
+    return notes
+      .filter(
+        (note) =>
+          note.id !== draft.id &&
+          !note.isArchived &&
+          ((draft.folderId && note.folderId === draft.folderId) ||
+            note.tags.some((tag) => draft.tags.includes(tag))),
+      )
+      .slice(0, 8);
+  }, [notes, draft]);
+
+  const bookFolder = bookFolderId ? (folderById.get(bookFolderId) ?? null) : null;
+  const bookNotes = useMemo(() => {
+    if (!bookFolderId) return [];
+    const inside = notes.filter((note) => note.folderId === bookFolderId && !note.isArchived);
+    return orderedForBook(inside, workspace.bookOrder[bookFolderId]);
+  }, [notes, bookFolderId, workspace.bookOrder]);
+
+  // Persist the last collection/view the operator was browsing.
+  useEffect(() => {
+    vaultWorkspace.setLastView(view);
+  }, [view]);
 
   const changeDraft = (changes: Partial<KnowledgeNote>) => {
     setDraft((current) => {
@@ -551,6 +610,38 @@ export function KnowledgeVault() {
     return () => window.clearTimeout(timer);
   }, [dirty, draft, persistDraft]);
 
+  /** Explicit save from Edit Mode; returns to Reader unless the user keeps editing. */
+  const saveAndRead = useCallback(async () => {
+    const snapshot = draftRef.current;
+    if (snapshot) await persistDraft(snapshot);
+    setDocMode("reader");
+  }, [persistDraft]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        if (docMode === "edit" && draftRef.current) {
+          event.preventDefault();
+          void persistDraft(draftRef.current);
+        }
+        return;
+      }
+      if (event.key !== "Escape") return;
+      if (versionPreview) {
+        setVersionPreview(null);
+        setCompareVersion(false);
+        return;
+      }
+      if (focusMode) {
+        setFocusMode(false);
+        return;
+      }
+      if (workspace.drawerOpen) vaultWorkspace.setDrawer(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [docMode, focusMode, versionPreview, workspace.drawerOpen, persistDraft]);
+
   const selectNote = (id: string) => {
     if (dirty && draft) void persistDraft(draft);
     setSelectedId(id);
@@ -596,7 +687,12 @@ export function KnowledgeVault() {
 
   const patchNoteById = async (
     id: string,
-    changes: Partial<Pick<KnowledgeNote, "folderId" | "title" | "noteType" | "isPinned" | "isFavorite" | "isArchived">>,
+    changes: Partial<
+      Pick<
+        KnowledgeNote,
+        "folderId" | "title" | "noteType" | "isPinned" | "isFavorite" | "isArchived"
+      >
+    >,
   ) => {
     const target = notes.find((n) => n.id === id);
     if (!target) return;
@@ -658,12 +754,14 @@ export function KnowledgeVault() {
 
   const clearSelection = () => setSelectedIds(new Set());
 
-  const bulkApply = async (
-    action: "archive" | "restore" | "delete" | { move: string | null },
-  ) => {
+  const bulkApply = async (action: "archive" | "restore" | "delete" | { move: string | null }) => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    if (action === "delete" && !window.confirm(`Delete ${ids.length} note(s)? This cannot be undone.`)) return;
+    if (
+      action === "delete" &&
+      !window.confirm(`Delete ${ids.length} note(s)? This cannot be undone.`)
+    )
+      return;
     try {
       if (action === "delete") {
         await Promise.all(ids.map((id) => deleteKnowledgeNote({ data: { id } })));
@@ -677,9 +775,7 @@ export function KnowledgeVault() {
               ? { isArchived: false }
               : { folderId: action.move };
         await Promise.all(
-          ids.map((id) =>
-            updateKnowledgeNote({ data: { id, ...changes } }).then((saved) => saved),
-          ),
+          ids.map((id) => updateKnowledgeNote({ data: { id, ...changes } }).then((saved) => saved)),
         );
         setNotes((current) =>
           current.map((n) => (selectedIds.has(n.id) ? { ...n, ...changes } : n)),
@@ -793,7 +889,7 @@ export function KnowledgeVault() {
         toast.error(err instanceof Error ? err.message : "Could not attach files.");
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [],
   );
 
@@ -878,583 +974,906 @@ export function KnowledgeVault() {
         className="pointer-events-none absolute -left-40 -top-48 h-[34rem] w-[34rem] rounded-full opacity-20 blur-3xl"
         style={{ background: "radial-gradient(circle, var(--violet-glow), transparent 68%)" }}
       />
-      <header className="glass-panel relative overflow-hidden p-4">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,oklch(0.72_0.2_285_/_0.14),transparent_38%)]" />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div
-              className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-300/20"
-              style={{
-                background:
-                  "linear-gradient(135deg, oklch(0.7 0.2 225 / .28), oklch(0.65 0.22 295 / .34))",
-                boxShadow: "0 0 28px oklch(0.72 0.19 245 / .26)",
-              }}
-            >
-              <LibraryBig className="h-5 w-5 text-cyan-100" />
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/70">
-                BlueVerse knowledge system
+      {!focusMode && (
+        <header className="glass-panel relative overflow-hidden p-4">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,oklch(0.72_0.2_285_/_0.14),transparent_38%)]" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div
+                className="grid h-11 w-11 place-items-center rounded-2xl border border-cyan-300/20"
+                style={{
+                  background:
+                    "linear-gradient(135deg, oklch(0.7 0.2 225 / .28), oklch(0.65 0.22 295 / .34))",
+                  boxShadow: "0 0 28px oklch(0.72 0.19 245 / .26)",
+                }}
+              >
+                <LibraryBig className="h-5 w-5 text-cyan-100" />
               </div>
-              <h1 className="text-[1.35rem] font-semibold tracking-tight text-foreground">
-                Knowledge Vault
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Training guides, work notes, prompts, procedures, and everything you learn along the
-                way.
-              </p>
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/70">
+                  BlueVerse knowledge system
+                </div>
+                <h1 className="text-[1.35rem] font-semibold tracking-tight text-foreground">
+                  Knowledge Vault
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Training guides, work notes, prompts, procedures, and everything you learn along
+                  the way.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-stretch justify-end gap-2 text-center">
+              <Stat value={activeNotes.length} label="Active notes" />
+              <Stat value={recentCount} label="Fresh this week" />
+              <Stat value={unfiledCount} label="Needs filing" />
+              <div className="min-w-32 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.04] px-3 py-2 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Vault health
+                  </span>
+                  <span className="font-mono text-sm text-emerald-200">{organizationPercent}%</span>
+                </div>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-300 shadow-[0_0_10px_oklch(0.8_0.16_165_/_0.35)] transition-all"
+                    style={{ width: `${organizationPercent}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-[9px] text-muted-foreground">notes organized</div>
+              </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-stretch justify-end gap-2 text-center">
-            <Stat value={activeNotes.length} label="Active notes" />
-            <Stat value={recentCount} label="Fresh this week" />
-            <Stat value={unfiledCount} label="Needs filing" />
-            <div className="min-w-32 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.04] px-3 py-2 text-left">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-                  Vault health
-                </span>
-                <span className="font-mono text-sm text-emerald-200">{organizationPercent}%</span>
-              </div>
-              <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[0.06]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-300 shadow-[0_0_10px_oklch(0.8_0.16_165_/_0.35)] transition-all"
-                  style={{ width: `${organizationPercent}%` }}
-                />
-              </div>
-              <div className="mt-1 text-[9px] text-muted-foreground">notes organized</div>
-            </div>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <SectionTab
-          active={section === "notes"}
-          icon={LibraryBig}
-          label="Notes"
-          onClick={() => setSection("notes")}
-        />
-        <SectionTab
-          active={section === "is-scripts"}
-          icon={TerminalSquare}
-          label="IS Script Work"
-          onClick={() => setSection("is-scripts")}
-        />
-      </div>
+      {!focusMode && (
+        <div className="flex flex-wrap items-center gap-2">
+          <SectionTab
+            active={section === "notes"}
+            icon={LibraryBig}
+            label="Notes"
+            onClick={() => setSection("notes")}
+          />
+          <SectionTab
+            active={section === "is-scripts"}
+            icon={TerminalSquare}
+            label="IS Script Work"
+            onClick={() => setSection("is-scripts")}
+          />
+          {section === "notes" && (
+            <SectionTab
+              active={workspace.shelfOpen}
+              icon={BookMarked}
+              label="Shelf"
+              onClick={() => vaultWorkspace.setShelfOpen(!workspace.shelfOpen)}
+            />
+          )}
+        </div>
+      )}
 
       {section === "is-scripts" && <IsScriptWorkspace />}
 
+      {section === "notes" && workspace.shelfOpen && !focusMode && (
+        <CollectionShelf
+          folders={folders}
+          notes={notes}
+          onOpen={(folderId) => {
+            setView(`folder:${folderId}`);
+            vaultWorkspace.setShelfOpen(false);
+          }}
+          onOpenBook={(folderId) => {
+            setBookFolderId(folderId);
+            setBookIndex(0);
+            vaultWorkspace.setShelfOpen(false);
+          }}
+        />
+      )}
+
       <div
         className={cn(
-          "relative grid min-h-[690px] gap-3 xl:h-[calc(100vh-12rem)] xl:grid-cols-[244px_350px_minmax(0,1fr)]",
+          "relative flex min-h-[690px] flex-col gap-3 xl:h-[calc(100vh-12rem)] xl:flex-row xl:items-stretch",
           section !== "notes" && "hidden",
         )}
       >
-        <aside className="glass-panel flex min-h-0 flex-col overflow-hidden p-3">
-          <div className="mb-2 flex items-center justify-between px-2">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Vault
-            </span>
+        {focusMode ? null : workspace.navCollapsed ? (
+          <div className="glass-panel hidden w-11 shrink-0 flex-col items-center gap-2 p-2 xl:flex">
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0"
-              onClick={() => openFolderDialog()}
+              className="h-8 w-8 p-0"
+              aria-label="Expand vault navigator"
+              onClick={() => vaultWorkspace.setNavCollapsed(false)}
             >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="sr-only">New folder</span>
+              <PanelLeft className="h-4 w-4" />
             </Button>
+            <Boxes className="h-4 w-4 text-cyan-200/70" />
+            <Folder className="h-4 w-4 text-muted-foreground" />
+            <Archive className="h-4 w-4 text-muted-foreground" />
           </div>
-          <ScrollArea className="min-h-0 flex-1 pr-1">
-            <div className="space-y-1">
-              <VaultNavItem
-                icon={Boxes}
-                label="All knowledge"
-                count={activeNotes.length}
-                active={view === "all"}
-                onClick={() => setView("all")}
-              />
-              <VaultNavItem
-                icon={Clock3}
-                label="Recently updated"
-                count={recentCount}
-                active={view === "recent"}
-                onClick={() => setView("recent")}
-              />
-              <VaultNavItem
-                icon={Inbox}
-                label="Unfiled"
-                count={unfiledCount}
-                active={view === "unfiled"}
-                onClick={() => setView("unfiled")}
-              />
-              <VaultNavItem
-                icon={Pin}
-                label="Pinned"
-                count={activeNotes.filter((note) => note.isPinned).length}
-                active={view === "pinned"}
-                onClick={() => setView("pinned")}
-              />
-              <VaultNavItem
-                icon={Heart}
-                label="Favorites"
-                count={activeNotes.filter((note) => note.isFavorite).length}
-                active={view === "favorites"}
-                onClick={() => setView("favorites")}
-              />
-
-              <div className="pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-                Knowledge types
-              </div>
-              {NOTE_TYPES.map((item) => (
-                <VaultNavItem
-                  key={item.value}
-                  icon={item.icon}
-                  label={item.label}
-                  count={activeNotes.filter((note) => note.noteType === item.value).length}
-                  color={item.color}
-                  active={view === `type:${item.value}`}
-                  onClick={() => setView(`type:${item.value}`)}
-                />
-              ))}
-
-              <div className="flex items-center justify-between pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-                <span>Collections</span>
-                <button
-                  className="text-cyan-300 hover:text-cyan-100"
+        ) : (
+          <aside
+            className="glass-panel flex min-h-0 shrink-0 flex-col overflow-hidden p-3"
+            style={{ width: workspace.navWidth }}
+          >
+            <div className="mb-2 flex items-center justify-between px-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Vault
+              </span>
+              <div className="flex items-center">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
                   onClick={() => openFolderDialog()}
                 >
-                  New
-                </button>
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="sr-only">New folder</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="hidden h-7 w-7 p-0 xl:inline-flex"
+                  aria-label="Collapse vault navigator"
+                  onClick={() => vaultWorkspace.setNavCollapsed(true)}
+                >
+                  <PanelLeftClose className="h-3.5 w-3.5" />
+                </Button>
               </div>
-              {folders.length === 0 && (
-                <div className="rounded-lg border border-dashed border-white/10 p-3 text-center text-[11px] text-muted-foreground">
-                  Create a collection to organize your growing library.
-                </div>
-              )}
-              {folders.map((folder) => (
-                <div key={folder.id} className="group flex items-center gap-1">
-                  <VaultNavItem
-                    icon={view === `folder:${folder.id}` ? FolderOpen : Folder}
-                    label={folder.name}
-                    count={activeNotes.filter((note) => note.folderId === folder.id).length}
-                    color={folder.color}
-                    active={view === `folder:${folder.id}`}
-                    onClick={() => setView(`folder:${folder.id}`)}
-                    className="min-w-0 flex-1"
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100"
-                      >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openFolderDialog(folder)}>
-                        <Pencil className="mr-2 h-4 w-4" /> Edit folder
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-rose-300"
-                        onClick={() => void removeFolder(folder)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete folder
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
-
-              <div className="pt-4">
+            </div>
+            <ScrollArea className="min-h-0 flex-1 pr-1">
+              <div className="space-y-1">
                 <VaultNavItem
-                  icon={Archive}
-                  label="Archive"
-                  count={notes.filter((note) => note.isArchived).length}
-                  active={view === "archived"}
-                  onClick={() => setView("archived")}
+                  icon={Boxes}
+                  label="All knowledge"
+                  count={activeNotes.length}
+                  active={view === "all"}
+                  onClick={() => setView("all")}
                 />
-              </div>
-            </div>
-          </ScrollArea>
-        </aside>
+                <VaultNavItem
+                  icon={Clock3}
+                  label="Recently updated"
+                  count={recentCount}
+                  active={view === "recent"}
+                  onClick={() => setView("recent")}
+                />
+                <VaultNavItem
+                  icon={Inbox}
+                  label="Unfiled"
+                  count={unfiledCount}
+                  active={view === "unfiled"}
+                  onClick={() => setView("unfiled")}
+                />
+                <VaultNavItem
+                  icon={Pin}
+                  label="Pinned"
+                  count={activeNotes.filter((note) => note.isPinned).length}
+                  active={view === "pinned"}
+                  onClick={() => setView("pinned")}
+                />
+                <VaultNavItem
+                  icon={Heart}
+                  label="Favorites"
+                  count={activeNotes.filter((note) => note.isFavorite).length}
+                  active={view === "favorites"}
+                  onClick={() => setView("favorites")}
+                />
 
-        <section className="glass-panel flex min-h-0 flex-col overflow-hidden">
-          <div className="space-y-3 border-b border-white/10 p-3">
-            <div className="flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search your vault…"
-                  className="h-9 pl-9"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Select
-                value={newType}
-                onValueChange={(value) => setNewType(value as KnowledgeNoteType)}
-              >
-                <SelectTrigger className="h-9 min-w-0 flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {NOTE_TYPES.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.singular}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button className="h-9" onClick={() => void createNote()}>
-                <Plus className="mr-1.5 h-4 w-4" /> New
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-2 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            <span>
-              {filteredNotes.length} note{filteredNotes.length === 1 ? "" : "s"}
-            </span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 tracking-[0.16em] text-muted-foreground hover:bg-white/5 hover:text-foreground">
-                  <ArrowUpDown className="h-3 w-3" />
-                  <span className="normal-case tracking-normal">{SORT_LABELS[sortMode]}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
-                  <DropdownMenuItem key={mode} onClick={() => setSortMode(mode)}>
-                    {sortMode === mode ? (
-                      <Check className="mr-2 h-4 w-4 text-cyan-300" />
-                    ) : (
-                      <span className="mr-2 inline-block h-4 w-4" />
-                    )}
-                    {SORT_LABELS[mode]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {selectedIds.size > 0 && (
-            <div className="mx-3 mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-cyan-300/25 bg-cyan-300/[0.06] px-2 py-1.5 text-[11px]">
-              <span className="mr-1 font-medium text-cyan-100">{selectedIds.size} selected</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]">
-                    <FolderInput className="mr-1 h-3 w-3" /> Move
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => void bulkApply({ move: null })}>
-                    Unfiled
-                  </DropdownMenuItem>
-                  {folders.length > 0 && <DropdownMenuSeparator />}
-                  {folders.map((f) => (
-                    <DropdownMenuItem key={f.id} onClick={() => void bulkApply({ move: f.id })}>
-                      <span
-                        className="mr-2 inline-block h-2 w-2 rounded-full"
-                        style={{ background: f.color }}
-                      />
-                      {f.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px]"
-                onClick={() => void bulkApply(view === "archived" ? "restore" : "archive")}
-              >
-                <Archive className="mr-1 h-3 w-3" />
-                {view === "archived" ? "Restore" : "Archive"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-[11px] text-rose-300 hover:text-rose-200"
-                onClick={() => void bulkApply("delete")}
-              >
-                <Trash2 className="mr-1 h-3 w-3" /> Delete
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 px-2 text-[11px]"
-                onClick={clearSelection}
-              >
-                Clear
-              </Button>
-            </div>
-          )}
-          <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
-            <div className="space-y-2">
-              {filteredNotes.map((note) => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  folder={folderById.get(note.folderId ?? "")}
-                  selected={note.id === selectedId}
-                  checked={selectedIds.has(note.id)}
-                  onToggleChecked={() => toggleSelected(note.id)}
-                  isRenaming={renamingId === note.id}
-                  onStartRename={() => setRenamingId(note.id)}
-                  onFinishRename={(nextTitle) => {
-                    setRenamingId(null);
-                    const trimmed = nextTitle.trim();
-                    if (trimmed && trimmed !== note.title) {
-                      void patchNoteById(note.id, { title: trimmed });
-                    }
-                  }}
-                  folders={folders}
-                  onPatch={(changes) => void patchNoteById(note.id, changes)}
-                  onDelete={() => void deleteNoteById(note.id)}
-                  onPrint={() => setPrintTarget(note)}
-                  showFolderChip={!view.startsWith("folder:")}
-                  onClick={() => selectNote(note.id)}
-                />
-              ))}
-              {filteredNotes.length === 0 && (
-                <div className="mx-2 mt-8 rounded-xl border border-dashed border-white/10 p-6 text-center">
-                  <BookOpen className="mx-auto h-7 w-7 text-cyan-300/60" />
-                  <div className="mt-3 text-sm font-medium text-foreground">No notes here yet</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Create one and start building your operational memory.
-                  </div>
+                <div className="pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+                  Knowledge types
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-        </section>
+                {NOTE_TYPES.map((item) => (
+                  <VaultNavItem
+                    key={item.value}
+                    icon={item.icon}
+                    label={item.label}
+                    count={activeNotes.filter((note) => note.noteType === item.value).length}
+                    color={item.color}
+                    active={view === `type:${item.value}`}
+                    onClick={() => setView(`type:${item.value}`)}
+                  />
+                ))}
 
-        <div className="glass-panel min-h-[680px] min-w-0 overflow-hidden">
-          {draft ? (
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="border-b border-white/10 p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select
-                    value={draft.noteType}
-                    onValueChange={(value) => changeDraft({ noteType: value as KnowledgeNoteType })}
+                <div className="flex items-center justify-between pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+                  <span>Collections</span>
+                  <button
+                    className="text-cyan-300 hover:text-cyan-100"
+                    onClick={() => openFolderDialog()}
                   >
-                    <SelectTrigger className="h-8 w-40 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NOTE_TYPES.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.singular}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={draft.folderId ?? "unfiled"}
-                    onValueChange={(value) =>
-                      changeDraft({ folderId: value === "unfiled" ? null : value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 w-44 text-xs">
-                      <SelectValue placeholder="Folder" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unfiled">Unfiled</SelectItem>
-                      {folders.map((folder) => (
-                        <SelectItem key={folder.id} value={folder.id}>
-                          {folder.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="ml-auto flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn("h-8 w-8 p-0", draft.isPinned && "text-cyan-200")}
-                      onClick={() => void toggleNote({ isPinned: !draft.isPinned })}
-                      title="Pin note"
-                    >
-                      <Pin className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn("h-8 w-8 p-0", draft.isFavorite && "text-pink-300")}
-                      onClick={() => void toggleNote({ isFavorite: !draft.isFavorite })}
-                      title="Favorite"
-                    >
-                      <Heart className={cn("h-4 w-4", draft.isFavorite && "fill-current")} />
-                    </Button>
+                    New
+                  </button>
+                </div>
+                {folders.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-white/10 p-3 text-center text-[11px] text-muted-foreground">
+                    Create a collection to organize your growing library.
+                  </div>
+                )}
+                {folders.map((folder) => (
+                  <div key={folder.id} className="group flex items-center gap-1">
+                    <VaultNavItem
+                      icon={view === `folder:${folder.id}` ? FolderOpen : Folder}
+                      label={folder.name}
+                      count={activeNotes.filter((note) => note.folderId === folder.id).length}
+                      color={folder.color}
+                      active={view === `folder:${folder.id}`}
+                      onClick={() => setView(`folder:${folder.id}`)}
+                      className="min-w-0 flex-1"
+                    />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 shrink-0 p-0 opacity-0 group-hover:opacity-100"
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => void toggleNote({ isArchived: !draft.isArchived })}
-                        >
-                          <Archive className="mr-2 h-4 w-4" />
-                          {draft.isArchived ? "Restore from archive" : "Move to archive"}
+                        <DropdownMenuItem onClick={() => openFolderDialog(folder)}>
+                          <Pencil className="mr-2 h-4 w-4" /> Edit folder
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-rose-300"
-                          onClick={() => void removeNote()}
+                          onClick={() => void removeFolder(folder)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete permanently
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete folder
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setExpanded(true)}
-                      title="Expand note to full-screen editor"
-                    >
-                      <Maximize2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => {
-                        if (dirty && draftRef.current) void persistDraft(draftRef.current);
-                        setPrintTarget(draftRef.current ?? draft);
-                      }}
-                      title="Print note"
-                    >
-                      <Printer className="h-4 w-4" />
-                    </Button>
                   </div>
+                ))}
+
+                <div className="pt-4">
+                  <VaultNavItem
+                    icon={Archive}
+                    label="Archive"
+                    count={notes.filter((note) => note.isArchived).length}
+                    active={view === "archived"}
+                    onClick={() => setView("archived")}
+                  />
                 </div>
-                <Input
-                  value={draft.title}
-                  onChange={(event) => changeDraft({ title: event.target.value })}
-                  onBlur={() => {
-                    if (dirty && draftRef.current) void persistDraft(draftRef.current);
-                  }}
-                  className="mt-3 h-auto border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
-                  placeholder="Untitled note"
-                />
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
-                  <span style={{ color: typeConfig(draft.noteType).color }}>
-                    {typeConfig(draft.noteType).singular}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock3 className="h-3 w-3" />
-                    Updated {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: true })}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Paperclip className="h-3 w-3" />
-                    {(draft.attachments ?? []).length} attachment
-                    {(draft.attachments ?? []).length === 1 ? "" : "s"}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <Tag className="h-3.5 w-3.5 text-muted-foreground" />
-                  {draft.tags.map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() =>
-                        changeDraft({ tags: draft.tags.filter((item) => item !== tag) })
-                      }
-                      className="group rounded-full border border-cyan-300/15 bg-cyan-300/5 px-2 py-0.5 text-[11px] text-cyan-100/80 hover:border-rose-300/30 hover:text-rose-200"
-                    >
-                      #{tag}
-                      <X className="ml-1 inline h-2.5 w-2.5 opacity-0 group-hover:opacity-100" />
-                    </button>
-                  ))}
-                  {draft.tags.length < 12 && (
-                    <Input
-                      value={tagInput}
-                      onChange={(event) => setTagInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === ",") {
-                          event.preventDefault();
-                          addTag();
-                        }
-                      }}
-                      onBlur={addTag}
-                      placeholder="Add tag"
-                      className="h-7 w-24 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
-                    />
-                  )}
-                </div>
-                <NoteViewModeBar
-                  versionCount={(draft.versions ?? []).length}
-                  onOpenVersions={() => setVersionsOpen(true)}
-                  hasOrganized={Boolean(draft.aiGeneratedAt)}
-                  stale={aiIsStale}
-                  generatedAt={draft.aiGeneratedAt}
-                  aiEnabled={aiSettings.enabled}
-                  busy={aiOrganizing}
-                  onGenerate={() => void organizeWithAi()}
-                />
               </div>
-              <ScrollArea className="min-h-0 flex-1">
-                <div className="p-4">
-                  <KnowledgeContentWorkspace
-                    html={draft.contentHtml}
-                    aiGenerated={Boolean(draft.aiGeneratedAt)}
-                    onChange={(contentHtml) => changeDraft({ contentHtml })}
-                    minHeight="calc(100vh - 28rem)"
-                  />
-                  <AttachmentsPanel
-                    attachments={draft.attachments ?? []}
-                    onAdd={(files) => void addAttachments(files)}
-                    onRemove={removeAttachment}
-                    onRename={renameAttachment}
-                    onPreview={setAttachmentPreview}
+            </ScrollArea>
+          </aside>
+        )}
+
+        {!workspace.navCollapsed && !focusMode && (
+          <PaneDivider
+            label="Resize vault navigator"
+            value={workspace.navWidth}
+            min={NAV_MIN}
+            max={NAV_MAX}
+            onChange={(next) => vaultWorkspace.setNavWidth(next)}
+            onReset={() => vaultWorkspace.resetNavWidth()}
+          />
+        )}
+
+        {focusMode ? null : (
+          <section
+            className="glass-panel flex min-h-0 shrink-0 flex-col overflow-hidden xl:w-[var(--stack-w)]"
+            style={{ ["--stack-w" as string]: `${workspace.stackWidth}px` }}
+          >
+            <div className="space-y-3 border-b border-white/10 p-3">
+              <div className="flex items-center gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search your vault…"
+                    className="h-9 pl-9"
                   />
                 </div>
-              </ScrollArea>
-              <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
-                <span>
-                  {htmlToPlainText(draft.contentHtml).split(/\s+/).filter(Boolean).length} words
-                </span>
-                <span
-                  className={cn(saving && "text-cyan-200", dirty && !saving && "text-amber-200")}
+              </div>
+              <div className="flex gap-2">
+                <Select
+                  value={newType}
+                  onValueChange={(value) => setNewType(value as KnowledgeNoteType)}
                 >
-                  {saving
-                    ? "Saving to vault…"
-                    : dirty
-                      ? "Unsaved changes"
-                      : lastSaved
-                        ? `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
-                        : "Saved"}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="grid h-full min-h-[680px] place-items-center p-8 text-center">
-              <div>
-                <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl border border-violet-300/15 bg-violet-400/10 shadow-[0_0_40px_oklch(0.7_0.2_285_/_0.16)]">
-                  <LibraryBig className="h-8 w-8 text-violet-200" />
-                </div>
-                <h2 className="mt-5 text-xl font-semibold text-foreground">
-                  Your operational memory starts here
-                </h2>
-                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                  Capture a work note, turn a process into training, save a reusable AI prompt, or
-                  build a step-by-step procedure.
-                </p>
-                <Button className="mt-5" onClick={() => void createNote()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create your first note
+                  <SelectTrigger className="h-9 min-w-0 flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NOTE_TYPES.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.singular}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button className="h-9" onClick={() => void createNote()}>
+                  <Plus className="mr-1.5 h-4 w-4" /> New
                 </Button>
               </div>
             </div>
+            <div className="flex items-center justify-between gap-2 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              <span>
+                {filteredNotes.length} note{filteredNotes.length === 1 ? "" : "s"}
+              </span>
+              <div className="flex items-center gap-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      aria-label="List density"
+                    >
+                      {workspace.density === "compact" ? (
+                        <Rows3 className="h-3 w-3" />
+                      ) : workspace.density === "cards" ? (
+                        <SquareStack className="h-3 w-3" />
+                      ) : (
+                        <LayoutList className="h-3 w-3" />
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(["compact", "comfortable", "cards"] as VaultDensity[]).map((d) => (
+                      <DropdownMenuItem key={d} onClick={() => vaultWorkspace.setDensity(d)}>
+                        {workspace.density === d ? (
+                          <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                        ) : (
+                          <span className="mr-2 inline-block h-4 w-4" />
+                        )}
+                        <span className="capitalize">{d}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1 rounded-md px-1.5 py-0.5 tracking-[0.16em] text-muted-foreground hover:bg-white/5 hover:text-foreground">
+                      <ArrowUpDown className="h-3 w-3" />
+                      <span className="normal-case tracking-normal">{SORT_LABELS[sortMode]}</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
+                      <DropdownMenuItem key={mode} onClick={() => setSortMode(mode)}>
+                        {sortMode === mode ? (
+                          <Check className="mr-2 h-4 w-4 text-cyan-300" />
+                        ) : (
+                          <span className="mr-2 inline-block h-4 w-4" />
+                        )}
+                        {SORT_LABELS[mode]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="mx-3 mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-cyan-300/25 bg-cyan-300/[0.06] px-2 py-1.5 text-[11px]">
+                <span className="mr-1 font-medium text-cyan-100">{selectedIds.size} selected</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]">
+                      <FolderInput className="mr-1 h-3 w-3" /> Move
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => void bulkApply({ move: null })}>
+                      Unfiled
+                    </DropdownMenuItem>
+                    {folders.length > 0 && <DropdownMenuSeparator />}
+                    {folders.map((f) => (
+                      <DropdownMenuItem key={f.id} onClick={() => void bulkApply({ move: f.id })}>
+                        <span
+                          className="mr-2 inline-block h-2 w-2 rounded-full"
+                          style={{ background: f.color }}
+                        />
+                        {f.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px]"
+                  onClick={() => void bulkApply(view === "archived" ? "restore" : "archive")}
+                >
+                  <Archive className="mr-1 h-3 w-3" />
+                  {view === "archived" ? "Restore" : "Archive"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] text-rose-300 hover:text-rose-200"
+                  onClick={() => void bulkApply("delete")}
+                >
+                  <Trash2 className="mr-1 h-3 w-3" /> Delete
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto h-6 px-2 text-[11px]"
+                  onClick={clearSelection}
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
+            <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
+              <div className="space-y-2">
+                {filteredNotes.map((note) => (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    folder={folderById.get(note.folderId ?? "")}
+                    density={workspace.density}
+                    status={noteStatus(workspace, note.id)}
+                    selected={note.id === selectedId}
+                    checked={selectedIds.has(note.id)}
+                    onToggleChecked={() => toggleSelected(note.id)}
+                    isRenaming={renamingId === note.id}
+                    onStartRename={() => setRenamingId(note.id)}
+                    onFinishRename={(nextTitle) => {
+                      setRenamingId(null);
+                      const trimmed = nextTitle.trim();
+                      if (trimmed && trimmed !== note.title) {
+                        void patchNoteById(note.id, { title: trimmed });
+                      }
+                    }}
+                    folders={folders}
+                    onPatch={(changes) => void patchNoteById(note.id, changes)}
+                    onDelete={() => void deleteNoteById(note.id)}
+                    onPrint={() => setPrintTarget(note)}
+                    showFolderChip={!view.startsWith("folder:")}
+                    onClick={() => selectNote(note.id)}
+                  />
+                ))}
+                {filteredNotes.length === 0 && (
+                  <div className="mx-2 mt-8 rounded-xl border border-dashed border-white/10 p-6 text-center">
+                    <BookOpen className="mx-auto h-7 w-7 text-cyan-300/60" />
+                    <div className="mt-3 text-sm font-medium text-foreground">
+                      No notes here yet
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Create one and start building your operational memory.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </section>
+        )}
+
+        {!focusMode && (
+          <PaneDivider
+            label="Resize note list"
+            value={workspace.stackWidth}
+            min={STACK_MIN}
+            max={STACK_MAX}
+            onChange={(next) => vaultWorkspace.setStackWidth(next)}
+            onReset={() => vaultWorkspace.resetStackWidth()}
+          />
+        )}
+
+        <div className="relative flex min-h-[680px] min-w-0 flex-1 overflow-hidden">
+          {bookFolderId && bookNotes.length > 0 ? (
+            <div className="min-w-0 flex-1">
+              <BookMode
+                title={bookFolder?.name ?? "Collection"}
+                notes={bookNotes}
+                index={bookIndex}
+                onIndexChange={setBookIndex}
+                onExit={() => setBookFolderId(null)}
+                bookmarkedId={workspace.bookmarks[bookFolderId]}
+                onBookmark={(noteId) => {
+                  vaultWorkspace.setBookmark(bookFolderId, noteId);
+                  toast.success("Bookmarked this page");
+                }}
+              />
+            </div>
+          ) : (
+            <div className="glass-panel min-h-[680px] min-w-0 flex-1 overflow-hidden">
+              {draft ? (
+                <div className="flex h-full min-h-0 flex-col">
+                  <div className="border-b border-white/10 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.02] p-0.5">
+                        <ModeButton
+                          active={docMode === "reader"}
+                          icon={Eye}
+                          label="Reader"
+                          onClick={() => setDocMode("reader")}
+                        />
+                        <ModeButton
+                          active={docMode === "edit"}
+                          icon={Pencil}
+                          label="Edit"
+                          onClick={() => {
+                            if (isReference) {
+                              toast.info("This note is marked Reference — unlock it to edit.");
+                              return;
+                            }
+                            setDocMode("edit");
+                          }}
+                        />
+                        <ModeButton
+                          active={false}
+                          icon={BookMarked}
+                          label="Book"
+                          onClick={() => {
+                            if (!draft.folderId) {
+                              toast.info("Put this note in a collection to read it as a book.");
+                              return;
+                            }
+                            const ordered = orderedForBook(
+                              notes.filter((n) => n.folderId === draft.folderId && !n.isArchived),
+                              workspace.bookOrder[draft.folderId],
+                            );
+                            setBookFolderId(draft.folderId);
+                            setBookIndex(
+                              Math.max(
+                                0,
+                                ordered.findIndex((n) => n.id === draft.id),
+                              ),
+                            );
+                          }}
+                        />
+                        <ModeButton
+                          active={focusMode}
+                          icon={focusMode ? Minimize2 : Maximize2}
+                          label="Focus"
+                          onClick={() => setFocusMode((v) => !v)}
+                        />
+                      </div>
+                      {docMode === "edit" && (
+                        <Select
+                          value={draft.noteType}
+                          onValueChange={(value) =>
+                            changeDraft({ noteType: value as KnowledgeNoteType })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-40 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {NOTE_TYPES.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.singular}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {docMode === "edit" && (
+                        <Select
+                          value={draft.folderId ?? "unfiled"}
+                          onValueChange={(value) =>
+                            changeDraft({ folderId: value === "unfiled" ? null : value })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-44 text-xs">
+                            <SelectValue placeholder="Folder" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unfiled">Unfiled</SelectItem>
+                            {folders.map((folder) => (
+                              <SelectItem key={folder.id} value={folder.id}>
+                                {folder.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <div className="ml-auto flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn("h-8 w-8 p-0", workspace.drawerOpen && "text-cyan-200")}
+                          onClick={() => vaultWorkspace.setDrawer(!workspace.drawerOpen)}
+                          title="Context drawer"
+                          aria-label="Toggle context drawer"
+                        >
+                          <PanelRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn("h-8 w-8 p-0", draft.isPinned && "text-cyan-200")}
+                          onClick={() => void toggleNote({ isPinned: !draft.isPinned })}
+                          title="Pin note"
+                        >
+                          <Pin className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn("h-8 w-8 p-0", draft.isFavorite && "text-pink-300")}
+                          onClick={() => void toggleNote({ isFavorite: !draft.isFavorite })}
+                          title="Favorite"
+                        >
+                          <Heart className={cn("h-4 w-4", draft.isFavorite && "fill-current")} />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                vaultWorkspace.setStatus(
+                                  draft.id,
+                                  isReference ? "saved" : "reference",
+                                )
+                              }
+                            >
+                              <SquareStack className="mr-2 h-4 w-4" />
+                              {isReference ? "Unlock (allow editing)" : "Mark as reference"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => void toggleNote({ isArchived: !draft.isArchived })}
+                            >
+                              <Archive className="mr-2 h-4 w-4" />
+                              {draft.isArchived ? "Restore from archive" : "Move to archive"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-rose-300"
+                              onClick={() => void removeNote()}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete permanently
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setExpanded(true)}
+                          title="Expand note to full-screen editor"
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                            setPrintTarget(draftRef.current ?? draft);
+                          }}
+                          title="Print note"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {docMode === "edit" ? (
+                      <Input
+                        value={draft.title}
+                        onChange={(event) => changeDraft({ title: event.target.value })}
+                        onBlur={() => {
+                          if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                        }}
+                        className="mt-3 h-auto border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
+                        placeholder="Untitled note"
+                      />
+                    ) : (
+                      <h2 className="mt-3 text-2xl font-semibold text-foreground">
+                        {draft.title || "Untitled note"}
+                      </h2>
+                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+                      <span style={{ color: typeConfig(draft.noteType).color }}>
+                        {typeConfig(draft.noteType).singular}
+                      </span>
+                      {isReference && (
+                        <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-amber-100">
+                          Reference
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <Clock3 className="h-3 w-3" />
+                        Updated{" "}
+                        {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: true })}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Paperclip className="h-3 w-3" />
+                        {(draft.attachments ?? []).length} attachment
+                        {(draft.attachments ?? []).length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {docMode === "edit" ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                        {draft.tags.map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() =>
+                              changeDraft({ tags: draft.tags.filter((item) => item !== tag) })
+                            }
+                            className="group rounded-full border border-cyan-300/15 bg-cyan-300/5 px-2 py-0.5 text-[11px] text-cyan-100/80 hover:border-rose-300/30 hover:text-rose-200"
+                          >
+                            #{tag}
+                            <X className="ml-1 inline h-2.5 w-2.5 opacity-0 group-hover:opacity-100" />
+                          </button>
+                        ))}
+                        {draft.tags.length < 12 && (
+                          <Input
+                            value={tagInput}
+                            onChange={(event) => setTagInput(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === ",") {
+                                event.preventDefault();
+                                addTag();
+                              }
+                            }}
+                            onBlur={addTag}
+                            placeholder="Add tag"
+                            className="h-7 w-24 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+                          />
+                        )}
+                      </div>
+                    ) : draft.tags.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                        {draft.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-cyan-300/15 bg-cyan-300/5 px-2 py-0.5 text-[11px] text-cyan-100/80"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {docMode === "edit" && (
+                      <NoteViewModeBar
+                        versionCount={(draft.versions ?? []).length}
+                        onOpenVersions={() => setVersionsOpen(true)}
+                        hasOrganized={Boolean(draft.aiGeneratedAt)}
+                        stale={aiIsStale}
+                        generatedAt={draft.aiGeneratedAt}
+                        aiEnabled={aiSettings.enabled}
+                        busy={aiOrganizing}
+                        onGenerate={() => void organizeWithAi()}
+                      />
+                    )}
+                  </div>
+                  <ScrollArea className="min-h-0 flex-1">
+                    {docMode === "reader" ? (
+                      <div className="px-6 py-8 sm:px-10">
+                        {versionPreview ? (
+                          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+                            <History className="h-3.5 w-3.5" />
+                            Viewing “{versionPreview.label}” from{" "}
+                            {formatDistanceToNow(new Date(versionPreview.createdAt), {
+                              addSuffix: true,
+                            })}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[11px]"
+                              onClick={() => setCompareVersion((v) => !v)}
+                            >
+                              {compareVersion ? "Hide current" : "Compare with current"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[11px]"
+                              onClick={() => {
+                                setVersionPreview(null);
+                                setCompareVersion(false);
+                              }}
+                            >
+                              <Undo2 className="mr-1 h-3 w-3" /> Back to current
+                            </Button>
+                          </div>
+                        ) : null}
+                        {versionPreview && compareVersion ? (
+                          <div className="grid gap-6 lg:grid-cols-2">
+                            <NoteReader html={versionPreview.html} compact />
+                            <NoteReader html={draft.contentHtml} compact />
+                          </div>
+                        ) : (
+                          <NoteReader html={versionPreview?.html ?? draft.contentHtml} />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4">
+                        <KnowledgeContentWorkspace
+                          html={draft.contentHtml}
+                          aiGenerated={Boolean(draft.aiGeneratedAt)}
+                          onChange={(contentHtml) => changeDraft({ contentHtml })}
+                          minHeight="calc(100vh - 28rem)"
+                        />
+                        <AttachmentsPanel
+                          attachments={draft.attachments ?? []}
+                          onAdd={(files) => void addAttachments(files)}
+                          onRemove={removeAttachment}
+                          onRename={renameAttachment}
+                          onPreview={setAttachmentPreview}
+                        />
+                      </div>
+                    )}
+                  </ScrollArea>
+                  <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
+                    <span>
+                      {htmlToPlainText(draft.contentHtml).split(/\s+/).filter(Boolean).length} words
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {docMode === "edit" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() => void saveAndRead()}
+                        >
+                          <Check className="mr-1 h-3 w-3" /> Save &amp; read
+                        </Button>
+                      )}
+                      <span
+                        className={cn(
+                          saving && "text-cyan-200",
+                          dirty && !saving && "text-amber-200",
+                        )}
+                      >
+                        {saving
+                          ? "Saving to vault…"
+                          : dirty
+                            ? "Unsaved changes"
+                            : lastSaved
+                              ? `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
+                              : "Saved"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid h-full min-h-[680px] place-items-center p-8 text-center">
+                  <div>
+                    <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl border border-violet-300/15 bg-violet-400/10 shadow-[0_0_40px_oklch(0.7_0.2_285_/_0.16)]">
+                      <LibraryBig className="h-8 w-8 text-violet-200" />
+                    </div>
+                    <h2 className="mt-5 text-xl font-semibold text-foreground">
+                      Your operational memory starts here
+                    </h2>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                      Capture a work note, turn a process into training, save a reusable AI prompt,
+                      or build a step-by-step procedure.
+                    </p>
+                    <Button className="mt-5" onClick={() => void createNote()}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create your first note
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
+
+          {draft && !focusMode ? (
+            <ContextDrawer
+              open={workspace.drawerOpen}
+              tab={workspace.drawerTab}
+              onTabChange={(tab) => vaultWorkspace.setDrawerTab(tab)}
+              onClose={() => vaultWorkspace.setDrawer(false)}
+              note={draft}
+              folder={folderById.get(draft.folderId ?? "")}
+              related={relatedNotes}
+              onOpenRelated={(id) => selectNote(id)}
+              onViewVersion={(version) => {
+                setVersionPreview(version);
+                setDocMode("reader");
+              }}
+            >
+              <AttachmentsPanel
+                attachments={draft.attachments ?? []}
+                onAdd={(files) => void addAttachments(files)}
+                onRemove={removeAttachment}
+                onRename={renameAttachment}
+                onPreview={setAttachmentPreview}
+              />
+            </ContextDrawer>
+          ) : null}
         </div>
       </div>
 
@@ -1493,9 +1912,7 @@ export function KnowledgeVault() {
                 placeholder="Untitled note"
               />
             </DialogTitle>
-            <DialogDescription className="sr-only">
-              Expanded note editor
-            </DialogDescription>
+            <DialogDescription className="sr-only">Expanded note editor</DialogDescription>
             {draft && (
               <NoteViewModeBar
                 versionCount={(draft.versions ?? []).length}
@@ -1586,10 +2003,7 @@ export function KnowledgeVault() {
                 </div>
               )}
               {(draft?.versions ?? []).map((version) => (
-                <div
-                  key={version.id}
-                  className="rounded-xl border border-white/10 bg-black/15 p-3"
-                >
+                <div key={version.id} className="rounded-xl border border-white/10 bg-black/15 p-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-sm text-foreground">{version.label}</div>
@@ -1849,6 +2263,8 @@ function VaultNavItem({
 function NoteCard({
   note,
   folder,
+  density = "comfortable",
+  status = "saved",
   selected,
   onClick,
   checked,
@@ -1864,6 +2280,8 @@ function NoteCard({
 }: {
   note: KnowledgeNote;
   folder?: KnowledgeFolder;
+  density?: VaultDensity;
+  status?: NoteStatus;
   selected: boolean;
   onClick: () => void;
   checked: boolean;
@@ -1884,6 +2302,8 @@ function NoteCard({
   const config = typeConfig(note.noteType);
   const Icon = config.icon;
   const preview = htmlToPlainText(note.contentHtml) || "Empty note — open it and start writing.";
+  const compact = density === "compact";
+  const cards = density === "cards";
   const [renameValue, setRenameValue] = useState(note.title);
   useEffect(() => {
     if (isRenaming) setRenameValue(note.title);
@@ -1903,7 +2323,8 @@ function NoteCard({
         }
       }}
       className={cn(
-        "group relative w-full cursor-pointer overflow-hidden rounded-xl border p-3 text-left transition",
+        "group relative w-full cursor-pointer overflow-hidden rounded-xl border text-left transition",
+        compact ? "p-2" : cards ? "p-4" : "p-3",
         selected
           ? "border-cyan-300/25 bg-cyan-300/[0.07] shadow-[0_0_22px_oklch(0.75_0.18_225_/_0.1)]"
           : "border-white/[0.07] bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.045]",
@@ -1971,9 +2392,21 @@ function NoteCard({
               />
             )}
           </div>
-          <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-            {preview}
-          </div>
+          {!compact && (
+            <div
+              className={cn(
+                "mt-1 text-[11px] leading-relaxed text-muted-foreground",
+                cards ? "line-clamp-4" : "line-clamp-2",
+              )}
+            >
+              {preview}
+            </div>
+          )}
+          {status === "reference" && (
+            <span className="mt-1 inline-block rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-100">
+              Reference
+            </span>
+          )}
         </div>
         <div
           className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
@@ -1984,7 +2417,8 @@ function NoteCard({
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0"
-            title="Rename" aria-label="Rename note"
+            title="Rename"
+            aria-label="Rename note"
             onClick={(e) => {
               e.stopPropagation();
               onStartRename();
@@ -2063,10 +2497,7 @@ function NoteCard({
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   {NOTE_TYPES.map((t) => (
-                    <DropdownMenuItem
-                      key={t.value}
-                      onClick={() => onPatch({ noteType: t.value })}
-                    >
+                    <DropdownMenuItem key={t.value} onClick={() => onPatch({ noteType: t.value })}>
                       {note.noteType === t.value ? (
                         <Check className="mr-2 h-4 w-4 text-cyan-300" />
                       ) : (
@@ -2280,9 +2711,7 @@ function AttachmentsPanel({
         }}
         className={cn(
           "rounded-lg border border-dashed p-3 transition",
-          dragOver
-            ? "border-cyan-300/60 bg-cyan-300/[0.08]"
-            : "border-white/10 bg-white/[0.02]",
+          dragOver ? "border-cyan-300/60 bg-cyan-300/[0.08]" : "border-white/10 bg-white/[0.02]",
         )}
       >
         {attachments.length === 0 ? (
@@ -2304,11 +2733,7 @@ function AttachmentsPanel({
                   title={a.name}
                 >
                   {a.isImage ? (
-                    <img
-                      src={a.dataUrl}
-                      alt={a.name}
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={a.dataUrl} alt={a.name} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center text-[10px] text-muted-foreground">
                       <FileIcon className="h-6 w-6 text-cyan-200/80" />
@@ -2373,6 +2798,35 @@ function AttachmentsPanel({
         )}
       </div>
     </div>
+  );
+}
+
+/** Small segmented control used for Reader / Edit / Book / Focus. */
+function ModeButton({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: typeof Eye;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:text-foreground",
+        active &&
+          "bg-cyan-300/12 text-foreground shadow-[inset_0_0_0_1px_oklch(0.8_0.14_210_/_0.35)]",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
   );
 }
 

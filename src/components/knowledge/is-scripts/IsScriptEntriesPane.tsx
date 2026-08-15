@@ -150,33 +150,30 @@ export function IsScriptEntriesPane({
     );
   }, [draft, selected]);
 
-  const persist = useCallback(
-    async (next: IsScriptEntry) => {
-      setSaving(true);
-      try {
-        const saved = await updateIsScriptEntry({
-          data: {
-            id: next.id,
-            kind: next.kind,
-            title: next.title.trim() || "Untitled entry",
-            scriptBody: next.scriptBody,
-            usageHtml: next.usageHtml,
-            reasonHtml: next.reasonHtml,
-            exampleHtml: next.exampleHtml,
-            tags: next.tags,
-            attachments: next.attachments,
-          },
-        });
-        setEntries((current) => current.map((item) => (item.id === saved.id ? saved : item)));
-        setSavedAt(Date.now());
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Could not save the entry.");
-      } finally {
-        setSaving(false);
-      }
-    },
-    [],
-  );
+  const persist = useCallback(async (next: IsScriptEntry) => {
+    setSaving(true);
+    try {
+      const saved = await updateIsScriptEntry({
+        data: {
+          id: next.id,
+          kind: next.kind,
+          title: next.title.trim() || "Untitled entry",
+          scriptBody: next.scriptBody,
+          usageHtml: next.usageHtml,
+          reasonHtml: next.reasonHtml,
+          exampleHtml: next.exampleHtml,
+          tags: next.tags,
+          attachments: next.attachments,
+        },
+      });
+      setEntries((current) => current.map((item) => (item.id === saved.id ? saved : item)));
+      setSavedAt(Date.now());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the entry.");
+    } finally {
+      setSaving(false);
+    }
+  }, []);
 
   // Autosave shortly after edits settle.
   useEffect(() => {
@@ -302,12 +299,7 @@ export function IsScriptEntriesPane({
               className="h-9 pl-8 text-sm"
             />
           </div>
-          <Button
-            size="sm"
-            className="h-9"
-            disabled={creating}
-            onClick={() => void createEntry()}
-          >
+          <Button size="sm" className="h-9" disabled={creating} onClick={() => void createEntry()}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -410,7 +402,9 @@ export function IsScriptEntriesPane({
               <Input
                 value={draft.title}
                 onChange={(event) =>
-                  setDraft((current) => (current ? { ...current, title: event.target.value } : current))
+                  setDraft((current) =>
+                    current ? { ...current, title: event.target.value } : current,
+                  )
                 }
                 className="h-10 border-white/10 bg-transparent text-lg font-semibold"
                 placeholder="Entry title"
@@ -418,7 +412,9 @@ export function IsScriptEntriesPane({
               <Select
                 value={draft.kind}
                 onValueChange={(value) =>
-                  setDraft((current) => (current ? { ...current, kind: value as IsScriptKind } : current))
+                  setDraft((current) =>
+                    current ? { ...current, kind: value as IsScriptKind } : current,
+                  )
                 }
               >
                 <SelectTrigger className="h-10 w-40 text-xs">
