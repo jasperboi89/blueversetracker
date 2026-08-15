@@ -1408,12 +1408,85 @@ export function KnowledgeVault() {
             </div>
           </ScrollArea>
         </section>
+        )}
 
-        <div className="glass-panel min-h-[680px] min-w-0 overflow-hidden">
+        {!focusMode && (
+          <PaneDivider
+            label="Resize note list"
+            value={workspace.stackWidth}
+            min={STACK_MIN}
+            max={STACK_MAX}
+            onChange={(next) => vaultWorkspace.setStackWidth(next)}
+            onReset={() => vaultWorkspace.resetStackWidth()}
+          />
+        )}
+
+        <div className="relative flex min-h-[680px] min-w-0 flex-1 overflow-hidden">
+        {bookFolderId && bookNotes.length > 0 ? (
+          <div className="min-w-0 flex-1">
+            <BookMode
+              title={bookFolder?.name ?? "Collection"}
+              notes={bookNotes}
+              index={bookIndex}
+              onIndexChange={setBookIndex}
+              onExit={() => setBookFolderId(null)}
+              bookmarkedId={workspace.bookmarks[bookFolderId]}
+              onBookmark={(noteId) => {
+                vaultWorkspace.setBookmark(bookFolderId, noteId);
+                toast.success("Bookmarked this page");
+              }}
+            />
+          </div>
+        ) : (
+        <div className="glass-panel min-h-[680px] min-w-0 flex-1 overflow-hidden">
           {draft ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="border-b border-white/10 p-4">
                 <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-0.5 rounded-xl border border-white/10 bg-white/[0.02] p-0.5">
+                    <ModeButton
+                      active={docMode === "reader"}
+                      icon={Eye}
+                      label="Reader"
+                      onClick={() => setDocMode("reader")}
+                    />
+                    <ModeButton
+                      active={docMode === "edit"}
+                      icon={Pencil}
+                      label="Edit"
+                      onClick={() => {
+                        if (isReference) {
+                          toast.info("This note is marked Reference — unlock it to edit.");
+                          return;
+                        }
+                        setDocMode("edit");
+                      }}
+                    />
+                    <ModeButton
+                      active={false}
+                      icon={BookMarked}
+                      label="Book"
+                      onClick={() => {
+                        if (!draft.folderId) {
+                          toast.info("Put this note in a collection to read it as a book.");
+                          return;
+                        }
+                        const ordered = orderedForBook(
+                          notes.filter((n) => n.folderId === draft.folderId && !n.isArchived),
+                          workspace.bookOrder[draft.folderId],
+                        );
+                        setBookFolderId(draft.folderId);
+                        setBookIndex(Math.max(0, ordered.findIndex((n) => n.id === draft.id)));
+                      }}
+                    />
+                    <ModeButton
+                      active={focusMode}
+                      icon={focusMode ? Minimize2 : Maximize2}
+                      label="Focus"
+                      onClick={() => setFocusMode((v) => !v)}
+                    />
+                  </div>
+                  {docMode === "edit" && (
                   <Select
                     value={draft.noteType}
                     onValueChange={(value) => changeDraft({ noteType: value as KnowledgeNoteType })}
@@ -1429,6 +1502,8 @@ export function KnowledgeVault() {
                       ))}
                     </SelectContent>
                   </Select>
+                  )}
+                  {docMode === "edit" && (
                   <Select
                     value={draft.folderId ?? "unfiled"}
                     onValueChange={(value) =>
@@ -1447,7 +1522,18 @@ export function KnowledgeVault() {
                       ))}
                     </SelectContent>
                   </Select>
+                  )}
                   <div className="ml-auto flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn("h-8 w-8 p-0", workspace.drawerOpen && "text-cyan-200")}
+                      onClick={() => vaultWorkspace.setDrawer(!workspace.drawerOpen)}
+                      title="Context drawer"
+                      aria-label="Toggle context drawer"
+                    >
+                      <PanelRight className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1473,6 +1559,14 @@ export function KnowledgeVault() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() =>
+                            vaultWorkspace.setStatus(draft.id, isReference ? "saved" : "reference")
+                          }
+                        >
+                          <SquareStack className="mr-2 h-4 w-4" />
+                          {isReference ? "Unlock (allow editing)" : "Mark as reference"}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => void toggleNote({ isArchived: !draft.isArchived })}
                         >
@@ -1512,19 +1606,30 @@ export function KnowledgeVault() {
                     </Button>
                   </div>
                 </div>
-                <Input
-                  value={draft.title}
-                  onChange={(event) => changeDraft({ title: event.target.value })}
-                  onBlur={() => {
-                    if (dirty && draftRef.current) void persistDraft(draftRef.current);
-                  }}
-                  className="mt-3 h-auto border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
-                  placeholder="Untitled note"
-                />
+                {docMode === "edit" ? (
+                  <Input
+                    value={draft.title}
+                    onChange={(event) => changeDraft({ title: event.target.value })}
+                    onBlur={() => {
+                      if (dirty && draftRef.current) void persistDraft(draftRef.current);
+                    }}
+                    className="mt-3 h-auto border-0 bg-transparent px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
+                    placeholder="Untitled note"
+                  />
+                ) : (
+                  <h2 className="mt-3 text-2xl font-semibold text-foreground">
+                    {draft.title || "Untitled note"}
+                  </h2>
+                )}
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
                   <span style={{ color: typeConfig(draft.noteType).color }}>
                     {typeConfig(draft.noteType).singular}
                   </span>
+                  {isReference && (
+                    <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-amber-100">
+                      Reference
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
                     <Clock3 className="h-3 w-3" />
                     Updated {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: true })}
@@ -1535,6 +1640,7 @@ export function KnowledgeVault() {
                     {(draft.attachments ?? []).length === 1 ? "" : "s"}
                   </span>
                 </div>
+                {docMode === "edit" ? (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <Tag className="h-3.5 w-3.5 text-muted-foreground" />
                   {draft.tags.map((tag) => (
@@ -1565,6 +1671,20 @@ export function KnowledgeVault() {
                     />
                   )}
                 </div>
+                ) : draft.tags.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                    {draft.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-cyan-300/15 bg-cyan-300/5 px-2 py-0.5 text-[11px] text-cyan-100/80"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {docMode === "edit" && (
                 <NoteViewModeBar
                   versionCount={(draft.versions ?? []).length}
                   onOpenVersions={() => setVersionsOpen(true)}
@@ -1575,8 +1695,49 @@ export function KnowledgeVault() {
                   busy={aiOrganizing}
                   onGenerate={() => void organizeWithAi()}
                 />
+                )}
               </div>
               <ScrollArea className="min-h-0 flex-1">
+                {docMode === "reader" ? (
+                  <div className="px-6 py-8 sm:px-10">
+                    {versionPreview ? (
+                      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+                        <History className="h-3.5 w-3.5" />
+                        Viewing version from{" "}
+                        {formatDistanceToNow(new Date(versionPreview.savedAt), {
+                          addSuffix: true,
+                        })}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() => setCompareVersion((v) => !v)}
+                        >
+                          {compareVersion ? "Hide current" : "Compare with current"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() => {
+                            setVersionPreview(null);
+                            setCompareVersion(false);
+                          }}
+                        >
+                          <Undo2 className="mr-1 h-3 w-3" /> Back to current
+                        </Button>
+                      </div>
+                    ) : null}
+                    {versionPreview && compareVersion ? (
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        <NoteReader html={versionPreview.contentHtml} compact />
+                        <NoteReader html={draft.contentHtml} compact />
+                      </div>
+                    ) : (
+                      <NoteReader html={versionPreview?.contentHtml ?? draft.contentHtml} />
+                    )}
+                  </div>
+                ) : (
                 <div className="p-4">
                   <KnowledgeContentWorkspace
                     html={draft.contentHtml}
@@ -1592,11 +1753,18 @@ export function KnowledgeVault() {
                     onPreview={setAttachmentPreview}
                   />
                 </div>
+                )}
               </ScrollArea>
               <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
                 <span>
                   {htmlToPlainText(draft.contentHtml).split(/\s+/).filter(Boolean).length} words
                 </span>
+                <div className="flex items-center gap-2">
+                {docMode === "edit" && (
+                  <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={() => void saveAndRead()}>
+                    <Check className="mr-1 h-3 w-3" /> Save &amp; read
+                  </Button>
+                )}
                 <span
                   className={cn(saving && "text-cyan-200", dirty && !saving && "text-amber-200")}
                 >
@@ -1608,6 +1776,7 @@ export function KnowledgeVault() {
                         ? `Saved ${formatDistanceToNow(lastSaved, { addSuffix: true })}`
                         : "Saved"}
                 </span>
+                </div>
               </div>
             </div>
           ) : (
@@ -1630,6 +1799,33 @@ export function KnowledgeVault() {
               </div>
             </div>
           )}
+        </div>
+        )}
+
+        {draft && !focusMode ? (
+          <ContextDrawer
+            open={workspace.drawerOpen}
+            tab={workspace.drawerTab}
+            onTabChange={(tab) => vaultWorkspace.setDrawerTab(tab)}
+            onClose={() => vaultWorkspace.setDrawer(false)}
+            note={draft}
+            folder={folderById.get(draft.folderId ?? "")}
+            related={relatedNotes}
+            onOpenRelated={(id) => selectNote(id)}
+            onViewVersion={(version) => {
+              setVersionPreview(version);
+              setDocMode("reader");
+            }}
+          >
+            <AttachmentsPanel
+              attachments={draft.attachments ?? []}
+              onAdd={(files) => void addAttachments(files)}
+              onRemove={removeAttachment}
+              onRename={renameAttachment}
+              onPreview={setAttachmentPreview}
+            />
+          </ContextDrawer>
+        ) : null}
         </div>
       </div>
 
