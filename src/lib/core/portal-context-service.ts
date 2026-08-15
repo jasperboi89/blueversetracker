@@ -4,7 +4,7 @@ import { activeWorkStore } from "@/lib/workspace/active-work-store";
 import { portalPresence } from "./portal-presence";
 import { assemblePortalContext } from "./context-orchestrator";
 import { evidenceFromAccountPack, evidenceFromRetrieval, evidenceQueryFor } from "./context-evidence";
-import type { ContextEvidence, PortalContextEnvelope } from "./portal-context";
+import type { ContextEvidence, ContextMemory, PortalContextEnvelope } from "./portal-context";
 
 /**
  * Non-React access to the Portal Context Envelope.
@@ -87,6 +87,40 @@ export async function buildPortalContextWithEvidence(
     }
   }
 
+  // Phase 12 — prior experience relevant to this situation. Never blocking.
+  let memory: ContextMemory[] = [];
+  try {
+    const { findRelevantMemories } = await import("@/lib/memory/memory-retrieval");
+    const scored = findRelevantMemories({
+      ...(accountId ? { accountNumber: accountId } : {}),
+      ...(base.active.ticket?.id ? { ticketId: base.active.ticket.id } : {}),
+      ...(base.active.workItem?.id ? { workItemId: base.active.workItem.id } : {}),
+      ...(base.active.dispatch?.id ? { dispatchId: base.active.dispatch.id } : {}),
+      ...(evidenceQueryFor(base) ? { topic: evidenceQueryFor(base) as string } : {}),
+      limit: 5,
+    });
+    memory = scored.map(({ memory: m, score, reasons }) => ({
+      id: m.id,
+      memoryClass: m.class,
+      title: m.title,
+      summary: m.summary,
+      occurredAt: m.occurredAt,
+      status: m.status,
+      origin: m.origin === "operator_confirmed" ? "operator_confirmed" : "retrieved",
+      confidence: m.confidence,
+      importance: m.importance,
+      relevance: score,
+      reasons,
+      ...(m.scope.accountNumber ? { accountNumber: m.scope.accountNumber } : {}),
+      ...(m.scope.ticketId ? { ticketId: m.scope.ticketId } : {}),
+    }));
+  } catch (e) {
+    failures.push({
+      source: "operational_memory",
+      message: e instanceof Error ? e.message : "memory lookup failed",
+    });
+  }
+
   const max = options.maxEvidence ?? 14;
   const full = assemblePortalContext({
     pathname,
@@ -97,6 +131,7 @@ export async function buildPortalContextWithEvidence(
     accountPack: pack,
     failures,
     evidence,
+    memory,
   });
   const bounded: PortalContextEnvelope = { ...full, evidence: full.evidence.slice(0, max) };
 
