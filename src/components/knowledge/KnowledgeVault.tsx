@@ -306,9 +306,9 @@ export function KnowledgeVault() {
   const selectedNote = notes.find((note) => note.id === selectedId) ?? null;
   useEffect(() => {
     portalPresence.setKnowledgeNote(
-      selectedNote ? { id: selectedNote.id, title: selectedNote.title, folderId: selectedNote.folderId ?? null } : null,
+      selectedNote ? { id: selectedNote.id, title: selectedNote.title, collection: selectedNote.folderId ?? undefined, noteType: selectedNote.noteType, presentation: focusMode ? "focus" : docMode } : null,
     );
-  }, [selectedNote?.id, selectedNote?.title, selectedNote?.folderId]);
+  }, [selectedNote?.id, selectedNote?.title, selectedNote?.folderId, selectedNote?.noteType, docMode, focusMode]);
   useEffect(() => {
     portalPresence.setEditMode(docMode === "edit");
   }, [docMode]);

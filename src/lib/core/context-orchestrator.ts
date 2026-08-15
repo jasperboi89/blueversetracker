@@ -49,7 +49,7 @@ const MAX_BLOCKERS = 8;
 
 function elapsedFor(work: ActiveWork | undefined | null, now: number): number | undefined {
   if (!work) return undefined;
-  const base = work.elapsedMs ?? 0;
+  const base = work.accumulatedMs ?? 0;
   return work.running && work.startedAt ? base + Math.max(0, now - work.startedAt) : base;
 }
 
