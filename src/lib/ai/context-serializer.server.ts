@@ -1,6 +1,8 @@
 import type { ContextBudget } from "@/lib/ai/router/task-types";
 import { trimEvidence, activeEntityIds } from "@/lib/core/context-priority";
 import type { ContextEvidence, PortalContextEnvelope } from "@/lib/core/portal-context";
+import { isSafeForOperationalGuidance, type EvidenceFact } from "@/lib/core/evidence-contract";
+import { realityLabel } from "@/lib/core/reality-boundary";
 
 /**
  * Portal Context -> Copilot prompt sections (Phase 10 §16).
@@ -39,6 +41,20 @@ function evidenceLine(e: ContextEvidence, index: number): string {
     ")",
   ];
   return bits.filter(Boolean).join(" ").replace(/ \(/, " (").replace(/\( /, "(");
+}
+
+/** `[VERIFIED | OBSERVED | CURRENT] predicate: value — source (as of ...)`. */
+function factLine(f: EvidenceFact): string {
+  const when = f.observedAt ?? f.validFrom ?? f.recordedAt;
+  const bits = [
+    realityLabel(f),
+    `${f.subject.type} ${f.subject.id}`,
+    `${f.predicate}: ${String(f.value)}`,
+    `— source ${f.source.type}${f.source.id ? `:${f.source.id}` : ""}`,
+    when ? `(as of ${when})` : "",
+    f.supersededBy?.length ? "(superseded by newer evidence)" : "",
+  ];
+  return `- ${bits.filter(Boolean).join(" ")}`;
 }
 
 export function serializeEnvelope(
@@ -112,6 +128,43 @@ export function serializeEnvelope(
         "## EVIDENCE",
         "Potentially relevant material, not conclusions. Historical or superseded items must never be presented as current.",
         ...kept.map(evidenceLine),
+      ].join("\n"),
+    );
+  }
+
+  /* REALITY BOUNDARY — explicit truth state per fact (Phase 11). */
+  const facts = env.facts ?? [];
+  if (facts.length) {
+    const cap = Math.max(6, budget.maxEvidenceItems);
+    const usable = facts.filter((f) => isSafeForOperationalGuidance(f)).slice(0, cap);
+    const contextOnly = facts.filter((f) => !isSafeForOperationalGuidance(f)).slice(0, 6);
+    const block = [
+      "## REALITY BOUNDARY",
+      "Each line states how we know it, how confident we are, and whether it is still true.",
+      "Rules you must follow:",
+      "- Recommend operational action only from facts listed under USABLE.",
+      "- CONTEXT ONLY facts (generated, simulated, superseded, historical, disputed, unsupported inference) may be mentioned for background and must be labelled as such — never presented as current truth.",
+      "- Absence of a fact means unknown. Say the information is unavailable rather than assuming a negative.",
+      "- Never upgrade confidence, never quietly merge facts, never invent a source.",
+    ];
+    if (usable.length) block.push("USABLE:", ...usable.map(factLine));
+    if (contextOnly.length) block.push("CONTEXT ONLY:", ...contextOnly.map(factLine));
+    sections.push(block.join("\n"));
+  }
+
+  /* CONFLICTS — surfaced, never resolved on the operator's behalf. */
+  const conflicts = env.evidenceConflicts ?? [];
+  if (conflicts.length) {
+    sections.push(
+      [
+        "## CONFLICTING EVIDENCE",
+        "Sources disagree. State the disagreement explicitly, name both sides with their origin and date, and ask the operator to confirm. Do NOT pick a winner.",
+        ...conflicts.map(
+          (c) =>
+            `- ${c.subject.type} ${c.subject.id} — ${c.predicate}: ${c.values
+              .map((v) => `"${v.value}" (${v.origin}/${v.confidence}${v.at ? `, ${v.at}` : ""})`)
+              .join(" vs ")}${c.interpretation ? ` — ${c.interpretation}` : ""}`,
+        ),
       ].join("\n"),
     );
   }
