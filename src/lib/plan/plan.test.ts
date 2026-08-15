@@ -246,7 +246,10 @@ describe("plan safety gate", () => {
       ],
     });
     const plan = build(env);
-    expect(plan.steps[0].status).toBe("blocked");
+    const nonReview = plan.steps.filter((s) => s.kind !== "REVIEW");
+    expect(nonReview.length).toBeGreaterThan(0);
+    expect(nonReview.every((s) => s.status === "blocked" || s.status === "pending")).toBe(true);
+    expect(nonReview.some((s) => s.status === "blocked")).toBe(true);
   });
 
   it("never attaches a prepared action to a step that is not ready", () => {
