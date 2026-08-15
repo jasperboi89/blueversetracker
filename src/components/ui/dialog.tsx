@@ -50,6 +50,8 @@ const DialogContent = React.forwardRef<
         top: "50%",
         transform: "translate(-50%, -50%)",
         zIndex: 70,
+        maxHeight: "min(90vh, calc(100dvh - 2rem))",
+        overflowY: "auto",
       }}
       {...props}
     >
