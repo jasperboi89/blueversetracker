@@ -154,6 +154,3 @@ export function serializeEnvelope(
     degraded: env.warnings.some((x) => x.code === "context_degraded" || x.code === "source_unavailable"),
   };
 }
-
-const AGGREGATE_KEY: keyof SerializedContext = "text";
-void AGGREGATE_KEY;
