@@ -44,7 +44,8 @@ export interface ProcedureInterpretation {
   derivation: "structured" | "parsed" | "inferred";
 }
 
-const STEP_SPLIT = /(?:\r?\n|(?<=[.;])\s+(?=\d+[.)]\s)|\s*(?:→|->|;)\s*)/g;
+// Steps arrive as lines, bullets, arrow chains, or plain sentences.
+const STEP_SPLIT = /(?:\r?\n|\s*(?:→|->|;)\s*|(?<=[.!?])\s+(?=[A-Z0-9]))/g;
 const BULLET = /^\s*(?:[-*•]|\d+[.)])\s*/;
 
 const MUTATION_WORDS =
@@ -52,7 +53,11 @@ const MUTATION_WORDS =
 const VERIFY_WORDS = /\b(verify|check|confirm|review|compare|inspect|look\s?up|validate|ensure)\b/i;
 
 function cleanStep(raw: string): string {
-  return raw.replace(BULLET, "").replace(/\s+/g, " ").trim();
+  return raw
+    .replace(BULLET, "")
+    .replace(/\s+/g, " ")
+    .replace(/[.\s]+$/, "")
+    .trim();
 }
 
 /** Deterministic prose -> steps. Returns [] when no step-like structure exists. */
