@@ -85,8 +85,8 @@ describe("clustering", () => {
   });
 
   it("produces a stable fingerprint for the same topic", () => {
-    const a = candidateFingerprint({ type: "procedural", topic: "on call group routing", accountNumber: "A100" });
-    const b = candidateFingerprint({ type: "procedural", topic: "On-Call  Group Routing", accountNumber: "A100" });
+    const a = candidateFingerprint({ type: "procedural", topic: "on call group routing", area: "A100" });
+    const b = candidateFingerprint({ type: "procedural", topic: "On-Call  Group Routing", area: "A100" });
     expect(a).toBe(b);
   });
 
