@@ -107,7 +107,7 @@ export function PromotionReviewPanel() {
               )}
 
               {openId === c.id && packet ? (
-                <PacketView packet={packet} busy={busy} onDecide={decide} onClose={() => setOpenId(null)} />
+                <PacketView candidate={c} packet={packet} busy={busy} onDecide={decide} onClose={() => setOpenId(null)} />
               ) : (
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button size="sm" disabled={busy || !canPreparePromotion(c)} onClick={() => void open(c)}>
@@ -147,17 +147,19 @@ export function PromotionReviewPanel() {
 }
 
 function PacketView({
+  candidate,
   packet,
   busy,
   onDecide,
   onClose,
 }: {
+  candidate: CuratedMemoryCandidate;
   packet: PromotionPacket;
   busy: boolean;
   onDecide: (p: PromotionPacket, choice: PromotionChoice) => void;
   onClose: () => void;
 }) {
-  const ops = allowedOperations(packet);
+  const ops = allowedOperations(candidate, packet);
   const account = packet.relatedAccounts[0]?.id ?? "";
   const target = packet.targetId ?? packet.currentKnowledgeMatches[0]?.sourceId ?? "";
 
