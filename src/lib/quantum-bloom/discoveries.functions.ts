@@ -2,7 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const KINDS = ["ticket", "dispatch", "night_plan", "shift", "cosmic"] as const;
+const KINDS = [
+  "ticket",
+  "dispatch",
+  "night_plan",
+  "shift",
+  "cosmic",
+  "milestone",
+] as const;
 
 const recordSchema = z
   .object({
