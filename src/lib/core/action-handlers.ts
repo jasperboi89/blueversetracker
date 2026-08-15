@@ -6,6 +6,7 @@
  * emitters (night-plan-store, tickets-store, active-work-store). Handlers call
  * those stores and never emit a second event, so one transition = one event.
  */
+import { PROMOTION_HANDLERS } from "@/lib/curator/promotion-actions";
 import { nightPlanStore, type Priority } from "@/lib/night-plan-store";
 import { ticketsStore, type IssueClassification } from "@/lib/tickets-store";
 import { setActiveWork } from "@/lib/workspace/active-work-store";
@@ -33,7 +34,9 @@ export interface ActionHandler<T extends ActionType> {
   risk: ActionRisk;
   describe: (payload: ActionPayloadMap[T]) => string;
   validate: (payload: unknown) => Validated<ActionPayloadMap[T]>;
-  execute: (payload: ActionPayloadMap[T]) => HandlerExecution;
+  /** May be async: promotion handlers write to an authoritative destination
+   *  and then read it back before reporting success. */
+  execute: (payload: ActionPayloadMap[T]) => HandlerExecution | Promise<HandlerExecution>;
 }
 
 function str(v: unknown): string {
@@ -188,6 +191,7 @@ const HANDLERS: Record<ActionType, ActionHandler<any>> = {
   complete_night_plan_item: completeNightPlanItem,
   set_ticket_classification: setTicketClassification,
   start_timer: startTimer,
+  ...PROMOTION_HANDLERS,
 };
 
 export function getActionHandler<T extends ActionType>(type: T): ActionHandler<T> | undefined {

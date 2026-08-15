@@ -180,7 +180,7 @@ export async function executeAction(
 
   let outcome;
   try {
-    outcome = handler.execute(validated.payload);
+    outcome = await handler.execute(validated.payload);
   } catch (err) {
     outcome = {
       ok: false,
