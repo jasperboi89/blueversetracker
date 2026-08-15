@@ -18,6 +18,12 @@ import type { WorkProgressState } from "./work-progress";
 
 export interface GateContext {
   envelope: PortalContextEnvelope;
+  /**
+   * Phase 16 — resolved capability availability, keyed by capability id.
+   * A recommendation whose capability is blocked/unavailable is never shown
+   * as actionable: the portal must not promise what it cannot do.
+   */
+  capabilities?: Record<string, { availability: "available" | "unavailable" | "blocked"; note?: string }>;
   progress: WorkProgressState;
   episode: WorkEpisodeSignals;
   permissions: { canPrepareWrites: boolean };
@@ -49,6 +55,27 @@ function conditionsChangedSince(attemptAt: string, changedAt?: string): boolean 
 export function evaluateGate(candidate: NextBestAction, ctx: GateContext): GateVerdict {
   const reasonCodes: NbaReasonCode[] = [];
   const blockers: NextBestAction["blockers"] = [...candidate.blockers];
+
+  // Phase 16 — an action the portal has no available capability for is not a
+  // recommendation, it is a dead end. Suppress it with the real reason.
+  if (candidate.capabilityId && ctx.capabilities) {
+    const cap = ctx.capabilities[candidate.capabilityId];
+    if (cap && cap.availability !== "available") {
+      return {
+        state: "blocked",
+        reasonCodes: ["PERMISSION_REQUIRED"],
+        blockers: [
+          ...blockers,
+          {
+            id: `capability:${candidate.capabilityId}`,
+            type: "capability_unavailable",
+            label: cap.note ?? "The capability this needs is not available right now.",
+          },
+        ],
+        note: cap.note ?? "The capability this step needs is not available right now.",
+      };
+    }
+  }
 
   // Already established this episode.
   if (ctx.episode.completedChecks.includes(candidate.fingerprint)) {

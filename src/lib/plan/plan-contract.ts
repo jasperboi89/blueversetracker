@@ -81,6 +81,11 @@ export interface GuardedPlanStep {
   blockers: PlanStepBlocker[];
   /** Present only for mutating steps; still requires operator confirmation. */
   proposedSafeAction?: SafeActionProposal;
+  /**
+   * Phase 16 — the governed capability that satisfies this step. Absent means
+   * the step is a GUIDED MANUAL action: the portal never fabricates one.
+   */
+  capabilityId?: string;
   /** Why the step is not startable right now, in operator language. */
   note?: string;
 }

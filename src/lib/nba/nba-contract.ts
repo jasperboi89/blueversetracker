@@ -157,6 +157,11 @@ export interface NextBestAction {
   generatedAt: string;
   expiresAt?: string;
   proposedSafeAction?: SafeActionProposal;
+  /**
+   * Phase 16 — the governed capability this action would use. The engine may
+   * only recommend it while the Capability Resolver says it is available.
+   */
+  capabilityId?: string;
 }
 
 /* ------------------------------------------------------------------ */

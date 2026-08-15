@@ -24,12 +24,16 @@ import { buildWorkProgress, contextKeyFor, episodeKeyFor, type WorkProgressState
 import { generateCandidates } from "./candidates";
 import { evaluateGate } from "./gate";
 import { bandForScore, scoreCandidate } from "./ranking";
+import { capabilityForActionType } from "@/lib/capability/capability-registry";
+import type { CapabilityAvailability } from "@/lib/capability/capability-contract";
 
 export interface NbaInput {
   envelope: PortalContextEnvelope;
   episode?: WorkEpisodeSignals;
   now?: number;
   permissions?: { canPrepareWrites?: boolean };
+  /** Phase 16 — resolved capability availability for this context. */
+  capabilities?: Record<string, { availability: CapabilityAvailability; note?: string }>;
 }
 
 /** Score threshold below which the engine prefers honesty over a card. */
@@ -76,8 +80,22 @@ export function computeNextBestAction(input: NbaInput): NbaResult {
   const uncertain = highUncertainty(progress, env);
   const raw = generateCandidates({ envelope: env, progress, episode, generatedAt });
 
-  const scored: NextBestAction[] = raw.map((candidate) => {
-    const verdict = evaluateGate(candidate, { envelope: env, progress, episode, permissions, now });
+  const scored: NextBestAction[] = raw.map((rawCandidate) => {
+    // Every prepared mutation is described by exactly one governed capability.
+    const capabilityId = rawCandidate.proposedSafeAction
+      ? capabilityForActionType(rawCandidate.proposedSafeAction.type)?.id
+      : rawCandidate.capabilityId;
+    const candidate: NextBestAction = capabilityId
+      ? { ...rawCandidate, capabilityId }
+      : rawCandidate;
+    const verdict = evaluateGate(candidate, {
+      envelope: env,
+      progress,
+      episode,
+      permissions,
+      now,
+      ...(input.capabilities ? { capabilities: input.capabilities } : {}),
+    });
     const reasonCodes = Array.from(new Set([...candidate.reasonCodes, ...verdict.reasonCodes]));
     const risk = verdict.state === "blocked" ? "BLOCKED" : candidate.risk;
     const { score, contributions } = scoreCandidate({

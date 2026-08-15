@@ -217,9 +217,27 @@ export function buildGuardedPlan(input: BuildPlanInput): GuardedPlan {
     const decision = latestDecision(planState, d.fingerprint);
     const outcome = evaluateVerification({ requirement, envelope: env, decision, now });
 
+    // Phase 16 — bind the step to its governed capability when one exists.
+    const capabilityId = d.proposedSafeAction
+      ? capabilityForActionType(d.proposedSafeAction.type)?.id
+      : undefined;
+
     const gate = evaluatePlanGate(
-      { mutating: d.mutating, kind: d.kind, label: d.label, sourceId: d.sourceId },
-      { envelope: env, progress, permissions, prerequisitesSatisfied, planStopped },
+      {
+        mutating: d.mutating,
+        kind: d.kind,
+        label: d.label,
+        sourceId: d.sourceId,
+        ...(capabilityId ? { capabilityId } : {}),
+      },
+      {
+        envelope: env,
+        progress,
+        permissions,
+        prerequisitesSatisfied,
+        planStopped,
+        ...(input.capabilities ? { capabilities: input.capabilities } : {}),
+      },
     );
 
     let status: PlanStepStatus;
@@ -265,6 +283,7 @@ export function buildGuardedPlan(input: BuildPlanInput): GuardedPlan {
       verification: requirement,
       status,
       blockers: gate.blockers,
+      ...(capabilityId ? { capabilityId } : {}),
       ...(d.proposedSafeAction && status === "ready" ? { proposedSafeAction: d.proposedSafeAction } : {}),
       ...(note ? { note } : {}),
     });
