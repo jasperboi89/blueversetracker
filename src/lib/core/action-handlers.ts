@@ -191,8 +191,8 @@ const HANDLERS: Record<ActionType, ActionHandler<any>> = {
   complete_night_plan_item: completeNightPlanItem,
   set_ticket_classification: setTicketClassification,
   start_timer: startTimer,
-  ...PROMOTION_HANDLERS,
-};
+  ...(PROMOTION_HANDLERS as Record<string, ActionHandler<any>>),
+} as Record<ActionType, ActionHandler<any>>;
 
 export function getActionHandler<T extends ActionType>(type: T): ActionHandler<T> | undefined {
   return HANDLERS[type] as ActionHandler<T> | undefined;
