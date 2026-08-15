@@ -2747,6 +2747,34 @@ function AttachmentsPanel({
   );
 }
 
+/** Small segmented control used for Reader / Edit / Book / Focus. */
+function ModeButton({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: typeof Eye;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:text-foreground",
+        active && "bg-cyan-300/12 text-foreground shadow-[inset_0_0_0_1px_oklch(0.8_0.14_210_/_0.35)]",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  );
+}
+
 function SectionTab({
   active,
   icon: Icon,
