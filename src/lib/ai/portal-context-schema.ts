@@ -147,6 +147,81 @@ export const PortalContextEnvelopeSchema = z.object({
     )
     .max(24)
     .default([]),
+  facts: z
+    .array(
+      z.object({
+        id: z.string().max(240),
+        subject: z.object({
+          type: z.string().max(30),
+          id: z.string().max(80),
+          label: z.string().max(200).optional(),
+        }),
+        predicate: z.string().max(60),
+        value: z.union([z.string().max(300), z.number(), z.boolean(), z.null()]),
+        origin: z.enum([
+          "observed",
+          "operator_confirmed",
+          "retrieved",
+          "inferred",
+          "generated",
+          "simulated",
+          "uncertain",
+        ]),
+        confidence: z.enum(["verified", "probable", "unknown"]),
+        source: z.object({
+          type: z.string().max(40),
+          id: z.string().max(80).optional(),
+          title: z.string().max(200).optional(),
+        }),
+        observedAt: z.string().max(40).optional(),
+        recordedAt: z.string().max(40),
+        validFrom: z.string().max(40).optional(),
+        validUntil: z.string().max(40).optional(),
+        freshness: freshness.optional(),
+        supersedes: z.array(z.string().max(240)).max(10).optional(),
+        supersededBy: z.array(z.string().max(240)).max(10).optional(),
+        status: z.enum(["active", "historical", "superseded", "disputed"]),
+        scope: z
+          .object({
+            accountNumber: z.string().max(40).optional(),
+            shiftKey: z.string().max(40).optional(),
+            operatorId: z.string().max(80).optional(),
+          })
+          .optional(),
+        metadata: z.record(z.string().max(40), z.union([z.string().max(120), z.number(), z.boolean()])).optional(),
+      }),
+    )
+    .max(40)
+    .optional(),
+  evidenceConflicts: z
+    .array(
+      z.object({
+        id: z.string().max(240),
+        subject: z.object({
+          type: z.string().max(30),
+          id: z.string().max(80),
+          label: z.string().max(200).optional(),
+        }),
+        predicate: z.string().max(60),
+        factIds: z.array(z.string().max(240)).max(10),
+        values: z
+          .array(
+            z.object({
+              factId: z.string().max(240),
+              value: z.string().max(300),
+              origin: z.string().max(30),
+              confidence: z.string().max(20),
+              at: z.string().max(40).optional(),
+            }),
+          )
+          .max(10),
+        interpretation: z.string().max(400).optional(),
+        status: z.enum(["unresolved", "resolved"]),
+        detectedAt: z.string().max(40),
+      }),
+    )
+    .max(10)
+    .optional(),
   warnings: z
     .array(
       z.object({

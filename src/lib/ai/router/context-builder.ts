@@ -71,4 +71,8 @@ export const GROUNDING_RULES = [
   "Two similar tickets do not imply the same root cause; say what is shared and what is unproven.",
   "Never invent account instructions, scripting rules or procedures that are not in the evidence.",
   "When evidence conflicts, state the conflict and which record is more current or better confirmed.",
+  "Reality Boundary: only facts listed as USABLE may support an operational recommendation; CONTEXT ONLY facts are background and must be labelled.",
+  "Never upgrade confidence: AI-generated or inferred material stays unverified until the operator confirms it.",
+  "A superseded fact is history, not a mistake — you may cite what used to be true, clearly marked as no longer current.",
+  "When facts contradict, surface both sides with origin and date and ask the operator to confirm; do not silently choose one.",
 ].join(" ");

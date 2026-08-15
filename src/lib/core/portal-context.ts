@@ -15,6 +15,7 @@
 
 import type { ContextFreshness, ContextOrigin, EvidenceConfidence } from "./context-reality";
 import type { BlockerType } from "./blockers";
+import type { EvidenceConflict, EvidenceFact } from "./evidence-contract";
 
 export const PORTAL_CONTEXT_VERSION = 1 as const;
 
@@ -217,7 +218,8 @@ export type ContextWarningCode =
   | "context_degraded"
   | "shift_boundary"
   | "entity_mismatch"
-  | "budget_trimmed";
+  | "budget_trimmed"
+  | "evidence_conflict";
 
 export interface ContextWarning {
   code: ContextWarningCode;
@@ -255,6 +257,13 @@ export interface PortalContextEnvelope {
   recentActivity: ContextActivity[];
   accountContext?: BoundedAccountContext;
   evidence: ContextEvidence[];
+  /**
+   * Phase 11 — Reality Boundary projection of the same evidence, carrying
+   * provenance, confidence, temporal validity and supersession explicitly.
+   */
+  facts?: EvidenceFact[];
+  /** Unresolved contradictions between current facts. Never auto-resolved. */
+  evidenceConflicts?: EvidenceConflict[];
   warnings: ContextWarning[];
   budget: ContextBudgetMetadata;
 }
