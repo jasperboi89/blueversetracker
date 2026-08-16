@@ -74,10 +74,8 @@ export function LoginCard({ next }: { next?: string } = {}) {
 
   return (
     <div
-      className="auth-card-in glass-panel relative w-full max-w-md overflow-hidden rounded-2xl px-6 py-7 sm:px-8 sm:py-8"
+      className="auth-card-in auth-terminal relative w-full max-w-md overflow-hidden rounded-[26px] px-6 py-7 sm:px-8 sm:py-9"
       style={{
-        boxShadow:
-          "0 0 60px oklch(0.55 0.2 240 / 0.18), inset 0 1px 0 oklch(1 0 0 / 0.08)",
         animation:
           "auth-card-in 1100ms cubic-bezier(0.16, 1, 0.3, 1) both, float-y 9s ease-in-out 1400ms infinite",
         transformStyle: "preserve-3d",
@@ -93,15 +91,40 @@ export function LoginCard({ next }: { next?: string } = {}) {
         }}
       />
       <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-10 -top-px h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, var(--cyan-glow), transparent)",
+          opacity: 0.7,
+        }}
+      />
+      <div className="auth-stagger mb-5 flex items-center justify-between text-[9px] uppercase tracking-[0.26em] text-muted-foreground/70"
+        style={{ animation: "auth-stagger-in 700ms 380ms ease-out both" }}
+      >
+        <span>Secure Access Terminal</span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{
+              background: "var(--green-glow)",
+              boxShadow: "0 0 8px var(--green-glow)",
+              animation: "auth-breathe 2.4s ease-in-out infinite",
+            }}
+          />
+          Ready
+        </span>
+      </div>
+      <div
         className="auth-stagger flex flex-col items-center text-center"
         style={{ animation: "auth-stagger-in 700ms 450ms ease-out both" }}
       >
         <ShieldIcon3D />
-        <h1 className="mt-4 text-xl font-semibold tracking-wide text-foreground">
-          Account Intel Hub
-        </h1>
+        <h2 className="mt-4 text-lg font-semibold tracking-wide text-foreground">
+          Authorized Sign-In
+        </h2>
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          AnSer Ops
+          Account Intel Hub · AnSer Ops
         </div>
         <div
           className="mt-3 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
@@ -154,7 +177,11 @@ export function LoginCard({ next }: { next?: string } = {}) {
             />
           </label>
           <Button type="submit" disabled={loading} className="mt-1 h-10 w-full">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign In"}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <span className="text-[12px] uppercase tracking-[0.22em]">Enter Hub</span>
+            )}
           </Button>
           <button
             type="button"
