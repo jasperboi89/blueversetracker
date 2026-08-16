@@ -77,7 +77,14 @@ export type AccEventType =
   | "capability.failed"
   | "capability.verification_pending"
   | "capability.verified"
-  | "capability.deprecated";
+  | "capability.deprecated"
+  // Bounded Agent Runtime (Phase 17)
+  | "agent.run.started"
+  | "agent.run.cycle"
+  | "agent.run.blocked"
+  | "agent.run.awaiting_confirmation"
+  | "agent.run.completed"
+  | "agent.run.failed";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =
@@ -96,6 +103,7 @@ export type AccEventSource =
   | "memory"
   | "curator"
   | "capability"
+  | "agent"
   | "route"
   | "system";
 
@@ -172,6 +180,11 @@ export const EVENT_METADATA_KEYS = [
   "health",
   "requestedBy",
   "verificationStatus",
+  // Agent runtime routing — ids, cycle counts and stop reasons only.
+  "runId",
+  "cycle",
+  "mode",
+  "stopReason",
 ] as const;
 
 export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];
