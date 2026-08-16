@@ -176,7 +176,17 @@ export function LoginCard({ next }: { next?: string } = {}) {
               className="h-10"
             />
           </label>
-          <Button type="submit" disabled={loading} className="mt-1 h-10 w-full">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="mt-2 h-11 w-full border-0 text-primary-foreground transition-transform hover:-translate-y-0.5"
+            style={{
+              background:
+                "linear-gradient(100deg, var(--electric), var(--violet-glow))",
+              boxShadow:
+                "0 12px 34px -14px oklch(0.6 0.22 270 / 0.9), inset 0 1px 0 oklch(1 0 0 / 0.25)",
+            }}
+          >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
