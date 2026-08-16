@@ -2767,3 +2767,88 @@ html[data-theme="holoquiet"] [data-slot="sheet-content"] {
     transform: none !important;
   }
 }
+
+/* ── Auth portal (sign-in landing) ─────────────────────────────── */
+@keyframes auth-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(2.5%, -2%, 0) scale(1.06); }
+}
+@keyframes auth-grid-pan {
+  from { background-position: 0 0; }
+  to { background-position: 0 240px; }
+}
+@keyframes auth-orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes auth-scan {
+  0% { transform: translateY(-10%); opacity: 0; }
+  12% { opacity: 0.9; }
+  88% { opacity: 0.9; }
+  100% { transform: translateY(1000%); opacity: 0; }
+}
+@keyframes auth-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes auth-dust {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.7; }
+  100% { transform: translateY(-160px) translateX(18px); opacity: 0; }
+}
+.auth-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--cyan-glow) 12%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--violet-glow) 12%, transparent) 1px, transparent 1px);
+  background-size: 120px 120px;
+  animation: auth-grid-pan 26s linear infinite;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 45%, black 10%, transparent 78%);
+}
+.auth-terminal {
+  position: relative;
+  border: 1px solid color-mix(in oklab, var(--cyan-glow) 26%, transparent);
+  background:
+    linear-gradient(160deg, oklch(1 0 0 / 0.07), oklch(1 0 0 / 0.015) 42%, oklch(0.6 0.2 280 / 0.06)),
+    oklch(0.1 0.045 268 / 0.66);
+  box-shadow:
+    0 40px 120px -40px oklch(0.55 0.22 260 / 0.75),
+    0 0 60px -20px color-mix(in oklab, var(--cyan-glow) 55%, transparent),
+    inset 0 1px 0 oklch(1 0 0 / 0.1),
+    inset 0 -40px 80px -60px color-mix(in oklab, var(--violet-glow) 70%, transparent);
+  backdrop-filter: blur(26px) saturate(150%);
+}
+.auth-terminal::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg,
+    color-mix(in oklab, var(--cyan-glow) 70%, transparent),
+    transparent 38%,
+    transparent 62%,
+    color-mix(in oklab, var(--violet-glow) 70%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: auth-breathe 6s ease-in-out infinite;
+}
+.auth-chip {
+  border: 1px solid color-mix(in oklab, var(--cyan-glow) 24%, transparent);
+  background: color-mix(in oklab, var(--cyan-glow) 6%, transparent);
+  transition: border-color 240ms ease, box-shadow 240ms ease, transform 240ms ease;
+}
+.auth-chip:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--cyan-glow) 55%, transparent);
+  box-shadow: 0 0 24px -8px color-mix(in oklab, var(--cyan-glow) 70%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-grid, .auth-terminal::after, .auth-drift, .auth-dust, .auth-scanline {
+    animation: none !important;
+  }
+  .auth-dust, .auth-scanline { display: none !important; }
+}
