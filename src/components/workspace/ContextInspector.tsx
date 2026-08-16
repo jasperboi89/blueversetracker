@@ -6,6 +6,7 @@ import { isSafeForOperationalGuidance } from "@/lib/core/evidence-contract";
 import { realityLabel } from "@/lib/core/reality-boundary";
 import { computeNextBestAction } from "@/lib/nba/nba-engine";
 import { CapabilityInspector } from "./CapabilityInspector";
+import { AgentRunInspector } from "./AgentRunInspector";
 
 /**
  * Context Inspector — admin-only view of the Portal Context Envelope.
@@ -150,6 +151,7 @@ export function ContextInspector({ envelope }: { envelope: PortalContextEnvelope
             </div>
           )}
           <CapabilityInspector envelope={e} />
+          <AgentRunInspector />
         </div>
       )}
     </div>
