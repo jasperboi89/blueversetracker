@@ -73,6 +73,17 @@ export function LoginCard({ next }: { next?: string } = {}) {
   }
 
   return (
+    <div className="relative">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[130%] w-[130%] rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle, oklch(0.7 0.22 255 / 0.28), oklch(0.7 0.22 300 / 0.14) 45%, transparent 70%)",
+          filter: "blur(50px)",
+          animation: "auth-halo 8s ease-in-out infinite",
+        }}
+      />
     <div
       className="auth-card-in auth-terminal relative w-full max-w-md overflow-hidden rounded-[26px] px-6 py-7 sm:px-8 sm:py-9"
       style={{
@@ -153,7 +164,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
           className="auth-stagger mt-5 flex flex-col gap-3"
           style={{ animation: "auth-stagger-in 700ms 720ms ease-out both" }}
         >
-          <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+          <label className="auth-field flex flex-col gap-1.5 text-xs text-muted-foreground">
             Email
             <Input
               type="email"
@@ -165,7 +176,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
               className="h-10"
             />
           </label>
-          <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+          <label className="auth-field flex flex-col gap-1.5 text-xs text-muted-foreground">
             Password
             <Input
               type="password"
@@ -179,7 +190,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
           <Button
             type="submit"
             disabled={loading}
-            className="mt-2 h-11 w-full border-0 text-primary-foreground transition-transform hover:-translate-y-0.5"
+            className="auth-cta mt-2 h-11 w-full border-0 text-primary-foreground transition-transform hover:-translate-y-0.5"
             style={{
               background:
                 "linear-gradient(100deg, var(--electric), var(--violet-glow))",
@@ -207,7 +218,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
           className="auth-stagger mt-5 flex flex-col gap-3"
           style={{ animation: "auth-stagger-in 500ms ease-out both" }}
         >
-          <label className="flex flex-col gap-1.5 text-xs text-muted-foreground">
+          <label className="auth-field flex flex-col gap-1.5 text-xs text-muted-foreground">
             Email
             <Input
               type="email"
@@ -219,7 +230,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
               className="h-10"
             />
           </label>
-          <Button type="submit" disabled={loading} className="mt-1 h-10 w-full">
+          <Button type="submit" disabled={loading} className="auth-cta mt-1 h-10 w-full">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
           </Button>
           <button
@@ -238,6 +249,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
       >
         By signing in, you agree to use this system only for authorized work purposes.
       </div>
+    </div>
     </div>
   );
 }

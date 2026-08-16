@@ -5,6 +5,7 @@ const CALLOUTS = [
   { icon: ShieldCheck, label: "Capability-secured actions" },
   { icon: Waypoints, label: "Guided next steps" },
   { icon: Radar, label: "Verified operational memory" },
+  { icon: Sparkles, label: "Live operational intelligence" },
 ];
 
 export function PortalHero() {
@@ -36,9 +37,10 @@ export function PortalHero() {
       >
         Enter the{" "}
         <span
+          className="auth-title-shimmer"
           style={{
             background:
-              "linear-gradient(100deg, var(--cyan-glow), var(--electric) 45%, var(--violet-glow))",
+              "linear-gradient(100deg, var(--cyan-glow), var(--electric) 30%, var(--violet-glow) 50%, var(--electric) 70%, var(--cyan-glow))",
             WebkitBackgroundClip: "text",
             backgroundClip: "text",
             color: "transparent",
