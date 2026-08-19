@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { ConciseEmailPanel } from "@/components/reports/ConciseEmailPanel";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -598,6 +599,7 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
   const candidates = useMemo(() => getAttentionCandidates(), []);
   const draft = draftId ? progEmailStore.get(draftId) : undefined;
 
+  const mode = draft?.mode ?? "concise";
   const attentionIds = draft?.attentionIds ?? [];
   const hiddenSections = draft?.hiddenSectionKeys ?? [];
 

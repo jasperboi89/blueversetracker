@@ -131,11 +131,11 @@ export function ConciseEmailPanel({
     );
   };
 
-  const grouped: { kind: ConciseItem["kind"]; rows: ConciseItem[] }[] = [
+  const grouped = ([
     { kind: "freshdesk", rows: collection.freshdesk },
     { kind: "additional", rows: collection.additional },
     { kind: "dispatch", rows: collection.dispatch },
-  ].filter((g) => g.rows.length > 0);
+  ] as { kind: ConciseItem["kind"]; rows: ConciseItem[] }[]).filter((g) => g.rows.length > 0);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.05fr_1fr]">
