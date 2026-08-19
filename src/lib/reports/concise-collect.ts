@@ -98,7 +98,7 @@ function ticketItem(t: Ticket): ConciseItem {
       changes: twoSentences([changes, result].filter(Boolean).join(" ")),
       notes: firstSentence(notesFallback),
     },
-    snips: ((t.hubSnips ?? []) as unknown as ConciseSnip[]) ?? [],
+    snips: ((t.hubSnips ?? []) as unknown as ConciseSnip[]),
     updatedAt: t.completedAt ?? t.updatedAt,
   };
 }
@@ -141,7 +141,7 @@ function workItem(a: AdditionalWork): ConciseItem {
       changes: twoSentences(summary || need || notes),
       notes: firstSentence(a.status === "completed" ? "" : prog || "Work is still in progress."),
     },
-    snips: ((a.snips ?? []) as unknown as ConciseSnip[]) ?? [],
+    snips: ((a.snips ?? []) as unknown as ConciseSnip[]),
     updatedAt: a.completedAt ?? a.updatedAt,
   };
 }
@@ -180,7 +180,7 @@ function sessionItem(s: DispatchSession): ConciseItem {
       changes: twoSentences(summaryNotes || reasons || `Contact Dispatch testing — ${statusLabel}.`),
       notes: firstSentence(s.status === "ready" ? "" : statusReason || `${statusLabel}.`),
     },
-    snips: ((s.snips ?? []) as unknown as ConciseSnip[]) ?? [],
+    snips: ((s.snips ?? []) as unknown as ConciseSnip[]),
     updatedAt: s.completedAt ?? s.updatedAt,
   };
 }
