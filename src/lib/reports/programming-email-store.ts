@@ -27,6 +27,12 @@ export interface EmailDraft {
   windowKeys?: string[];
   attentionIds: string[];           // explicitly selected attention items (kind:id)
   hiddenSectionKeys: string[];      // section keys hidden by user
+  /** Concise-mode: per-item AI/edited summaries keyed by `${kind}:${recordId}`. */
+  conciseSummaries?: Record<string, { issue: string; changes: string; notes: string }>;
+  /** Concise-mode: item keys the operator removed from the email. */
+  conciseExcluded?: string[];
+  /** Preferred email style for this draft. */
+  mode?: "concise" | "detailed";
   versions: EmailVersion[];
   sentAt?: number;
   updatedAt: number;
@@ -153,6 +159,38 @@ export const progEmailStore = {
         hiddenSectionKeys: has
           ? d.hiddenSectionKeys.filter((k) => k !== key)
           : [...d.hiddenSectionKeys, key],
+      };
+    });
+  },
+
+  setMode(id: string, mode: "concise" | "detailed") {
+    patch(id, (d) => ({ ...d, mode }));
+  },
+
+  setConciseSummaries(
+    id: string,
+    summaries: Record<string, { issue: string; changes: string; notes: string }>,
+  ) {
+    patch(id, (d) => ({ ...d, conciseSummaries: summaries }));
+  },
+
+  setConciseSummary(
+    id: string,
+    key: string,
+    summary: { issue: string; changes: string; notes: string },
+  ) {
+    patch(id, (d) => ({
+      ...d,
+      conciseSummaries: { ...(d.conciseSummaries ?? {}), [key]: summary },
+    }));
+  },
+
+  toggleConciseExcluded(id: string, key: string) {
+    patch(id, (d) => {
+      const cur = d.conciseExcluded ?? [];
+      return {
+        ...d,
+        conciseExcluded: cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key],
       };
     });
   },
