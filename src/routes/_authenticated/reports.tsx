@@ -678,6 +678,34 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
         <div className="text-muted-foreground">Window: {headerTime}</div>
       </div>
 
+      <div className="mb-3 inline-flex rounded-lg border border-border/40 bg-white/[0.02] p-1 text-xs">
+        {(["concise", "detailed"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => draft && progEmailStore.setMode(draft.id, m)}
+            className="rounded-md px-3 py-1.5 transition"
+            style={
+              mode === m
+                ? {
+                    background: "linear-gradient(110deg, oklch(0.45 0.16 200 / 0.55), oklch(0.4 0.18 290 / 0.45))",
+                    color: "var(--foreground)",
+                  }
+                : { color: "var(--muted-foreground)" }
+            }
+          >
+            {m === "concise" ? "Concise Summary" : "Full Detail (legacy)"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "concise" ? (
+        <ConciseEmailPanel
+          windows={windows}
+          draftId={draftId}
+          headerLabel={headerLabel}
+          headerTime={headerTime}
+        />
+      ) : (
       <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
         <div className="space-y-3">
           <div>
@@ -745,6 +773,7 @@ function ProgEmailReport({ initialWindow, from, to }: { initialWindow?: string; 
           </div>
         </div>
       </div>
+      )}
 
       <SetupModal open={setupOpen} onOpenChange={setSetupOpen} onChoose={choose} />
 
