@@ -641,3 +641,80 @@ export const aiSuggestSubject = createServerFn({ method: "POST" })
       subject: (res.text ?? "").trim().replace(/^["'\s]+|["'.\s]+$/g, "").slice(0, 120),
     };
   });
+
+/**
+ * Programming Status Email — concise work summaries.
+ *
+ * Takes bounded, already-documented work context for up to 40 items and
+ * returns one short Issue / Changes Made / Other Notes summary per item.
+ * Detailed records stay in the portal; this is the presentation layer only.
+ */
+export const aiWorkSummaries = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        items: z
+          .array(
+            z.object({
+              key: z.string().max(120),
+              kind: z.enum(["freshdesk", "additional", "dispatch"]),
+              title: z.string().max(300),
+              context: z.string().max(4000),
+            }),
+          )
+          .min(1)
+          .max(40),
+        style: z.string().max(600).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "prog-email-summaries", "");
+
+    const res = await aiComplete({
+      task: "summary",
+      json: true,
+      system: [
+        "You write a supervisor-facing programming status email for a night-shift support/programming operator.",
+        "For EACH work item, produce a concise summary from ONLY the documented context.",
+        "Fields:",
+        "- issue: exactly ONE plain-language sentence describing the actual request/problem. Freshdesk items only; use \"\" for additional/dispatch items.",
+        "- changes: ONE to TWO short sentences describing what was actually changed, completed, tested, or attempted. Focus on outcome, not steps.",
+        "- notes: OPTIONAL single sentence, only when something meaningful remains (awaiting confirmation, further testing needed, unresolved, dependency, partial completion, limitation). Otherwise return \"\".",
+        "Rules: never invent work; never claim testing passed unless the context says so; distinguish completed vs tested vs partially completed vs awaiting confirmation vs unresolved.",
+        "Do not repeat the issue wording inside changes — the fields must complement each other.",
+        "Do not quote customer messages, ticket conversations, or screenshot contents. Preserve account/client names and ticket numbers when relevant. Plain professional language.",
+        data.style ?? "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      prompt: [
+        "Return json shaped exactly as: {\"summaries\":[{\"key\":string,\"issue\":string,\"changes\":string,\"notes\":string}]}",
+        "One entry per item, keys echoed exactly.",
+        "",
+        ...data.items.map(
+          (i) => `ITEM key=${i.key} kind=${i.kind}\nTitle: ${i.title}\n${i.context}\n---`,
+        ),
+      ].join("\n"),
+    });
+    if (!res.ok) return { ok: false as const, error: res.error };
+
+    try {
+      const parsed = JSON.parse(res.text ?? "{}") as {
+        summaries?: { key?: string; issue?: string; changes?: string; notes?: string }[];
+      };
+      const summaries = (parsed.summaries ?? [])
+        .filter((s) => typeof s.key === "string")
+        .map((s) => ({
+          key: s.key as string,
+          issue: (s.issue ?? "").trim(),
+          changes: (s.changes ?? "").trim(),
+          notes: (s.notes ?? "").trim(),
+        }));
+      return { ok: true as const, summaries };
+    } catch {
+      return { ok: false as const, error: "AI returned malformed summaries." };
+    }
+  });
