@@ -53,7 +53,9 @@ describe("forecast contract & language safety", () => {
     expect(all.length).toBeGreaterThan(0);
     for (const f of all) {
       expect(violatesForecastLanguage(f)).toEqual([]);
-      const text = `${f.title} ${f.description} ${f.whatThisDoesNotMean}`.toLowerCase();
+      // Guardrail text ("this does not mean X will happen") legitimately
+      // quotes forbidden phrasing in order to negate it; claims must not.
+      const text = `${f.title} ${f.description}`.toLowerCase();
       for (const phrase of FORBIDDEN_FORECAST_PHRASES) {
         expect(text.includes(phrase)).toBe(false);
       }
