@@ -382,9 +382,16 @@ export function detectPatterns(input: PatternInput): PatternObservation[] {
   );
 }
 
-/** Forbidden phrasing — used by tests and as a runtime guard in dev. */
+/**
+ * Forbidden phrasing — used by tests and as a runtime guard in dev.
+ *
+ * These are the ASSERTION forms of causation/prediction. A negating disclaimer
+ * ("does not establish that the change caused the issue") is required, not
+ * forbidden, so the bare word "caused" is intentionally NOT banned — only
+ * "caused by" and the other positive claims are.
+ */
 export const FORBIDDEN_PATTERN_PHRASES = [
-  "caused",
+  "caused by",
   "will happen again",
   "root cause",
   "because of the change",

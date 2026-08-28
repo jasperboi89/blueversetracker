@@ -44,12 +44,18 @@ function useRadarItems(): RadarItem[] {
   return useMemo(() => {
     const now = new Date().toISOString();
     const items: RadarItem[] = [];
+    // Accounts already covered by a specific recurring-category pattern item —
+    // used to suppress the coarse recurring-rows item so the same account is not
+    // surfaced twice.
+    const recurringCovered = new Set<string>();
 
     for (const rec of Object.values(cortex.byAccount)) {
       for (const o of rec.observations) {
+        const category = PATTERN_TO_CATEGORY[o.patternType] ?? "recurring";
+        if (category === "recurring") recurringCovered.add(rec.accountId);
         items.push({
           id: `radar:${o.id}`,
-          category: PATTERN_TO_CATEGORY[o.patternType] ?? "recurring",
+          category,
           accountId: rec.accountId,
           title: o.title,
           detail: `${o.evidenceIds.length} related event${o.evidenceIds.length === 1 ? "" : "s"}`,
@@ -68,6 +74,7 @@ function useRadarItems(): RadarItem[] {
 
     for (const r of recurring) {
       if (!r.active) continue;
+      if (recurringCovered.has(r.accountNumber)) continue;
       items.push({
         id: `radar:recurring:${r.accountNumber}`,
         category: "recurring",
