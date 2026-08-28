@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Radar as RadarIcon, ArrowUpRight } from "lucide-react";
 import {
   anomaliesToRadar,
+  forecastsToRadar,
   rankRadar,
   type RadarCategory,
   type RadarItem,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/core/operational-radar";
 import { useAccountCortexState } from "@/lib/core/account-cortex-store";
 import { allAnomalies, useAnomalyState } from "@/lib/core/anomaly-store";
+import { allForecasts, useForecastState } from "@/lib/core/forecast-store";
 import { useRecurringRows } from "@/lib/reports/recurring-issues";
 import { useIntelligenceFeedback, suppressedRadarIds } from "@/lib/core/intelligence-feedback";
 import type { ConfidenceClass, PatternType } from "@/lib/core/pattern-intelligence";
@@ -41,6 +43,7 @@ function severityOf(s: string): RadarSeverity {
 function useRadarItems(): RadarItem[] {
   const cortex = useAccountCortexState();
   const anomalyState = useAnomalyState();
+  const forecastState = useForecastState();
   const recurring = useRecurringRows();
   const feedback = useIntelligenceFeedback();
 
@@ -96,8 +99,12 @@ function useRadarItems(): RadarItem[] {
     // "we are still learning" is never an attention item.
     items.push(...anomaliesToRadar(allAnomalies(anomalyState)));
 
+    // Phase 6 outlook. Ranked BELOW current problems by design, and only when
+    // the engine produced an actual band — evidence gaps never appear here.
+    items.push(...forecastsToRadar(allForecasts(forecastState), Date.now()));
+
     return rankRadar(items, suppressedRadarIds(feedback));
-  }, [cortex, anomalyState, recurring, feedback]);
+  }, [cortex, anomalyState, forecastState, recurring, feedback]);
 }
 
 const CATEGORY_LABEL: Record<RadarCategory, string> = {
@@ -106,6 +113,7 @@ const CATEGORY_LABEL: Record<RadarCategory, string> = {
   resolution_match: "Resolution match",
   workload: "Workload",
   anomaly: "Anomaly",
+  forecast: "Outlook",
   system: "System",
 };
 

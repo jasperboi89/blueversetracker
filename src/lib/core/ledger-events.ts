@@ -83,8 +83,12 @@ const DURABLE: Partial<Record<AccEventType, DurableRule>> = {
 
   // SCRIPT INTELLIGENCE — structural snapshots and shape changes (Phase 4).
   // Reference sensitivity: rows carry fingerprints and counts, never source.
-  "script.version_recorded": { category: "resolution", sensitivity: "reference" },
-  "script.structure_changed": { category: "resolution", sensitivity: "reference" },
+  // Phase 6.5 taxonomy fix: these are CHANGE-RECORD facts about programmed
+  // work, not reusable-fix ("resolution") knowledge. They were previously
+  // mis-filed as "resolution". Category is a derived classification computed at
+  // read time, so correcting it is non-destructive for existing rows.
+  "script.version_recorded": { category: "programming", sensitivity: "reference" },
+  "script.structure_changed": { category: "programming", sensitivity: "reference" },
 
   // INTELLIGENCE — pattern observations + human feedback (Phase 3).
   "intelligence.observation_recorded": { category: "intelligence", sensitivity: "reference" },
