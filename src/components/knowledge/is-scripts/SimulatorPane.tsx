@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { FlaskConical, GitCompare, Play, ShieldAlert, TriangleAlert } from "lucide-react";
+import { ClipboardList, FlaskConical, GitCompare, Play, ShieldAlert, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
   compareToExpectation,
   runSimulation,
 } from "@/lib/simulation/simulation-engine";
+import { prepareTestPlan } from "@/lib/simulation/simulation-test-plan";
 import {
   SIMULATION_DISCLAIMER,
   SIMULATION_MATCH_LABEL,
@@ -111,11 +112,13 @@ export function SimulatorPane() {
         })
       : null;
 
+    const delta = proposed ? compareSimulations(current, proposed, analysis.structure) : null;
     return {
       current,
       expectation,
       proposed,
-      delta: proposed ? compareSimulations(current, proposed, analysis.structure) : null,
+      delta,
+      testPlan: prepareTestPlan({ current: proposed ?? current, delta, expectation }),
     };
   }, [
     analysis,
@@ -321,6 +324,34 @@ export function SimulatorPane() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {run.testPlan.items.length > 0 && (
+            <div className="glass-panel rounded-2xl border border-white/10 p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <ClipboardList className="h-3.5 w-3.5 text-cyan-300" />
+                Prepared live-test plan
+                <Badge variant="outline" className="text-[10px] uppercase">
+                  live test not run
+                </Badge>
+              </div>
+              <ul className="mt-2 space-y-1.5 text-xs">
+                {run.testPlan.items.map((item) => (
+                  <li key={item.id} className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2">
+                    <span className="font-medium">{item.title}</span>
+                    <p className="text-muted-foreground">{item.evidence}</p>
+                    <p className="text-[10px] uppercase text-muted-foreground/70">
+                      {item.priority} · grounded in {item.ground.replace(/_/g, " ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              {run.testPlan.notes.map((n) => (
+                <p key={n} className="mt-2 text-[11px] text-muted-foreground">
+                  {n}
+                </p>
+              ))}
             </div>
           )}
 
