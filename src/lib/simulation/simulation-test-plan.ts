@@ -119,7 +119,7 @@ export function prepareTestPlan(input: {
   }
 
   const notes = [
-    "Recommended only — nothing here has been executed, and a simulation match is not a completed test.",
+    "Recommended only — nothing here has been run, and a simulation match is not a completed live test.",
   ];
   if (items.length === 0) {
     notes.push("No structural change or uncertainty was found that would justify a live test.");

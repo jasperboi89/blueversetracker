@@ -238,6 +238,7 @@ describe("construct support and honest degradation", () => {
         name: "state",
         category: "fixture",
         scriptId: "f",
+        startingComponentKey: "intake",
         inputs: [{ key: "caller name", label: "Caller", value: "recorded value" }],
       }),
       structure: FIELD_STATE_FIXTURE,
@@ -257,7 +258,12 @@ describe("construct support and honest degradation", () => {
 
   it("never traverses an unnamed reference as control flow", () => {
     const result = runSimulation({
-      scenario: makeScenario({ name: "unk", category: "edge_case", scriptId: "f" }),
+      scenario: makeScenario({
+        name: "unk",
+        category: "edge_case",
+        scriptId: "f",
+        startingComponentKey: "intake",
+      }),
       structure: UNKNOWN_CONSTRUCT_FIXTURE,
     });
     expect(result.traversedComponentIds).not.toContain("action:dynamic lookup");
@@ -433,11 +439,9 @@ describe("overlays", () => {
 
   it("simulates current and proposed independently and diffs them", () => {
     const overlay = makeOverlay({
-      name: "retarget",
+      name: "remove-cancellation",
       scriptId: "f",
-      branchTargetOverrides: [
-        { fromKey: "reason", currentToKey: "cancellation", proposedToKey: "reschedule" },
-      ],
+      disabledComponentKeys: ["cancellation"],
     });
     const current = runSimulation({ scenario, structure: BRANCH_FIXTURE });
     const proposed = runSimulation({ scenario, structure: BRANCH_FIXTURE, overlay });
@@ -454,7 +458,7 @@ describe("overlays", () => {
     const overlay = makeOverlay({
       name: "unrelated",
       scriptId: "f",
-      disabledComponentKeys: ["reschedule"],
+      addedRelationships: [{ fromKey: "reschedule", toKey: "dispatch", kind: "calls" }],
     });
     const current = runSimulation({ scenario, structure: BRANCH_FIXTURE });
     const proposed = runSimulation({ scenario, structure: BRANCH_FIXTURE, overlay });
