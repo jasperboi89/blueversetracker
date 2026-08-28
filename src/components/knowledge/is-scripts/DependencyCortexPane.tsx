@@ -200,6 +200,16 @@ export function DependencyCortexPane() {
           <ScanSearch className="mr-2 h-3.5 w-3.5" />
           {record.isPending ? "Recording…" : "Record structural snapshot"}
         </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!selected || !facts || reason.isPending}
+          onClick={() => reason.mutate()}
+        >
+          <Sparkles className="mr-2 h-3.5 w-3.5" />
+          {reason.isPending ? "Reading structure…" : "Explain this structure"}
+        </Button>
       </div>
 
       {!selected ? (
