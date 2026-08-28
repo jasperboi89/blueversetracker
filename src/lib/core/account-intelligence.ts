@@ -165,6 +165,7 @@ export function assembleAccountIntel(
         const end = parseMs(w.endedAt);
         return {
           id: w.id,
+          ...(w.kind ? { kind: w.kind } : {}),
           ...(w.label ? { label: w.label } : {}),
           durationMs: start && end && end > start ? end - start : 0,
           atMs: end || start,

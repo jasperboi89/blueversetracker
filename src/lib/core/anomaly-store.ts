@@ -17,6 +17,15 @@ import type { AnomalyResult } from "./anomaly-engine";
 
 export const ANOMALY_CALC_VERSION = 1;
 
+export interface AnomalyHistoryEntry {
+  id: string;
+  anomalyType: string;
+  severity: string;
+  /** "resolved" = the condition stopped firing on a later evaluation. */
+  status: "resolved";
+  at: string;
+}
+
 export interface AccountAnomalyRecord {
   accountId: string;
   lastEvaluatedAt: string;
@@ -25,6 +34,8 @@ export interface AccountAnomalyRecord {
   baselineGaps: AnomalySignal[];
   /** Ids already announced to the ledger, so re-evaluation is not re-alerting. */
   announcedIds: string[];
+  /** Bounded lifecycle history — acknowledged/resolved items are never erased. */
+  history: AnomalyHistoryEntry[];
 }
 
 interface AnomalyState {
@@ -33,12 +44,17 @@ interface AnomalyState {
 
 const DEFAULT: AnomalyState = { byAccount: {} };
 const ANNOUNCED_MAX = 60;
+const HISTORY_MAX = 100;
 
 const store = createPersistedStore<AnomalyState>("aih:core:anomalies:v1", DEFAULT);
 
 /**
  * Pure reconciliation of a fresh evaluation against the persisted record.
  * Returns the next record plus the signals seen for the first time.
+ *
+ * Lifecycle: an anomaly that stops firing is moved into `history` as resolved
+ * (recorded once, never duplicated) and drops out of `announcedIds`, so a
+ * materially recurring condition can legitimately re-announce later.
  */
 export function reconcileAnomalies(
   prev: AccountAnomalyRecord | undefined,
@@ -46,26 +62,42 @@ export function reconcileAnomalies(
   accountId: string,
   now: number,
 ): { next: AccountAnomalyRecord; newlyDetected: AnomalySignal[] } {
+  const nowIso = new Date(now).toISOString();
   const announced = new Set(prev?.announcedIds ?? []);
   const newlyDetected = result.anomalies.filter((a) => !announced.has(a.id));
 
+  const currentIds = new Set(result.anomalies.map((a) => a.id));
   const nextAnnounced = [
     ...newlyDetected.map((a) => a.id),
-    ...(prev?.announcedIds ?? []).filter((id) => result.anomalies.some((a) => a.id === id)),
+    ...(prev?.announcedIds ?? []).filter((id) => currentIds.has(id)),
   ].slice(0, ANNOUNCED_MAX);
+
+  const resolved: AnomalyHistoryEntry[] = (prev?.anomalies ?? [])
+    .filter((a) => !currentIds.has(a.id))
+    .map((a) => ({
+      id: a.id,
+      anomalyType: a.anomalyType,
+      severity: a.severity,
+      status: "resolved" as const,
+      at: nowIso,
+    }));
+
+  const history = [...resolved, ...(prev?.history ?? [])].slice(0, HISTORY_MAX);
 
   return {
     next: {
       accountId,
-      lastEvaluatedAt: new Date(now).toISOString(),
+      lastEvaluatedAt: nowIso,
       calcVersion: ANOMALY_CALC_VERSION,
       anomalies: result.anomalies,
       baselineGaps: result.baselineGaps,
       announcedIds: nextAnnounced,
+      history,
     },
     newlyDetected,
   };
 }
+
 
 export const anomalyStore = {
   get: (accountId: string): AccountAnomalyRecord | undefined => store.get().byAccount[accountId],

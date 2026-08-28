@@ -6,6 +6,8 @@ import {
   type AnomalySignal,
 } from "@/lib/core/anomaly-contract";
 import type { AnomalyResult } from "@/lib/core/anomaly-engine";
+import { useAnomalyState } from "@/lib/core/anomaly-store";
+import { ANOMALY_TYPE_LABEL as TYPE_LABEL } from "@/lib/core/anomaly-contract";
 
 /**
  * Phase 5 — Early Warning surface for one account.
@@ -43,6 +45,9 @@ function basisFor(a: AnomalySignal): string {
 
 export function AnomalyPanel({ result }: { result: AnomalyResult }) {
   const { anomalies, baselineGaps } = result;
+  const accountId = anomalies[0]?.accountId ?? baselineGaps[0]?.accountId ?? "";
+  const persisted = useAnomalyState().byAccount[accountId];
+  const history = (persisted?.history ?? []).slice(0, 5);
 
   return (
     <section className="space-y-4">
@@ -80,6 +85,22 @@ export function AnomalyPanel({ result }: { result: AnomalyResult }) {
           </div>
         )}
       </div>
+
+      {history.length > 0 && (
+        <div>
+          <h3 className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70">
+            Resolved history
+          </h3>
+          <ul className="space-y-1 text-xs text-muted-foreground">
+            {history.map((h) => (
+              <li key={`${h.id}:${h.at}`}>
+                {TYPE_LABEL[h.anomalyType as keyof typeof TYPE_LABEL] ?? h.anomalyType} — no longer
+                deviating as of {new Date(h.at).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {baselineGaps.length > 0 && (
         <div>
