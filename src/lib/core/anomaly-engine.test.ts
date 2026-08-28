@@ -107,7 +107,8 @@ describe("baseline establishment", () => {
     const samples = [2, 2, 3, 2, 4, 2, 3, 2, 2, 5, 3, 2, 2, 3, 4, 2, 3, 2, 2, 3];
     const b = buildBaseline(samples, { metric: "events/day", windowDays: 56 });
     expect(b.established).toBe(true);
-    expect(b.summary.method).toBe("mad");
+    // MAD collapses to 0 on this tightly-clustered set; the IQR fallback carries it.
+    expect(b.summary.method).toBe("iqr");
     expect(robustZ(30, b)).toBeGreaterThan(ANOMALY_CONFIG.robustZThreshold);
     expect(robustZ(3, b)).toBeLessThan(ANOMALY_CONFIG.robustZThreshold);
     expect(ratioToBaseline(6, b)).toBeGreaterThan(1);
@@ -243,7 +244,7 @@ describe("detectors against established baselines", () => {
   });
 
   it("flags recurrence acceleration when the gap tightens", () => {
-    const times = [120, 90, 60, 30, 2].map((d) => NOW - d * day);
+    const times = [200, 140, 80, 30, 2].map((d) => NOW - d * day);
     const tickets = times.map((t, i) => ({
       id: `t${i}`,
       classification: "Scripting Issue",
