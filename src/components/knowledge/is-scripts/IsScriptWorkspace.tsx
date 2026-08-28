@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { BookMarked, Terminal } from "lucide-react";
+import { BookMarked, Network, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IsScriptEntriesPane } from "./IsScriptEntriesPane";
 import { IsManualsPane } from "./IsManualsPane";
+import { DependencyCortexPane } from "./DependencyCortexPane";
 
-type Pane = "entries" | "manuals";
+type Pane = "entries" | "manuals" | "cortex";
 
 export function IsScriptWorkspace() {
   const [pane, setPane] = useState<Pane>("entries");
@@ -25,9 +26,17 @@ export function IsScriptWorkspace() {
           label="Manuals"
           onClick={() => setPane("manuals")}
         />
+        <PaneTab
+          active={pane === "cortex"}
+          icon={Network}
+          label="Dependency Cortex"
+          onClick={() => setPane("cortex")}
+        />
       </div>
 
-      {pane === "entries" ? (
+      {pane === "cortex" ? (
+        <DependencyCortexPane />
+      ) : pane === "entries" ? (
         <IsScriptEntriesPane seed={seed} onSeedConsumed={() => setSeed(null)} />
       ) : (
         <IsManualsPane
