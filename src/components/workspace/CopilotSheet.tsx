@@ -47,6 +47,10 @@ import { getAccountContext } from "@/lib/core/account-context-service";
 import { toCopilotAccountContext } from "@/lib/core/account-context-projection";
 import { worldModelFromPack } from "@/lib/core/account-cortex-service";
 import { toCopilotWorldModel } from "@/lib/core/account-cortex";
+import { planRetrieval } from "@/lib/ai/copilot-retrieval";
+import { toCopilotIntel } from "@/lib/core/account-intelligence";
+import { queryLedger, getLedgerState } from "@/lib/core/event-ledger";
+import { aiTrace } from "@/lib/ai/ai-trace";
 import { usePortalContext } from "@/hooks/use-portal-context";
 import { suggestionsForContext } from "@/lib/ai/context-suggestions";
 import { ContextInspector } from "@/components/workspace/ContextInspector";
@@ -114,6 +118,26 @@ async function buildFocusSnapshot(): Promise<string> {
     return `${base}\n\nACCOUNT CONTEXT\n${toCopilotAccountContext(pack)}${world}`.slice(0, 9500);
   } catch {
     return base;
+  }
+}
+
+/**
+ * Question-driven account intelligence block (Phase 3, Part 8). Selects which
+ * bounded intel blocks (patterns / resolutions / timeline / changes) to include
+ * based on the operator's question rather than always appending everything.
+ * Fail-soft — returns "" and never blocks the prompt.
+ */
+async function buildAccountIntelBlock(question: string): Promise<string> {
+  const active = shiftContextStore.get().activeAccount;
+  if (!active?.id) return "";
+  try {
+    const pack = await getAccountContext(active.id);
+    const plan = planRetrieval(question);
+    const ledger = queryLedger({ accountId: active.id, limit: 500 }, getLedgerState());
+    const intel = toCopilotIntel(active.id, pack, ledger, plan, Date.now());
+    return intel ? `\n\n${intel}` : "";
+  } catch {
+    return "";
   }
 }
 
@@ -187,6 +211,7 @@ export function CopilotSheet() {
   const ask = async (raw: string) => {
     const query = htmlToPlainText(raw).trim();
     if (!query || busy) return;
+    const startedAt = Date.now();
     const thread = copilotThreads.ensureActive();
     copilotThreads.append(thread.id, { role: "user", content: query, at: Date.now() });
     setQuestion("");
@@ -231,7 +256,7 @@ export function CopilotSheet() {
         style: aiStyleHint(ai),
         pageContext: pageLabel(path),
         profile: threadState.profile || undefined,
-        focus: toCopilotFocusContext(focus),
+        focus: `${toCopilotFocusContext(focus)}${await buildAccountIntelBlock(query)}`,
       },
       {
         onDelta: (t) => setLiveText((prev) => prev + t),
@@ -252,6 +277,21 @@ export function CopilotSheet() {
     setBusy(false);
     setLiveText("");
     setActivity([]);
+    // AI traceability (Phase 3, Part 13) — device-local, best-effort. Provider/
+    // model/token metadata is threaded from the server AI client in a later phase.
+    try {
+      const acct = shiftContextStore.get().activeAccount?.id;
+      aiTrace.record({
+        ok: res.ok,
+        taskClass: "copilot_chat",
+        sensitivity: "internal",
+        latencyMs: Date.now() - startedAt,
+        ...(acct ? { accountId: acct } : {}),
+        ...(res.ok ? {} : { error: res.error ?? "copilot failed" }),
+      });
+    } catch {
+      /* tracing is best-effort */
+    }
     if (!res.ok) {
       toast.error(res.error ?? "Copilot failed.");
       return;

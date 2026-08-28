@@ -11,6 +11,7 @@ import { ShiftLedger } from "@/components/home/ShiftLedger";
 import { QuickStart } from "@/components/home/QuickStart";
 import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
 import { BriefingPanel } from "@/components/home/BriefingPanel";
+import { RadarBand } from "@/components/intelligence/RadarBand";
 import { NightForecast } from "@/components/quantum-bloom/NightForecast";
 import { useTheme } from "@/lib/settings/theme-store";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
@@ -168,8 +169,9 @@ function Home() {
             <BriefingPanel />
           </Band>
 
-          {/* Work intelligence — what needs attention, what's upcoming. */}
+          {/* Work intelligence — grounded radar, then what needs attention. */}
           <Band label="Work Intelligence">
+            <RadarBand />
             <div className="grid gap-4 lg:grid-cols-2">
               <NightPlan />
               <AlertCenter />

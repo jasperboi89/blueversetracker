@@ -226,3 +226,42 @@ command providers; predictive NBA; operational digital twin & simulation.
 5. **Rename `handoff_generation` → `summary_generation`** and retire the dormant
    Shift Handoff / Coverage Watch code + tables once the rollback window closes.
 6. Resolve `/constellations` (surface for Quantum Bloom, or retire).
+
+---
+
+## Phase 3 — delivered (Account Intelligence & Operational Radar)
+
+Extends the canonical systems; no parallel architecture introduced.
+
+1. ✅ **Server-backed Operational Event Ledger foundation** — durable-event
+   allowlist (`ledger-events.ts`), append-only per-operator table (migration),
+   `ledger.functions.ts`, wired behind the Phase 2 ledger API with best-effort
+   fallback. See `OPERATIONAL_EVENT_LEDGER.md`.
+2. ✅ **Pattern Intelligence** (`pattern-intelligence.ts`) — conservative,
+   deterministic, non-causal. See `PATTERN_INTELLIGENCE.md`.
+3. ✅ **Account Cortex UI** + **Intelligence Timeline** + **What Fixed This
+   Before?** + **Claim Inspector** — `components/intelligence/*`, on the Account
+   page. See `ACCOUNT_CORTEX_UI.md`, `ACCOUNT_CORTEX.md`.
+4. ✅ **Operational Radar** — Command Center band, bounded + grounded. See
+   `OPERATIONAL_RADAR.md`.
+5. ✅ **Contextual Copilot retrieval** (`copilot-retrieval.ts`) — question-driven
+   block selection, not prompt-growth. Wired into `CopilotSheet`.
+6. ✅ **Intelligence feedback** (`intelligence-feedback.ts`) — recorded as durable
+   events; suppresses radar/patterns. No auto-retraining.
+7. ✅ **Persisted world-model state** (`account-cortex-store.ts`) — active
+   observations + history; not a giant AI summary.
+8. ✅ **Autonomy contract** — `capability-contract.ts` gains an autonomy level +
+   `capabilityAutonomy()` + `isWithinPhase3AiAutonomy()`. AI stays at
+   observe/explain/recommend/prepare.
+9. ✅ **AI traceability foundation** (`ai-trace.ts`) — bounded recorder +
+   operator redaction; one call wired in Copilot. Provider/model/token metadata
+   from the server AI client is the documented follow-up.
+
+### Recommended Phase 4
+
+Predictive risk + anomaly detection (on the ledger aggregates); causal evidence
+edges promoted into the Evidence Graph; scored/decaying Account world model with
+a Cortex risk view; provider abstraction in `ai-client.server` with full
+model/token/cost trace; governed MCP write tools at PREPARE autonomy; script /
+dependency intelligence. Non-goals from Phase 3 stay non-goals until explicitly
+scoped.

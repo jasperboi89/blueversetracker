@@ -84,7 +84,11 @@ export type AccEventType =
   | "agent.run.blocked"
   | "agent.run.awaiting_confirmation"
   | "agent.run.completed"
-  | "agent.run.failed";
+  | "agent.run.failed"
+  // Intelligence (Phase 3) — pattern observations + human feedback. References
+  // only (ids/classes/counts); never derived content or bodies.
+  | "intelligence.observation_recorded"
+  | "intelligence.feedback_recorded";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =
@@ -104,6 +108,7 @@ export type AccEventSource =
   | "curator"
   | "capability"
   | "agent"
+  | "intelligence"
   | "route"
   | "system";
 
@@ -185,6 +190,11 @@ export const EVENT_METADATA_KEYS = [
   "cycle",
   "mode",
   "stopReason",
+  // Intelligence routing (Phase 3) — observation/pattern ids and feedback class.
+  "observationId",
+  "patternType",
+  "feedbackKind",
+  "windowDays",
 ] as const;
 
 export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];

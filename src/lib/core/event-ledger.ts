@@ -1,7 +1,9 @@
 import { createPersistedStore, useStoreValue } from "@/lib/settings/_persist";
 import { attachCloudSync } from "@/lib/cloud-sync/blob-sync";
 import { eventSpine } from "./event-spine";
-import type { AccEvent, AccEventType } from "./events";
+import type { AccEvent, AccEventType, AccEventSource, AccEventMetadata } from "./events";
+import { isDurableEvent } from "./ledger-events";
+import { appendLedgerEvents, queryLedgerEvents } from "./ledger.functions";
 
 /**
  * Durable Operational Event Ledger — Layer 2 of the two-layer event model.
@@ -118,16 +120,108 @@ function record(event: AccEvent, now: number = Date.now()): void {
 
 let started = false;
 
+/* ------------------------------------------------------------------ */
+/* Server sink (Phase 3) — best-effort durable backing                 */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The Phase 2 API (queryLedger / aggregateAccount / the local store) is the
+ * consumer-facing interface and is unchanged. Phase 3 adds a server-backed
+ * durable ledger BEHIND it: durable, allowlisted events are pushed to the
+ * server table (idempotent upsert), and recent server history is pulled once on
+ * start to backfill the local cache. Every server call is best-effort — a
+ * failure logs and leaves the bounded local ledger as the working source, so a
+ * ledger outage never disturbs ordinary operation.
+ */
+
+const SERVER_FLUSH_MS = 1500;
+const SERVER_QUEUE_MAX = 1000;
+const pendingServer = new Map<string, AccEvent>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function toServerEvent(e: AccEvent) {
+  return {
+    eventId: e.id,
+    type: e.type,
+    source: e.source,
+    accountId: e.accountId ?? "",
+    ticketId: e.ticketId ?? "",
+    workItemId: e.workItemId ?? "",
+    dispatchId: e.dispatchId ?? "",
+    occurredAt: e.timestamp,
+    metadata: (e.metadata ?? {}) as Record<string, string | number | boolean | null>,
+  };
+}
+
+async function flushServer(): Promise<void> {
+  flushTimer = null;
+  if (pendingServer.size === 0) return;
+  const batch = [...pendingServer.values()].slice(0, 200);
+  try {
+    await appendLedgerEvents({ data: { events: batch.map(toServerEvent) } });
+    for (const e of batch) pendingServer.delete(e.id);
+    if (pendingServer.size > 0) scheduleFlush();
+  } catch (err) {
+    // Keep pending for a later attempt; never disable permanently on one failure.
+    console.warn("[event-ledger] server append failed (local fallback in use)", err);
+  }
+}
+
+function scheduleFlush(): void {
+  if (flushTimer || typeof window === "undefined") return;
+  flushTimer = setTimeout(() => void flushServer(), SERVER_FLUSH_MS);
+}
+
+/** Queue a durable event for the server sink. No-op for non-durable events. */
+function enqueueServer(e: AccEvent): void {
+  if (!isDurableEvent(e.type)) return;
+  if (pendingServer.size >= SERVER_QUEUE_MAX) return; // local cache stays authoritative
+  pendingServer.set(e.id, e);
+  scheduleFlush();
+}
+
+/** One-time best-effort backfill of the local cache from server history. */
+async function hydrateFromServer(): Promise<void> {
+  try {
+    const res = await queryLedgerEvents({ data: { limit: 500 } });
+    if (!res.events.length) return;
+    store.update((s) => {
+      const incoming: LedgerEntry[] = res.events.map((se, i) => ({
+        id: se.eventId,
+        type: se.type as AccEventType,
+        timestamp: se.occurredAt,
+        source: se.source as AccEventSource,
+        ...(se.accountId ? { accountId: se.accountId } : {}),
+        ...(se.ticketId ? { ticketId: se.ticketId } : {}),
+        ...(se.workItemId ? { workItemId: se.workItemId } : {}),
+        ...(se.dispatchId ? { dispatchId: se.dispatchId } : {}),
+        metadata: se.metadata as AccEventMetadata,
+        seq: s.nextSeq + i,
+      }));
+      return mergeLedgers(
+        s,
+        { entries: incoming, nextSeq: s.nextSeq + incoming.length },
+        Date.now(),
+      );
+    });
+  } catch (err) {
+    console.warn("[event-ledger] server hydrate failed (local only)", err);
+  }
+}
+
 /**
  * Start the ledger: seed from the Spine's current buffer (so events already
- * emitted this shift are captured), subscribe to all future events, and attach
+ * emitted this shift are captured), backfill from the server ledger, subscribe
+ * to all future events (persisting durable ones to the server), and attach
  * cloud sync. Idempotent — safe to call from a mounted watcher.
  */
 export function startEventLedger(): void {
   if (started || typeof window === "undefined") return;
   started = true;
 
-  // Seed oldest→newest so seq order matches emit order.
+  // Seed oldest→newest so seq order matches emit order. Seeded events are not
+  // re-pushed to the server (idempotent upsert would no-op, but this avoids the
+  // work) — only live events flow to the server sink below.
   try {
     const buffered = eventSpine.getState().events;
     for (let i = buffered.length - 1; i >= 0; i--) record(buffered[i]!);
@@ -135,9 +229,12 @@ export function startEventLedger(): void {
     console.warn("[event-ledger] seed failed", err);
   }
 
+  void hydrateFromServer();
+
   eventSpine.subscribe((e) => {
     try {
       record(e);
+      enqueueServer(e);
     } catch (err) {
       console.warn("[event-ledger] record failed", err);
     }
