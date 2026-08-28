@@ -113,6 +113,14 @@ export const COPILOT_TOOLS: ResponsesTool[] = [
       includeHistorical: { type: ["boolean", "null"] },
     }),
   },
+  {
+    type: "function",
+    name: "script_structure",
+    strict: true,
+    description:
+      "Structural analysis of one saved IS script: component and branch counts, dependency edges, unresolved targets, loops, complexity band and drivers, plus constructs the extractor could not classify. Returns structure only — never script source. Coverage below 0.6 means the reading is partial: say so instead of asserting how the script behaves. Match a script by title text.",
+    parameters: schema({ title: { type: "string" } }),
+  },
 ];
 
 async function readBlob(
@@ -185,6 +193,42 @@ export async function runCopilotTool(
           matchedBy: r.matchedBy,
           updatedAt: r.sourceUpdatedAt ?? null,
         })),
+      };
+    }
+
+    case "script_structure": {
+      const q = str(args["title"]).trim().toLowerCase();
+      if (!q) return { error: "title is required" };
+      const { data, error } = await supabase
+        .from("is_script_entries")
+        .select("id, title, kind, script_body, updated_at")
+        .eq("user_id", userId)
+        .ilike("title", `%${q.replace(/[%_]/g, "")}%`)
+        .order("updated_at", { ascending: false })
+        .limit(5);
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as Row[];
+      if (rows.length === 0) return { matches: [], note: "No saved script matched that title." };
+      const target = rows[0]!;
+      const { ingestScript } = await import("@/lib/script/script-ingest");
+      const analysis = ingestScript(str(target["script_body"]));
+      return {
+        // Other near-matches so the model can ask which script was meant.
+        otherMatches: rows.slice(1).map((r) => str(r["title"])),
+        script: { title: str(target["title"]), kind: str(target["kind"]) },
+        complexity: analysis.complexity,
+        // Structural facts only: ids and kinds, no prompt or condition text.
+        components: analysis.structure.components
+          .slice(0, 60)
+          .map((c) => ({ id: c.id, kind: c.kind })),
+        dependencies: analysis.structure.dependencies
+          .slice(0, 80)
+          .map((d) => ({ from: d.fromId, to: d.toId, kind: d.kind, resolution: d.resolution })),
+        unknowns: analysis.structure.unknowns.slice(0, 20).map((u) => u.reason),
+        interpretation:
+          analysis.complexity.coverage < 0.6
+            ? "Partial reading — a large share of the script was not classified. Treat all statements as provisional."
+            : "Structural reading only. Describe shape and reachability; do not claim runtime behaviour.",
       };
     }
 
