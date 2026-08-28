@@ -219,7 +219,11 @@ export function extractStructure(redacted: string): ScriptStructure {
 
     // 3. Conditionals become branch components owned by the current section.
     if (!matched && CONDITIONAL.test(line)) {
-      addComponent(ctx, "branch", `${safeExcerpt(line, 60)} @${lineNo}`, lineNo);
+      // Identity is the condition text, deliberately NOT the line number: a
+      // branch that moved because blank lines were added is the same branch,
+      // and line-bearing ids would make every reformat look structural.
+      // Repeated identical conditions merge and raise `occurrences`.
+      addComponent(ctx, "branch", safeExcerpt(line, 60), lineNo);
       matched = true;
     }
 
