@@ -195,6 +195,11 @@ export const EVENT_METADATA_KEYS = [
   "cycle",
   "mode",
   "stopReason",
+  // Script Intelligence routing (Phase 4) — version numbers, fingerprints and
+  // counts only. Never component names, conditions, or script source.
+  "scriptVersion",
+  "structureFingerprint",
+  "complexityBand",
   // Intelligence routing (Phase 3) — observation/pattern ids and feedback class.
   "observationId",
   "patternType",
