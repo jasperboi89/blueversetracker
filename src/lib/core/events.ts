@@ -85,6 +85,10 @@ export type AccEventType =
   | "agent.run.awaiting_confirmation"
   | "agent.run.completed"
   | "agent.run.failed"
+  // Script Intelligence / Dependency Cortex (Phase 4). Structural references
+  // only — never script source, component text, or account instructions.
+  | "script.version_recorded"
+  | "script.structure_changed"
   // Intelligence (Phase 3) — pattern observations + human feedback. References
   // only (ids/classes/counts); never derived content or bodies.
   | "intelligence.observation_recorded"
@@ -109,6 +113,7 @@ export type AccEventSource =
   | "capability"
   | "agent"
   | "intelligence"
+  | "script"
   | "route"
   | "system";
 
@@ -190,6 +195,11 @@ export const EVENT_METADATA_KEYS = [
   "cycle",
   "mode",
   "stopReason",
+  // Script Intelligence routing (Phase 4) — version numbers, fingerprints and
+  // counts only. Never component names, conditions, or script source.
+  "scriptVersion",
+  "structureFingerprint",
+  "complexityBand",
   // Intelligence routing (Phase 3) — observation/pattern ids and feedback class.
   "observationId",
   "patternType",

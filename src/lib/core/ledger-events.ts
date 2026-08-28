@@ -81,6 +81,11 @@ const DURABLE: Partial<Record<AccEventType, DurableRule>> = {
   "agent.run.completed": { category: "ai", sensitivity: "operational" },
   "agent.run.failed": { category: "ai", sensitivity: "operational" },
 
+  // SCRIPT INTELLIGENCE — structural snapshots and shape changes (Phase 4).
+  // Reference sensitivity: rows carry fingerprints and counts, never source.
+  "script.version_recorded": { category: "resolution", sensitivity: "reference" },
+  "script.structure_changed": { category: "resolution", sensitivity: "reference" },
+
   // INTELLIGENCE — pattern observations + human feedback (Phase 3).
   "intelligence.observation_recorded": { category: "intelligence", sensitivity: "reference" },
   "intelligence.feedback_recorded": { category: "intelligence", sensitivity: "reference" },

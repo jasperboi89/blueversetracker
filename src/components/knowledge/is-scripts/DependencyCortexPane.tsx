@@ -33,6 +33,7 @@ import { buildRegressionSuite } from "@/lib/script/test-intelligence";
 import { analyzeHistory } from "@/lib/script/script-history";
 import { enumerateStaticPaths } from "@/lib/script/script-simulation";
 import { MIN_TRUSTED_COVERAGE } from "@/lib/script/script-contract";
+import { eventSpine } from "@/lib/core/event-spine";
 
 /**
  * Dependency Cortex — the operator surface for Phase 4 Script Intelligence.
@@ -52,11 +53,14 @@ export function DependencyCortexPane() {
 
   const entriesQuery = useQuery({
     queryKey: ["is-script-entries"],
-    queryFn: () => listEntries({ data: {} } as never),
+    queryFn: () => listEntries(),
   });
 
   const entries = useMemo(
-    () => (entriesQuery.data ?? []).filter((e) => !e.isArchived && e.scriptBody.trim().length > 0),
+    () =>
+      (entriesQuery.data?.entries ?? []).filter(
+        (e) => !e.isArchived && e.scriptBody.trim().length > 0,
+      ),
     [entriesQuery.data],
   );
 
@@ -79,6 +83,21 @@ export function DependencyCortexPane() {
         },
       }),
     onSuccess: (result) => {
+      if (result.created) {
+        // Structural reference only — the ledger never receives script source.
+        eventSpine.emit({
+          type: "script.version_recorded",
+          source: "script",
+          metadata: {
+            entityType: "script",
+            entityId: scriptId,
+            scriptVersion: result.version.versionNumber,
+            structureFingerprint: result.version.structureFingerprint,
+            complexityBand: result.version.complexity.band,
+            count: result.version.complexity.componentCount,
+          },
+        });
+      }
       toast.success(
         result.created
           ? `Recorded version ${result.version.versionNumber}`
