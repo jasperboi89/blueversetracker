@@ -142,9 +142,10 @@ Risk = risk of the *redesign*, not of the current screen.
 
 ## Orphans / to document
 
-### `/constellations` — **DOCUMENT (no nav destination)**
-- **Finding:** the route exists but is **not linked** from the sidebar or command palette. It has no obvious entry point in the current IA.
-- **Recommendation:** decide in Phase 2 whether it is (a) an experimental/visual surface to fold into the Command Center, or (b) dead and safe to REMOVE. Left untouched this phase to avoid removing functionality without confirmation.
+### `/constellations` — **ADMIN/EXPERIMENTAL (theme-gated)**
+- **Finding (verified Phase 1.5):** the route renders a **Quantum Bloom "Discovery sky"** — `ConstellationField`, `ArchiveTimeline`, and a `CoreCard` over `useDiscoveries()` (gamification/achievements visualization). It **self-gates to the Quantum Bloom theme** (shows a "switch theme" prompt otherwise). It is **not linked** from the sidebar or command palette — only reachable by direct URL and via the generated route tree. No in-app navigation points to it.
+- **Classification:** ADMIN/EXPERIMENTAL — thematic, gamification-adjacent, not core operational work. Functional, not dead.
+- **Recommendation:** in a later phase, either surface it from Achievements/Settings when Quantum Bloom is active, or leave it as an easter-egg surface. No destructive change; left untouched.
 - **Risk:** low.
 
 ### Power Workspace (floating panes) — **KEEP (deemphasized)**
