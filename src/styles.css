@@ -131,6 +131,59 @@
   --shadow-glow-cyan: 0 0 24px oklch(0.85 0.16 210 / 0.35), 0 0 60px oklch(0.85 0.16 210 / 0.15);
   --shadow-glow-violet: 0 0 24px oklch(0.7 0.22 295 / 0.35), 0 0 60px oklch(0.7 0.22 295 / 0.15);
   --shadow-glow-gold: 0 0 24px oklch(0.85 0.16 85 / 0.4), 0 0 60px oklch(0.85 0.16 85 / 0.18);
+
+  /* ============================================================
+   * UI 2.0 canonical design tokens (Command Center, Phase 1)
+   *
+   * Additive and non-breaking: these NAME the portal's existing palette so new
+   * work references intent ("status: warning", "intel accent") instead of
+   * one-off oklch() literals. Each theme (Quantum Bloom, HoloQuiet) can
+   * override the primitives above and these follow. Do not restyle existing
+   * primitives here — build on them. See docs/PORTAL_UI_2_AUDIT.md.
+   * ============================================================ */
+
+  /* Status — colors must MEAN something; reserve for real state. */
+  --status-success: var(--green-glow);
+  --status-warning: var(--gold-glow);
+  --status-error: var(--destructive);
+  --status-info: var(--cyan-glow);
+  --status-critical: oklch(0.72 0.22 25);
+
+  /* Intelligence accent — the single accent Copilot / AI surfaces speak in. */
+  --intel-accent: var(--cyan-glow);
+  --intel-accent-strong: var(--electric);
+  --intel-accent-soft: color-mix(in oklab, var(--cyan-glow) 14%, transparent);
+
+  /* Surface elevation ladder — calmer than "every card glows". */
+  --surface-0: oklch(0.13 0.04 270 / 0.0);
+  --surface-1: oklch(0.18 0.05 268 / 0.35);
+  --surface-2: oklch(0.20 0.05 268 / 0.5);
+  --surface-3: oklch(0.24 0.06 270 / 0.62);
+  --surface-border: var(--border);
+  --surface-border-strong: oklch(0.7 0.12 235 / 0.30);
+
+  /* Spacing rhythm — a 4px base scale for consistent density. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Motion — use sparingly; honor prefers-reduced-motion elsewhere. */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Glass strength — one knob so panels stay consistent. */
+  --glass-blur: 22px;
+  --glass-saturate: 140%;
+
+  /* Interaction state tints — hover/active over any surface. */
+  --state-hover: oklch(1 0 0 / 0.05);
+  --state-active: oklch(1 0 0 / 0.09);
+  --state-disabled-opacity: 0.55;
 }
 
 @utility glass-panel {

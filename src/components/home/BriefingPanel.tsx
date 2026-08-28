@@ -11,7 +11,7 @@ type Kind = "shift-start" | "shift-end" | "weekly-digest";
 
 const KINDS: Array<{ kind: Kind; label: string; icon: typeof Sunrise; blurb: string }> = [
   { kind: "shift-start", label: "Shift briefing", icon: Sunrise, blurb: "Where to start tonight" },
-  { kind: "shift-end", label: "Handoff note", icon: Sunset, blurb: "Copy-ready for next operator" },
+  { kind: "shift-end", label: "Shift recap", icon: Sunset, blurb: "End-of-shift summary" },
   { kind: "weekly-digest", label: "Weekly patterns", icon: CalendarRange, blurb: "Recurring account issues" },
 ];
 

@@ -70,7 +70,7 @@ export function OperationalMemoryPanel() {
 
       {list.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nothing here yet. Memory is compiled when work is completed, a change is verified, or a handoff is published.
+          Nothing here yet. Memory is compiled when work is completed or a change is verified.
         </p>
       ) : (
         <ul className="space-y-3">

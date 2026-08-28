@@ -1,0 +1,207 @@
+# Operational Intelligence Evolution
+
+**Account Command Center → Operational Intelligence Platform**
+Status: architecture-direction document. Maps the systems that **already exist**
+to the capabilities we intend to build. The governing rule: **extend the
+canonical systems below — do not create parallel abstractions** ("Event Spine
+2", "New Memory Service", "AgentFramework"). Each row names what exists today,
+what it must become, and the seam that gets us there.
+
+---
+
+## Guiding principles (unchanged by this document)
+
+1. **AI is an intelligence layer, not a dependency.** The portal must remain
+   fully functional with AI services unavailable. Every AI feature degrades
+   gracefully; deterministic rules produce the baseline.
+2. **Evidence-first, human-governed.** Everything the model asserts carries
+   source, confidence, freshness, and supersession. The Reality Boundary — not a
+   model — decides truth semantics.
+3. **Autonomy is a progression, never a default.** Observe → Explain →
+   Recommend → Prepare → **Human Approval** → Execute → Verify → Audit.
+   High-risk production changes never become casually autonomous.
+4. **Privacy by construction.** Projections carry IDs, labels, statuses, and
+   short bounded summaries — never ticket bodies, conversations, caller data,
+   note bodies, prompts, or model output. Possible PHI stays out of the AI path.
+
+---
+
+## Current system → future evolution
+
+### Event Spine → transient event nervous system **+** future durable ledger
+- **Today:** `src/lib/core/event-spine.ts` — a small, shift-scoped, persisted
+  **buffer** (`MAX_EVENTS = 300`) used as current-shift coordination context. It
+  is deliberately lightweight.
+- **Evolution:** keep the Spine as the **fast transient layer**. Add, as a
+  *separate* durable layer, an **Operational Event Ledger**: long-term,
+  auditable events for historical learning, correlation, analytics, and
+  predictive intelligence.
+- **Seam / non-goal:** do **not** mutate the Spine into a database-backed event
+  store. The clean path is an append-only sink behind the existing `events.ts`
+  emit path (a subscriber that persists sanitized events server-side), so the
+  Spine's shape is unchanged and the ledger consumes the same event contract.
+- **Status:** transient layer exists; durable ledger **to be built**.
+
+### Memory Cortex → temporal operational memory
+- **Today:** `src/lib/memory/*` — `experience-compiler`, `memory-runtime`,
+  `memory-store`, `memory-retrieval`, `memory-contract`. Memory is compiled when
+  work completes or a change is verified.
+- **Evolution:** add temporal validity + decay to memories, and correlate them
+  across shifts/accounts. Feed the durable ledger into compilation for
+  longitudinal patterns.
+- **Seam:** extend `memory-contract` with temporal fields; keep the runtime.
+- **Status:** compilation + retrieval exist; temporal/longitudinal **to build**.
+- *Phase-1 note:* handoff-triggered compilation wording was removed; compilation
+  on completion/verification is unchanged.
+
+### Account Context → Account Cortex / world model
+- **Today:** `account-context.ts` (+ `-service`, `-projection`) assembles a
+  bounded, provenance-tagged **Account Context Pack** from authoritative stores;
+  each source is isolated and fail-soft.
+- **Evolution:** persist a per-account **world model** — a durable, evolving
+  view with risk scoring, anomaly flags, and recurring-pattern learning surfaced
+  on the account detail route.
+- **Seam:** the ports interface (`AccountContextPorts`) already isolates
+  sources; add a `worldModel` port + a persisted projection. Reuse the pack, do
+  not fork it.
+- **Status:** pack assembly exists; persistent world model **to build**.
+- *Phase-1 note:* the Coverage Watch port is severed (returns empty) and its
+  projection surfacing removed; the pack shape is otherwise intact.
+
+### Resolution Memory → Operational Learning
+- **Today:** `src/lib/resolution/*` — verified resolutions ranked per account,
+  surfaced as "known fixes".
+- **Evolution:** institutional operational learning — causal pattern learning
+  ("what fix worked for which failure signature"), confidence that strengthens
+  with corroboration.
+- **Seam:** feed resolution outcomes into the durable ledger; rank with
+  longitudinal evidence rather than recency alone.
+- **Status:** ranked known-fixes exist; causal learning **to build**.
+
+### AI Router → model / provider / capability router
+- **Today:** `src/lib/ai/router/*` — task-typed routing (`task-types`,
+  `routing-policy`, `deterministic-intercept`) selects a tier and can answer
+  deterministically without a model.
+- **Evolution:** true model-independent routing across local / private / cloud
+  providers with capability-based selection and full provider/model
+  traceability.
+- **Seam:** `routing-policy` already keys on task type + tier; add a provider
+  abstraction behind `ai-client.server` and record the served model.
+- **Status:** task routing + deterministic intercept exist; multi-provider
+  selection **partially** (tiers) — provider abstraction **to build**.
+- ⚠️ **Tech debt (Phase 1):** `handoff_generation` is now a **generic internal
+  summary** task type used by all shift-recap/briefing summarization. The Shift
+  Handoff feature was removed but the routing label was intentionally kept to
+  avoid breaking unrelated summarization. Rename to `summary_generation` in a
+  later phase (touch: `task-types.ts`, `routing-policy.ts`,
+  `capability-resolver.ts`, `capability-registry.ts`, `ai.functions.ts`,
+  `api/copilot.ts`).
+
+### Capability Registry → governed autonomy layer
+- **Today:** `src/lib/capability/*` — a rich registry with permissions
+  (`capability-permissions`), health, invocation, projection, and a
+  tool-adapter. Capabilities gate what the AI/tools may do.
+- **Evolution:** the substrate for the **autonomy progression**. Each capability
+  declares its max autonomy level; production-risk capabilities require human
+  approval and log to the Action Ledger.
+- **Seam:** add an autonomy-level field to `capability-contract`; the executor
+  enforces Prepare → Approve → Execute → Verify.
+- **Status:** governed capabilities + permissions exist; autonomy levels
+  **to build**.
+
+### Evidence Graph → provenance / confidence / causal evidence
+- **Today:** `evidence-graph.ts` + `reality-boundary.ts` + `evidence-contract` —
+  an **index** of truth semantics over facts projected from authoritative
+  records (never a second copy). The Reality Boundary decides freshness,
+  promotion/demotion, and labelling deterministically. Contradictions are
+  surfaced, never auto-resolved.
+- **Evolution:** add causal edges (fix → outcome) and temporal reasoning so the
+  graph supports predictive risk and anomaly detection.
+- **Seam:** extend `EvidenceEdge` with causal/temporal edge types; keep the
+  boundary as the sole truth arbiter.
+- **Status:** provenance/confidence/supersession exist; causal/temporal
+  **to build**.
+
+### MCP → external / agent tool interface
+- **Today:** `src/lib/mcp/*` with `tools/` (`get-night-plan`, `list-accounts`,
+  `list-tickets`, `list-dispatches`, `whoami`) and a Supabase-backed invoke
+  route. Read-only, bounded tools.
+- **Evolution:** expose governed capabilities as MCP tools so external agents
+  operate through the **same** permission + audit path as in-portal AI. Writes
+  only via the governed executor.
+- **Seam:** bridge `capability-tool-adapter` → MCP tool definitions; never let
+  MCP bypass the capability permission checks.
+- **Status:** read tools exist; governed write tools **to build**.
+
+### Next Best Action → predictive work orchestration
+- **Today:** `src/lib/nba/*` — deterministic candidate generation, gating,
+  ranking, serialization; surfaced on the Command Center.
+- **Evolution:** predictive orchestration that weighs risk, deadlines, and
+  learned outcomes; anticipates work before it is queued.
+- **Seam:** NBA `candidates` + `ranking` already pluggable; add a predictive
+  ranker fed by the ledger + world model.
+- **Status:** deterministic NBA exists; predictive layer **to build**.
+
+### Copilot → contextual intelligence orchestrator
+- **Today:** `CommandPalette`, `CopilotSheet`, `CopilotLauncher`, portal context
+  (`portal-context-service`, `use-portal-context`), context serialization, and
+  awareness. Phase 1 added a **native header entry point** that reflects live
+  page/account/ticket context, and a **command-registry extension seam**
+  (`src/lib/command/command-registry.ts`) for future natural-language commands.
+- **Evolution:** a persistent intelligence layer that orchestrates evidence,
+  memory, NBA, and governed actions — one Copilot, context-aware everywhere, not
+  a second chatbot.
+- **Seam:** register command providers against the new registry; keep the
+  architecture brand-neutral/configurable (the "Intel Copilot" name is
+  presentational only).
+- **Status:** context-aware Copilot + palette + seam exist; NL command providers
+  and action orchestration **to build**.
+
+---
+
+## Two-layer event architecture (Part 10, expanded)
+
+| Layer | Exists? | Role | Do NOT |
+| --- | --- | --- | --- |
+| **1. Fast transient event context** | ✅ `event-spine.ts` | Current-shift coordination buffer (bounded, persisted per shift). | Grow it into a database. |
+| **2. Durable operational event ledger** | ⛔ to build | Long-term, auditable events for learning, correlation, analytics, prediction. | Reuse the Spine's store; build a separate append-only sink behind `events.ts`. |
+
+The migration path is additive: both layers consume the **same** `events.ts`
+contract. The Spine keeps buffering; a new server-side subscriber persists
+sanitized events to the ledger. No breaking change to emitters.
+
+---
+
+## What exists vs. what must be built
+
+**Already exists (extend, don't rebuild):** Event Spine (transient), Memory
+Cortex (compile + retrieve), Account Context Pack, Resolution Memory (ranked
+known-fixes), AI Router (task routing + deterministic intercept + tiers),
+Capability Registry (permissions/health/invocation), Evidence Graph + Reality
+Boundary (provenance/confidence/freshness/supersession), MCP (read tools), NBA
+(deterministic), Copilot (context-aware) + Command Palette + command-registry
+seam, Action Ledger + Safe Action Executor.
+
+**Must eventually be built:** durable Operational Event Ledger; persistent
+Account world models; temporal/longitudinal memory; causal + temporal evidence
+edges; predictive risk + anomaly detection; autonomy levels on capabilities +
+approval workflow; multi-provider (local/private/cloud) routing with
+traceability; governed MCP write tools; NL command providers; predictive NBA;
+operational digital twin & simulation.
+
+---
+
+## Recommended Phase 2 (candidate)
+
+1. **Durable Operational Event Ledger (Layer 2)** behind `events.ts` — the
+   foundation everything predictive depends on. Read-only analytics first.
+2. **Autonomy levels** on `capability-contract` + wire the executor's
+   Prepare → Approve → Execute → Verify path; expose in Settings + Audit Log.
+3. **Provider abstraction** in `ai-client.server` + record served model/provider
+   on every completion (traceability groundwork).
+4. **Account world-model** projection on the account detail route (persisted,
+   risk/anomaly flags) — the first "Cortex" surface.
+5. **Rename `handoff_generation` → `summary_generation`** and retire the
+   dormant Shift Handoff / Coverage Watch code + tables once rollback window
+   closes.
+6. Resolve `/constellations` (fold into Command Center or remove).

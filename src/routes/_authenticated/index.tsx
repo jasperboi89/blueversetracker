@@ -11,14 +11,27 @@ import { ShiftLedger } from "@/components/home/ShiftLedger";
 import { QuickStart } from "@/components/home/QuickStart";
 import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
 import { BriefingPanel } from "@/components/home/BriefingPanel";
-import { ShiftHandoffPanel } from "@/components/handoff/ShiftHandoffPanel";
-import { CoveragePanel } from "@/components/coverage/CoveragePanel";
 import { NightForecast } from "@/components/quantum-bloom/NightForecast";
 import { useTheme } from "@/lib/settings/theme-store";
 import { PaneCanvas, useIsNarrow } from "@/components/workspace/PaneCanvas";
 import { FloatingPane } from "@/components/workspace/FloatingPane";
-import { resolveFloating, usePaneLayout, type PaneDefault } from "@/lib/workspace/pane-layout-store";
+import {
+  resolveFloating,
+  usePaneLayout,
+  type PaneDefault,
+} from "@/lib/workspace/pane-layout-store";
 
+/**
+ * Command Center — the operator's home surface.
+ *
+ * The default (composed) layout is organised by hierarchy rather than a flat
+ * pile of equal-weight panels: orientation at the top, priority intelligence
+ * next, then live work intelligence, then the operational reference area. The
+ * optional floating Power Workspace (PaneCanvas) is preserved for power users
+ * and on wide screens; narrow/mobile always falls back to the stable stack.
+ *
+ * Shift Handoff and Coverage Watch panes were removed in Phase 1.
+ */
 const HOME_PANES: Array<{
   id: string;
   title: string;
@@ -26,31 +39,104 @@ const HOME_PANES: Array<{
   def: PaneDefault;
   body: () => ReactNode;
 }> = [
-  { id: "home:greeting", title: "Greeting", def: { xPct: 0, yPct: 0, wPct: 62, hPct: 34 }, body: () => <GreetingPanel /> },
-  { id: "home:shift", title: "Shift", def: { xPct: 63, yPct: 0, wPct: 37, hPct: 34 }, body: () => <ShiftCard /> },
-  { id: "home:nba", title: "Next Best Action", def: { xPct: 0, yPct: 35, wPct: 100, hPct: 14 }, body: () => <NextBestActionStrip /> },
-  { id: "home:briefing", title: "AI Briefings", def: { xPct: 0, yPct: 49, wPct: 100, hPct: 22 }, body: () => <BriefingPanel /> },
-  { id: "home:alerts", title: "Alert Center", def: { xPct: 0, yPct: 50, wPct: 50, hPct: 24 }, body: () => <AlertCenter /> },
-  { id: "home:plan", title: "Night Plan", def: { xPct: 51, yPct: 50, wPct: 49, hPct: 34 }, body: () => <NightPlan /> },
-  { id: "home:lookup", title: "Lookup", def: { xPct: 0, yPct: 75, wPct: 50, hPct: 25 }, body: () => <LookupCards /> },
-  { id: "home:overview", title: "Overview", def: { xPct: 51, yPct: 85, wPct: 49, hPct: 15 }, body: () => <OverviewCards /> },
-  { id: "home:quickstart", title: "Quick Start", def: { xPct: 0, yPct: 100, wPct: 100, hPct: 12 }, body: () => <QuickStart /> },
-  { id: "home:ledger", title: "Shift Ledger", def: { xPct: 0, yPct: 113, wPct: 100, hPct: 25 }, body: () => <ShiftLedger /> },
-  { id: "home:handoff", title: "Shift Handoff", def: { xPct: 0, yPct: 126, wPct: 100, hPct: 30 }, body: () => <ShiftHandoffPanel /> },
-  { id: "home:coverage", title: "Coverage Watch", def: { xPct: 0, yPct: 157, wPct: 100, hPct: 26 }, body: () => <CoveragePanel /> },
+  {
+    id: "home:greeting",
+    title: "Greeting",
+    def: { xPct: 0, yPct: 0, wPct: 62, hPct: 34 },
+    body: () => <GreetingPanel />,
+  },
+  {
+    id: "home:shift",
+    title: "Shift",
+    def: { xPct: 63, yPct: 0, wPct: 37, hPct: 34 },
+    body: () => <ShiftCard />,
+  },
+  {
+    id: "home:nba",
+    title: "Next Best Action",
+    def: { xPct: 0, yPct: 35, wPct: 100, hPct: 14 },
+    body: () => <NextBestActionStrip />,
+  },
+  {
+    id: "home:briefing",
+    title: "AI Briefings",
+    def: { xPct: 0, yPct: 49, wPct: 100, hPct: 22 },
+    body: () => <BriefingPanel />,
+  },
+  {
+    id: "home:alerts",
+    title: "Alert Center",
+    def: { xPct: 0, yPct: 50, wPct: 50, hPct: 24 },
+    body: () => <AlertCenter />,
+  },
+  {
+    id: "home:plan",
+    title: "Night Plan",
+    def: { xPct: 51, yPct: 50, wPct: 49, hPct: 34 },
+    body: () => <NightPlan />,
+  },
+  {
+    id: "home:lookup",
+    title: "Lookup",
+    def: { xPct: 0, yPct: 75, wPct: 50, hPct: 25 },
+    body: () => <LookupCards />,
+  },
+  {
+    id: "home:overview",
+    title: "Overview",
+    def: { xPct: 51, yPct: 85, wPct: 49, hPct: 15 },
+    body: () => <OverviewCards />,
+  },
+  {
+    id: "home:quickstart",
+    title: "Quick Start",
+    def: { xPct: 0, yPct: 100, wPct: 100, hPct: 12 },
+    body: () => <QuickStart />,
+  },
+  {
+    id: "home:ledger",
+    title: "Shift Ledger",
+    def: { xPct: 0, yPct: 113, wPct: 100, hPct: 25 },
+    body: () => <ShiftLedger />,
+  },
 ];
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Home — Account Intel Hub" },
-      { name: "description", content: "BlueVerse command deck for AnSer Ops night shift." },
+      { title: "Command Center — Account Intel Hub" },
+      { name: "description", content: "BlueVerse command center for AnSer Ops night shift." },
       { property: "og:title", content: "Account Intel Hub" },
-      { property: "og:description", content: "BlueVerse command deck for AnSer Ops night shift." },
+      {
+        property: "og:description",
+        content: "BlueVerse command center for AnSer Ops night shift.",
+      },
     ],
   }),
   component: Home,
 });
+
+/** Section band with an operational eyebrow — the backbone of the new hierarchy. */
+function Band({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <h2 className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          {label}
+        </h2>
+        <span
+          aria-hidden
+          className="h-px flex-1"
+          style={{
+            background:
+              "linear-gradient(90deg, color-mix(in oklab, var(--cyan-glow) 30%, transparent), transparent)",
+          }}
+        />
+      </div>
+      {children}
+    </section>
+  );
+}
 
 function Home() {
   const theme = useTheme();
@@ -58,7 +144,7 @@ function Home() {
   const isNarrow = useIsNarrow();
   const floating = resolveFloating(paneLayout.mode, isNarrow);
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-5">
+    <div className="mx-auto flex max-w-7xl flex-col gap-6">
       {theme === "quantum-bloom" && <NightForecast />}
       {floating ? (
         <PaneCanvas paneIds={HOME_PANES.map((p) => p.id)}>
@@ -70,24 +156,35 @@ function Home() {
         </PaneCanvas>
       ) : (
         <>
+          {/* Orientation — who, when, and the state of the shift. */}
           <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
             <GreetingPanel />
             <ShiftCard />
           </div>
-          <NextBestActionStrip />
-          <BriefingPanel />
-          <AlertCenter />
-          <NightPlan />
-          <QuickStart />
-          <LookupCards />
-          <OverviewCards />
-          <ShiftLedger />
-          <section className="glass-panel p-4">
-            <ShiftHandoffPanel />
-          </section>
-          <section className="glass-panel p-4">
-            <CoveragePanel />
-          </section>
+
+          {/* Priority intelligence — what to do next and the AI read on it. */}
+          <Band label="Priority">
+            <NextBestActionStrip />
+            <BriefingPanel />
+          </Band>
+
+          {/* Work intelligence — what needs attention, what's upcoming. */}
+          <Band label="Work Intelligence">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <NightPlan />
+              <AlertCenter />
+            </div>
+          </Band>
+
+          {/* Operations — reference surfaces, lookups, and shift history. */}
+          <Band label="Operations">
+            <QuickStart />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <LookupCards />
+              <OverviewCards />
+            </div>
+            <ShiftLedger />
+          </Band>
         </>
       )}
       <ShiftSummaryButton />

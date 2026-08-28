@@ -145,6 +145,12 @@ export const aiShiftSummary = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n"),
       prompt: data.snapshot,
+      // TECH DEBT: `handoff_generation` is now a generic internal summary task
+      // type used by all shift-recap / briefing summarization. The Shift Handoff
+      // product feature was removed (Command Center Phase 1); the routing label
+      // is intentionally kept to avoid breaking unrelated summarization routing.
+      // Rename to `summary_generation` in a later phase — see
+      // docs/OPERATIONAL_INTELLIGENCE_EVOLUTION.md.
       task: "handoff_generation",
     });
   });
@@ -501,7 +507,7 @@ const BRIEFING_GOAL: Record<z.infer<typeof BriefingInput>["kind"], string> = {
   "shift-start":
     "Write a SHIFT-START BRIEFING. Look up open/overdue tickets, waiting items, the night plan (including rolled-over items) and what was completed on the last shift. Output: one short orienting paragraph, then a bulleted 'Start here' list of at most 5 concrete next actions in priority order.",
   "shift-end":
-    "Write a SHIFT-END HANDOFF NOTE for the next operator, copy-ready. Look up what was completed this shift, what is still open or waiting and on whom, night plan items not finished, and logged work time. Output sections: **Completed**, **Still open / waiting**, **Watch outs**, **Next shift should**. Bullets only, no filler.",
+    "Write an END-OF-SHIFT SUMMARY, copy-ready. Look up what was completed this shift, what is still open or waiting and on whom, night plan items not finished, and logged work time. Output sections: **Completed**, **Still open / waiting**, **Watch outs**, **Follow ups**. Bullets only, no filler.",
   "weekly-digest":
     "Write a WEEKLY PATTERN DIGEST. Look across tickets and account history for recurring issue clusters. Output: at most 6 bullets, each phrased as 'Account <number> (<name>) keeps hitting <pattern>' with ticket numbers as evidence, then one short 'Suggested follow-ups' list. Only report patterns backed by 2+ tickets.",
 };

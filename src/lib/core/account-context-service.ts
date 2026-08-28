@@ -10,7 +10,6 @@ import { ticketsStore } from "@/lib/tickets-store";
 import { workLogStore } from "@/lib/workspace/work-log-store";
 import { additionalWorkStore } from "@/lib/additional-work-store";
 import { dispatchStore } from "@/lib/dispatch-store";
-import { coverageStore, computeCoverageGaps } from "@/lib/coverage/coverage-store";
 import { isAccountActiveRecurring, getRecurringRows } from "@/lib/reports/recurring-issues";
 import { awarenessStore } from "./awareness-store";
 import { eventSpine } from "./event-spine";
@@ -84,13 +83,11 @@ export const defaultAccountContextPorts: AccountContextPorts = {
     });
     return rankResolutions(memories, { accountNumber: num });
   },
-  coverage: (num) => {
-    const state = coverageStore.get();
-    return {
-      watched: state.accounts.find((a) => a.number === num),
-      gaps: computeCoverageGaps(state).filter((g) => g.accountNumber === num),
-    };
-  },
+  // Coverage Watch was removed as a product feature (Command Center Phase 1).
+  // The assembler still accepts a coverage port for rollback compatibility, but
+  // the default wiring returns nothing so no coverage facts or operator alerts
+  // are produced even for users with stale local Coverage Watch data.
+  coverage: () => ({ gaps: [] }),
   knowledge: async (num, name) => {
     const vault = await listKnowledgeVault();
     const notes = vault?.notes ?? [];
