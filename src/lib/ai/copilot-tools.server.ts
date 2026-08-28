@@ -125,6 +125,18 @@ export const COPILOT_TOOLS: ResponsesTool[] = [
   },
   {
     type: "function",
+    name: "operational_forecast",
+    strict: true,
+    description:
+      "Outlook for an account based on how HISTORICALLY COMPARABLE states of that same account resolved afterwards. " +
+      "Each item states an interpretable band (lower than usual / typical / elevated / highly elevated), an explicit outcome window, and how many comparable states it rests on. " +
+      "These are NOT probabilities, NOT certainties, and NOT causes — say 'comparable past states were more often followed by X' and never 'this will happen' or 'this is because'. " +
+      "Items under evidenceGaps mean the system declined to forecast: report insufficient forecast evidence rather than implying low risk. " +
+      "You may explain and recommend preparation; you may never act on a forecast. Pass null for accountNumber to see every account with a recorded outlook.",
+    parameters: schema({ accountNumber: nullableString }),
+  },
+  {
+    type: "function",
     name: "script_structure",
     strict: true,
     description:
