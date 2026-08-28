@@ -408,15 +408,22 @@ export function detectQuietToActive(input: AnomalyInput): AnomalySignal[] {
 /* ------------------------------------------------------------------ */
 
 export function detectDurationAnomaly(input: AnomalyInput): AnomalySignal[] {
-  const samples = [...input.durations]
+  const all = [...input.durations]
     .filter((d) => Number.isFinite(d.durationMs) && d.durationMs > 0)
     .sort((a, b) => a.atMs - b.atMs);
-  if (samples.length === 0) return [];
+  if (all.length === 0) return [];
 
-  const latest = samples[samples.length - 1]!;
+  // Comparability gate: only sessions of the SAME work type are compared.
+  // Two records sharing nothing but a timestamp are not a baseline for
+  // each other, so the latest session is scored against its own kind.
+  const latest = all[all.length - 1]!;
+  const kind = (latest.label ?? "").trim().toLowerCase();
+  const samples = all.filter((d) => (d.label ?? "").trim().toLowerCase() === kind);
+  const kindLabel = kind ? latest.label!.trim() : "work";
+
   const history = samples.slice(0, -1).map((d) => d.durationMs / 60000);
   const baseline = buildBaseline(history, {
-    metric: "work session minutes",
+    metric: `${kindLabel} session minutes`,
     windowDays: cfg.baselineWindowDays,
     minSamples: cfg.durationMinSamples,
     minActivePeriods: cfg.durationMinSamples,
@@ -433,7 +440,7 @@ export function detectDurationAnomaly(input: AnomalyInput): AnomalySignal[] {
         reason: baseline.reason ?? "too_few_samples",
         observed: Math.round(latest.durationMs / 60000),
         windowDays: cfg.baselineWindowDays,
-        detail: `${history.length} completed work session(s) recorded for this account; ${cfg.durationMinSamples} are needed before a typical duration can be established.`,
+        detail: `${history.length} comparable ${kindLabel} session(s) recorded for this account; ${cfg.durationMinSamples} of the same kind are needed before a typical duration can be established.`,
       }),
     ];
   }
@@ -441,6 +448,7 @@ export function detectDurationAnomaly(input: AnomalyInput): AnomalySignal[] {
   const observed = Math.round(latest.durationMs / 60000);
   const z = robustZ(observed, baseline);
   if (z == null || Math.abs(z) < cfg.robustZThreshold) return [];
+
 
   const direction = z > 0 ? "longer" : "shorter";
   return [
