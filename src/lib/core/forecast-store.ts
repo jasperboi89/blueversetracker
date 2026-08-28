@@ -54,9 +54,16 @@ const EVAL_MAX = 200;
 
 const store = createPersistedStore<ForecastState>("aih:core:forecasts:v1", DEFAULT);
 
-/** Trajectory from the previously announced band to the new one. */
+/**
+ * Trajectory from the previously announced band to the new one.
+ *
+ * "insufficient evidence" is NOT a risk level, so a transition into or out of
+ * it can never read as rising/declining risk — that would be exactly the
+ * "insufficient means low" confusion Phase 6 forbids.
+ */
 export function trendFor(prev: ForecastBand | undefined, next: ForecastBand): ForecastTrend {
   if (!prev) return "new";
+  if (prev === "insufficient_evidence" || next === "insufficient_evidence") return "stable";
   const d = FORECAST_BAND_RANK[next] - FORECAST_BAND_RANK[prev];
   if (d < 0) return "rising";
   if (d > 0) return "declining";
@@ -76,6 +83,13 @@ export interface ForecastReconcileResult {
  * Lifecycle: NEW on first appearance, UPDATED when the band moves, RESOLVED
  * when the forecast no longer applies. Recalculation with an unchanged band is
  * deliberately silent (no ledger noise).
+ *
+ * HORIZON ANCHORING (Phase 6.5). A forecast id is stable, but the engine stamps
+ * `createdAt`/`expiresAt` at every recomputation. Left alone, the outcome window
+ * would slide forward forever and NO forecast could ever complete its horizon —
+ * outcome grading would be unreachable. So while a horizon is still open we keep
+ * the ORIGINAL anchor; once it has fully elapsed the forecast starts a fresh
+ * horizon from the current evaluation.
  */
 export function reconcileForecasts(
   prev: AccountForecastRecord | undefined,
@@ -85,6 +99,7 @@ export function reconcileForecasts(
 ): ForecastReconcileResult {
   const nowIso = new Date(now).toISOString();
   const announced = prev?.announced ?? {};
+  const priorById = new Map((prev?.forecasts ?? []).map((f) => [f.id, f]));
   const created: ForecastObservation[] = [];
   const updated: ForecastObservation[] = [];
   const nextAnnounced: Record<string, ForecastBand> = {};
@@ -95,8 +110,19 @@ export function reconcileForecasts(
     if (!before) created.push(f);
     else if (before !== f.band) updated.push(f);
     nextAnnounced[f.id] = f.band;
-    return { ...f, trend } as ForecastObservation;
+
+    const prior = priorById.get(f.id);
+    const priorEnd = prior ? Date.parse(prior.expiresAt) : NaN;
+    const horizonStillOpen = Number.isFinite(priorEnd) && priorEnd > now;
+    return {
+      ...f,
+      trend,
+      ...(horizonStillOpen && prior
+        ? { createdAt: prior.createdAt, expiresAt: prior.expiresAt }
+        : {}),
+    } as ForecastObservation;
   });
+
 
   const currentIds = new Set(withTrend.map((f) => f.id));
   const resolved: ForecastHistoryEntry[] = (prev?.forecasts ?? [])
