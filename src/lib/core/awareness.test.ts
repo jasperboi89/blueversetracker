@@ -152,17 +152,14 @@ describe("awareness rules", () => {
     expect(item?.dedupeKey).toBe("recurring:account:4821");
   });
 
-  it("raises handoff risk for tracked work near shift end", () => {
+  it("no longer raises a handoff-risk alert (Shift Handoff removed)", () => {
     const s = snap({
       shiftStatus: "near-end",
       shiftProgress: 0.95,
       activeWork: trackedWork(),
       contextWorkItem: ctxFor("t1"),
     });
-    const item = evaluateAwareness(s).find((c) => c.type === "handoff_risk");
-    expect(item?.message).toBe("Ticket #12345 is still active and may need handoff.");
-    // Phase 3 actions are navigation only.
-    expect(item?.actions?.every((a) => a.kind === "navigate")).toBe(true);
+    expect(evaluateAwareness(s).some((c) => c.type === "handoff_risk")).toBe(false);
   });
 
   it("stores no ticket bodies or free text beyond short labels", () => {

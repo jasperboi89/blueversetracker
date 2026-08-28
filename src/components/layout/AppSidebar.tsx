@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Home,
+  LayoutDashboard,
   Ticket,
   PhoneOutgoing,
   ClipboardList,
@@ -36,29 +36,56 @@ import { useAssignedUnreadCount } from "@/lib/assigned-inbox-store";
 interface NavItem {
   title: string;
   url: string;
-  icon: typeof Home;
+  icon: typeof LayoutDashboard;
   accent: string;
 }
 
-/** Daily Work — the five surfaces the shift actually runs on. */
-const dailyWork: NavItem[] = [
-  { title: "Home", url: "/", icon: Home, accent: "var(--cyan-glow)" },
+/*
+ * Information architecture is organised by operator job, not by "daily vs
+ * history" (Phase 1). Command Center leads as an unlabelled primary; the rest
+ * group into Work, Accounts, Dispatch, Knowledge, Intelligence and System so a
+ * label maps to a task the operator is trying to do.
+ */
+
+/** Primary destination — the operator's home base. */
+const commandCenter: NavItem = {
+  title: "Command Center",
+  url: "/",
+  icon: LayoutDashboard,
+  accent: "var(--cyan-glow)",
+};
+
+/** WORK — the live queues the shift is actively clearing. */
+const workItems: NavItem[] = [
   { title: "Assigned to Me", url: "/assigned-to-me", icon: Inbox, accent: "var(--cyan-glow)" },
   { title: "Freshdesk Work", url: "/freshdesk-tickets", icon: Ticket, accent: "var(--cyan-glow)" },
   { title: "Additional Work", url: "/additional-work", icon: ClipboardList, accent: "var(--gold-glow)" },
+];
+
+/** ACCOUNTS — the account book of record. */
+const accountItems: NavItem[] = [
+  { title: "Accounts", url: "/accounts", icon: Building2, accent: "var(--electric)" },
+];
+
+/** DISPATCH — outbound contact verification. */
+const dispatchItems: NavItem[] = [
   { title: "Contact Dispatch", url: "/contact-dispatch", icon: PhoneOutgoing, accent: "var(--violet-glow)" },
+];
+
+/** KNOWLEDGE — runbooks, scripts and notes. */
+const knowledgeItems: NavItem[] = [
   { title: "Knowledge Vault", url: "/knowledge-vault", icon: LibraryBig, accent: "oklch(0.8 0.16 190)" },
 ];
 
-/** Work History / Intelligence — look back, not the live shift. */
-const historyItems: NavItem[] = [
-  { title: "Completed Work", url: "/completed-work", icon: CheckCircle2, accent: "var(--green-glow)" },
-  { title: "Accounts", url: "/accounts", icon: Building2, accent: "var(--electric)" },
+/** INTELLIGENCE — look back, correlate, and report. */
+const intelligenceItems: NavItem[] = [
   { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles, accent: "var(--violet-glow)" },
+  { title: "Completed Work", url: "/completed-work", icon: CheckCircle2, accent: "var(--green-glow)" },
   { title: "Reports", url: "/reports", icon: FileBarChart, accent: "oklch(0.9 0.06 230)" },
 ];
 
-/** Planning / System — secondary, always available. */
+/** SYSTEM — secondary and admin surfaces; Achievements lives here so it never
+ * competes visually with operational work. */
 const systemItems: NavItem[] = [
   { title: "Achievements", url: "/achievements", icon: Trophy, accent: "oklch(0.85 0.15 90)" },
 ];
@@ -74,8 +101,12 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const isAdmin = useIsAdmin();
   const groups: Array<{ label: string; items: NavItem[] }> = [
-    { label: "Daily Work", items: dailyWork },
-    { label: "History & Intelligence", items: historyItems },
+    { label: "", items: [commandCenter] },
+    { label: "Work", items: workItems },
+    { label: "Accounts", items: accountItems },
+    { label: "Dispatch", items: dispatchItems },
+    { label: "Knowledge", items: knowledgeItems },
+    { label: "Intelligence", items: intelligenceItems },
     {
       label: "System",
       items: isAdmin ? [...systemItems, ...adminItems] : systemItems,
@@ -137,8 +168,8 @@ export function AppSidebar() {
 
       <SidebarContent className="px-2">
         {groups.map((group) => (
-        <SidebarGroup key={group.label}>
-          {!collapsed && (
+        <SidebarGroup key={group.label || "primary"}>
+          {!collapsed && group.label && (
             <SidebarGroupLabel className="px-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
               {group.label}
             </SidebarGroupLabel>

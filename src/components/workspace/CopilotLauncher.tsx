@@ -3,9 +3,13 @@ import { openCopilot } from "./CopilotSheet";
 import { useInsights, hasHighInsight } from "@/lib/ai/awareness";
 
 /**
- * Persistent Copilot launcher (bottom-right). Pulses with a dot when a
- * high-severity insight is present, so the assistant signals when it's worth
- * a look without interrupting with a toast.
+ * Mobile Copilot launcher (bottom-right).
+ *
+ * On sm+ screens the header's Intel Copilot button is the primary entry point,
+ * so this floating affordance is hidden there (`sm:hidden`) to reduce competing
+ * surfaces. It stays on small screens, where the header button collapses to an
+ * icon and a thumb-reachable target is worth keeping. Pulses when a
+ * high-severity insight is present.
  */
 export function CopilotLauncher() {
   const insights = useInsights();
@@ -15,7 +19,7 @@ export function CopilotLauncher() {
     <button
       onClick={openCopilot}
       title="Intel Copilot (⌘/Ctrl+K → Ask Intel Copilot)"
-      className="glass-panel fixed bottom-4 right-4 z-[115] grid h-11 w-11 place-items-center rounded-full"
+      className="glass-panel fixed bottom-4 right-4 z-[115] grid h-11 w-11 place-items-center rounded-full sm:hidden"
       style={{ boxShadow: "0 0 20px oklch(0.78 0.18 220 / 0.35)" }}
     >
       <Sparkles className="h-5 w-5" style={{ color: "var(--cyan-glow)" }} />

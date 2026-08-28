@@ -9,6 +9,7 @@ import { UnlockToast } from "@/components/achievements/UnlockToast";
 import { AchievementsWatcher } from "@/components/achievements/AchievementsWatcher";
 import { RetrievalSyncWatcher } from "@/components/retrieval/RetrievalSyncWatcher";
 import { FocusStrip } from "@/components/focus/FocusStrip";
+import { CopilotHeaderButton } from "@/components/workspace/CopilotHeaderButton";
 import { useEffect, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 
@@ -71,8 +72,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <div className="ml-auto flex items-center gap-2">
               <FocusStrip />
-              <span className="hidden items-center gap-1 rounded-md border border-border/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground md:inline-flex">
-                ⌘K / Ctrl+K
+              <CopilotHeaderButton />
+              <span className="hidden items-center gap-1 rounded-md border border-border/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground lg:inline-flex">
+                ⌘K
               </span>
               <SanctuaryButton />
               <HipaaPill />

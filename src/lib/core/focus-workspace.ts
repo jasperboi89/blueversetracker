@@ -242,27 +242,18 @@ function buildCurrent(s: FocusSnapshot): FocusCurrent | undefined {
 
 /**
  * Deterministic order:
- *   shift-end handoff > explicit Must work > active-work follow-up > important queued work
+ *   explicit Must work > active-work follow-up > important queued work
+ *
+ * Shift Handoff was removed as a product feature (Command Center Phase 1), so
+ * the former shift-end "Prepare shift handoff" NEXT item is no longer emitted.
+ * The `handoff` FocusSource / `SHIFT_END_HANDOFF` FocusReason members remain in
+ * the type unions above as dormant values for rollback compatibility; nothing
+ * produces them. Near-shift-end urgency is still conveyed by the Must-item and
+ * follow-up rules below plus the shift status header.
  */
-function buildNext(s: FocusSnapshot, nearEnd: boolean): FocusItem[] {
+function buildNext(s: FocusSnapshot): FocusItem[] {
   const out: FocusItem[] = [];
   const mustItems = s.nightPlan.filter((i) => i.active && i.priority === "must");
-
-  if (nearEnd) {
-    out.push({
-      id: "focus:handoff",
-      label: "Prepare shift handoff",
-      detail: mustItems.length
-        ? `${mustItems.length} Must item${mustItems.length === 1 ? "" : "s"} still open`
-        : "Shift window is closing",
-      severity: "info",
-      source: "handoff",
-      reason: "SHIFT_END_HANDOFF",
-      entity: { type: "handoff", id: s.shiftKey },
-      actions: navAction("open-handoff", "Open Handoff", "/reports"),
-      rank: 0,
-    });
-  }
 
   for (const item of mustItems) {
     out.push({
@@ -423,7 +414,7 @@ export function buildFocusWorkspace(s: FocusSnapshot): FocusWorkspaceState {
   const watch = buildWatch(s);
   return {
     current: buildCurrent(s),
-    next: buildNext(s, nearEnd),
+    next: buildNext(s),
     watch,
     blocked: buildBlocked(s),
     shift: {

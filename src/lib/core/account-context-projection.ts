@@ -45,12 +45,8 @@ export function toCopilotAccountContext(pack: AccountContextPack): string {
     lines.push("Patterns:");
     for (const p of pack.recurringPatterns) lines.push(`- ${p.label}`);
   }
-  if (pack.coverage && (pack.coverage.watched || pack.coverage.gaps.length)) {
-    const cov = pack.coverage;
-    lines.push(
-      `Coverage: ${cov.watched ? "watched" : "not watched"}${cov.onCallThrough ? `, on-call through ${cov.onCallThrough}` : ""}${cov.gaps.length ? `, ${cov.gaps.length} gap(s)` : ""}`,
-    );
-  }
+  // Coverage Watch was removed as a product feature (Command Center Phase 1);
+  // its account-context surfacing is intentionally no longer projected.
   if (pack.recentWork.length) {
     lines.push("Recent work:");
     for (const w of pack.recentWork.slice(0, 4)) lines.push(`- ${w.label}`);

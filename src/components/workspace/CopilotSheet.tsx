@@ -45,6 +45,8 @@ import type { AnyProposedAction } from "@/lib/core/actions";
 import { shiftContextStore } from "@/lib/core/shift-context";
 import { getAccountContext } from "@/lib/core/account-context-service";
 import { toCopilotAccountContext } from "@/lib/core/account-context-projection";
+import { worldModelFromPack } from "@/lib/core/account-cortex-service";
+import { toCopilotWorldModel } from "@/lib/core/account-cortex";
 import { usePortalContext } from "@/hooks/use-portal-context";
 import { suggestionsForContext } from "@/lib/ai/context-suggestions";
 import { ContextInspector } from "@/components/workspace/ContextInspector";
@@ -101,7 +103,15 @@ async function buildFocusSnapshot(): Promise<string> {
   if (!active?.id) return base;
   try {
     const pack = await getAccountContext(active.id);
-    return `${base}\n\nACCOUNT CONTEXT\n${toCopilotAccountContext(pack)}`.slice(0, 9500);
+    // Account Cortex: the durable-ledger world model, derived from the same
+    // pack plus long-term event history. Fail-soft — never blocks the prompt.
+    let world = "";
+    try {
+      world = `\n\n${toCopilotWorldModel(worldModelFromPack(pack))}`;
+    } catch {
+      world = "";
+    }
+    return `${base}\n\nACCOUNT CONTEXT\n${toCopilotAccountContext(pack)}${world}`.slice(0, 9500);
   } catch {
     return base;
   }
@@ -618,7 +628,9 @@ export function CopilotSheet() {
                 editorClassName="max-h-40 overflow-y-auto"
               />
               <div className="flex items-center justify-between gap-2 border-t border-border/30 px-2 py-1.5">
-                <span className="truncate text-[10px] text-muted-foreground">⌘/Ctrl + Enter to send</span>
+                <span className="truncate text-[10px] text-muted-foreground">
+                  ⌘/Ctrl + Enter to send
+                </span>
                 {busy ? (
                   <Button size="sm" variant="secondary" onClick={stop} title="Stop">
                     <Square className="h-3.5 w-3.5" />

@@ -9,6 +9,7 @@ import {
   DownloadCloud,
   FileBarChart,
   Home,
+  Inbox,
   Loader2,
   LibraryBig,
   LogOut,
@@ -37,9 +38,14 @@ import { setTheme, useTheme } from "@/lib/settings/theme-store";
 import { accountsStore, useAccounts } from "@/lib/accounts-store";
 import { ticketsStore, useTickets, type Ticket } from "@/lib/tickets-store";
 import { openCopilot } from "@/components/workspace/CopilotSheet";
+import {
+  resolveOperationalCommands,
+  type OperationalCommandContext,
+} from "@/lib/command/command-registry";
 
 const PAGES = [
-  { title: "Home", url: "/", icon: Home },
+  { title: "Command Center", url: "/", icon: Home },
+  { title: "Assigned to Me", url: "/assigned-to-me", icon: Inbox },
   { title: "Freshdesk Tickets", url: "/freshdesk-tickets", icon: TicketIcon },
   { title: "Freshdesk Intelligence", url: "/freshdesk-intelligence", icon: Sparkles },
   { title: "Knowledge Vault", url: "/knowledge-vault", icon: LibraryBig },
@@ -116,6 +122,17 @@ export function CommandPalette() {
     setOpen(false);
   }
 
+  // Extension seam: future phases register natural-language / operational
+  // command providers (see src/lib/command/command-registry.ts). The registry
+  // is empty in Phase 1, so this resolves to [] and renders nothing.
+  const opContext: OperationalCommandContext = {
+    query,
+    navigate: (to) => navigate({ to: to as never }),
+    openCopilot: () => openCopilot(),
+    close,
+  };
+  const operationalCommands = resolveOperationalCommands(query, opContext);
+
   async function pullTicket() {
     if (pulling) return;
     setPulling(true);
@@ -171,6 +188,22 @@ export function CommandPalette() {
               )}
               Pull ticket #{digits} from Freshdesk
             </CommandItem>
+          </CommandGroup>
+        )}
+
+        {operationalCommands.length > 0 && (
+          <CommandGroup heading="Commands">
+            {operationalCommands.map((c) => (
+              <CommandItem
+                key={c.id}
+                value={`${c.title} ${(c.keywords ?? []).join(" ")}`}
+                onSelect={() => void c.run(opContext)}
+              >
+                <Sparkles style={{ color: "var(--cyan-glow)" }} />
+                <span className="truncate">{c.title}</span>
+                {c.hint && <CommandShortcut>{c.hint}</CommandShortcut>}
+              </CommandItem>
+            ))}
           </CommandGroup>
         )}
 

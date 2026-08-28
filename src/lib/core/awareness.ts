@@ -332,26 +332,12 @@ function ruleRecurringAccount(s: AwarenessSnapshot): AwarenessCondition[] {
   ];
 }
 
-function ruleHandoffRisk(s: AwarenessSnapshot): AwarenessCondition[] {
-  const w = s.activeWork;
-  if (!nearShiftEnd(s) || !isTracked(w)) return [];
-  const entity = workEntity(w);
-  return [
-    {
-      type: "handoff_risk",
-      severity: "warning",
-      title: "Unfinished work near shift end",
-      message: `${w.label} is still active and may need handoff.`,
-      dedupeKey: `handoff-risk:${entity.type}:${entity.id}`,
-      entity,
-      actions: [
-        ...openAction(w),
-        { id: "handoff", label: "Open Handoff", kind: "navigate", to: "/reports" },
-      ],
-      cooldownMs: 30 * 60 * 1000,
-    },
-  ];
-}
+// Shift Handoff was removed as a product feature (Command Center Phase 1). The
+// former `ruleHandoffRisk` (an "Unfinished work near shift end → Open Handoff"
+// alert) no longer runs. The `handoff_risk` / `handoff` type members are kept in
+// the unions above as dormant, unreferenced values for rollback compatibility;
+// nothing emits them. Long-running-work and Must-items rules still cover the
+// genuinely useful "wrap up before shift end" signal without handoff framing.
 
 const RULES: Array<(s: AwarenessSnapshot) => AwarenessCondition[]> = [
   ruleLongRunningWork,
@@ -360,7 +346,6 @@ const RULES: Array<(s: AwarenessSnapshot) => AwarenessCondition[]> = [
   ruleWorkWithoutTimer,
   ruleTimerWithoutWork,
   ruleRecurringAccount,
-  ruleHandoffRisk,
 ];
 
 /** Run every deterministic rule. Pure — a rule throwing never kills the rest. */

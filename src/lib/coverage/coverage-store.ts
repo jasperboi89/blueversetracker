@@ -1,8 +1,14 @@
 import { createPersistedStore, useStoreValue } from "@/lib/settings/_persist";
-import { attachCloudSync } from "@/lib/cloud-sync/blob-sync";
 import { daysUntil, todayIso, upcomingHolidays, type Holiday } from "./holidays";
 
 /**
+ * DORMANT — Coverage Watch was removed as a product feature (Command Center
+ * Phase 1). This store and its holiday helpers are kept, unwired from the UI
+ * and from cloud sync, only so the shared `CoverageGap` / `WatchedAccount`
+ * types still resolve and any locally persisted data survives for rollback.
+ * Nothing in the active portal reads or writes it. Do not re-wire without
+ * re-introducing the feature.
+ *
  * Holiday & on-call coverage tracking.
  *
  * Two things go wrong at 3am in an answering service: a holiday arrives and
@@ -151,10 +157,5 @@ export function useCoverageGaps(): CoverageGap[] {
 
 export { todayIso };
 
-attachCloudSync<State>({
-  storeKey: "coverage",
-  subscribe: coverageStore.subscribe,
-  getSnapshot: () => coverageStore.get(),
-  applyServerSnapshot: (next) => coverageStore.applyServerSnapshot(next),
-  isEmpty: (s) => s.accounts.length === 0 && s.confirmations.length === 0,
-});
+// Cloud-sync registration intentionally removed with the Coverage Watch feature
+// (Command Center Phase 1). The store no longer participates in blob sync.

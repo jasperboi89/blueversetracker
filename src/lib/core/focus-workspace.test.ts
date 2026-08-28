@@ -92,7 +92,7 @@ describe("focus · NEXT", () => {
     expect(f.shift.mustRemaining).toBe(1);
   });
 
-  it("orders handoff before Must before follow-up before Important", () => {
+  it("orders Must before follow-up before Important, with no handoff item", () => {
     const f = buildFocusWorkspace(
       snapshot({
         shiftStatus: "near-end",
@@ -106,11 +106,13 @@ describe("focus · NEXT", () => {
         },
       }),
     );
+    // Shift Handoff was removed: SHIFT_END_HANDOFF is never emitted.
     expect(f.next.map((n) => n.reason)).toEqual([
-      "SHIFT_END_HANDOFF",
       "MUST_PRIORITY",
       "ACTIVE_WORK_FOLLOW_UP",
+      "IMPORTANT_PRIORITY",
     ]);
+    expect(f.next.some((n) => n.reason === "SHIFT_END_HANDOFF")).toBe(false);
   });
 
   it("stays bounded", () => {
