@@ -96,7 +96,14 @@ export type AccEventType =
   // Anomaly Detection & Early Warning (Phase 5). Deviation references only —
   // signal ids, anomaly kinds, severity/confidence classes and counts.
   | "intelligence.anomaly_detected"
-  | "intelligence.baseline_insufficient";
+  | "intelligence.baseline_insufficient"
+  // Risk Forecasting & Future-State Intelligence (Phase 6). Forecast lifecycle
+  // references only — forecast ids, types, bands, horizons and counts.
+  | "intelligence.forecast_created"
+  | "intelligence.forecast_updated"
+  | "intelligence.forecast_resolved"
+  | "intelligence.forecast_expired"
+  | "intelligence.forecast_acknowledged";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =

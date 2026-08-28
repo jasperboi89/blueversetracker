@@ -4,6 +4,7 @@ import { Activity, Wrench, History, Sparkles } from "lucide-react";
 import { useAccountIntelligence } from "@/lib/core/account-intelligence";
 import { ClaimInspector, type ClaimSource } from "./ClaimInspector";
 import { AnomalyPanel } from "./AnomalyPanel";
+import { OutlookPanel } from "./OutlookPanel";
 import {
   filterTimeline,
   TIMELINE_CATEGORIES,
@@ -68,6 +69,10 @@ export function AccountIntelligenceTab({ accountNumber }: { accountNumber: strin
     <div className="space-y-6">
       {/* EARLY WARNING — deviation from baseline (Phase 5) */}
       <AnomalyPanel result={intel.anomalies} />
+
+      {/* OUTLOOK — comparable-state forecasting (Phase 6). Deliberately kept
+          separate from anomalies: deviation ≠ outlook. */}
+      <OutlookPanel result={intel.forecasts} />
 
       {/* DERIVED OBSERVATIONS — pattern intelligence */}
       <section>

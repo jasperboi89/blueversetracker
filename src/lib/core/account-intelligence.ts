@@ -6,6 +6,10 @@ import { buildAccountTimeline, type TimelineInput, type TimelineItem } from "./a
 import { accountCortexStore } from "./account-cortex-store";
 import { detectAnomalies, type AnomalyResult } from "./anomaly-engine";
 import { anomalyStore } from "./anomaly-store";
+import { buildForecasts, type ForecastResult } from "./forecast-engine";
+import type { ForecastInput } from "./comparable-state";
+import { forecastStore } from "./forecast-store";
+import { evaluateElapsedForecasts } from "./forecast-evaluation";
 import { ledgerCategory } from "./ledger-events";
 import { buildWhatFixedThis, type WhatFixedThisResult } from "@/lib/resolution/what-fixed-this";
 import type { AccEventType } from "./events";
@@ -38,6 +42,10 @@ export interface AccountIntelligenceResult {
   whatFixed: WhatFixedThisResult[];
   /** Phase 5 — deviations from baseline plus explicit "still learning" states. */
   anomalies: AnomalyResult;
+  /** Phase 6 — comparable-state outlook plus explicit evidence gaps. */
+  forecasts: ForecastResult;
+  /** Phase 6 — bounded input the forecast evaluator re-grades against. */
+  forecastInput: ForecastInput;
 }
 
 /** Pure assembly from a loaded pack + ledger slice. Deterministic. */
@@ -174,13 +182,72 @@ export function assembleAccountIntel(
       .filter((d) => d.durationMs > 0),
   });
 
-  return { observations, timeline, whatFixed, anomalies };
+  // Phase 6 — comparable-state forecasting. Consumes the SAME canonical facts
+  // (no new data source) plus the Phase 5 anomalies and Phase 3 observations as
+  // supporting evidence. Anomaly ≠ forecast: these stay separate all the way to
+  // the UI.
+  const forecastInput: ForecastInput = {
+    accountId: accountNumber,
+    now,
+    events: patternInput.ledger.map((e) => ({
+      id: e.id,
+      type: e.type,
+      ...(e.ticketId ? { ticketId: e.ticketId } : {}),
+      atMs: e.atMs,
+    })),
+    tickets: patternInput.tickets.map((t) => ({
+      id: t.id,
+      ...(t.classification ? { classification: t.classification } : {}),
+      status: t.status,
+      ...(t.createdAtMs ? { createdAtMs: t.createdAtMs } : {}),
+      ...(t.updatedAtMs ? { updatedAtMs: t.updatedAtMs } : {}),
+      reopened: t.status === "reopened",
+      escalated: t.status === "escalated",
+    })),
+    changes: patternInput.changes.map((c) => ({
+      id: c.id,
+      ...(c.title ? { title: c.title } : {}),
+      ...(typeof c.appliedAtMs === "number" ? { appliedAtMs: c.appliedAtMs } : {}),
+    })),
+    work: pack.recentWork
+      .map((w) => {
+        const start = parseMs(w.startedAt);
+        const end = parseMs(w.endedAt);
+        return {
+          id: w.id,
+          ...(w.kind ? { kind: w.kind } : {}),
+          ...(w.label ? { label: w.label } : {}),
+          durationMs: start && end && end > start ? end - start : 0,
+          startedAtMs: start,
+          endedAtMs: end,
+        };
+      })
+      .filter((w) => w.durationMs > 0),
+    anomalies: [...anomalies.anomalies, ...anomalies.baselineGaps].map((a) => ({
+      id: a.id,
+      anomalyType: a.anomalyType,
+      severity: a.severity,
+      confidence: a.confidence,
+      state: a.state,
+    })),
+    patterns: observations.map((o) => ({ id: o.id, patternType: o.patternType })),
+    verifiedResolutions: pack.resolutions.filter((r) => r.confidence === "verified").length,
+  };
+  const forecasts = buildForecasts(forecastInput);
+
+  return { observations, timeline, whatFixed, anomalies, forecasts, forecastInput };
 }
 
 export interface AccountIntelligence extends AccountIntelligenceResult {
   loading: boolean;
   hasPack: boolean;
 }
+
+const EMPTY_FORECASTS: ForecastResult = {
+  forecasts: [],
+  evidenceGaps: [],
+  generatedAt: new Date(0).toISOString(),
+};
 
 export function useAccountIntelligence(accountNumber: string): AccountIntelligence {
   const { pack, loading } = useAccountContext(accountNumber, { includeKnowledge: false });
@@ -195,6 +262,15 @@ export function useAccountIntelligence(accountNumber: string): AccountIntelligen
         timeline: [],
         whatFixed: [],
         anomalies: { anomalies: [], baselineGaps: [], generatedAt: new Date(0).toISOString() },
+        forecasts: EMPTY_FORECASTS,
+        forecastInput: {
+          accountId: accountNumber,
+          now: 0,
+          events: [],
+          tickets: [],
+          changes: [],
+          work: [],
+        },
       };
     const ledger = queryLedger({ accountId: accountNumber, limit: 500 }, ledgerState);
     return {
@@ -216,7 +292,24 @@ export function useAccountIntelligence(accountNumber: string): AccountIntelligen
     } catch {
       /* persistence is best-effort */
     }
-  }, [accountNumber, result.hasPack, result.observations, result.anomalies]);
+    try {
+      // Grade any previously persisted forecast whose horizon has elapsed
+      // BEFORE overwriting it — this is the calibration seam (Part 23/24).
+      const prior = forecastStore.get(accountNumber)?.forecasts ?? [];
+      const graded = evaluateElapsedForecasts(prior, result.forecastInput);
+      forecastStore.recordEvaluations(accountNumber, graded);
+      forecastStore.evaluate(accountNumber, result.forecasts);
+    } catch {
+      /* persistence is best-effort */
+    }
+  }, [
+    accountNumber,
+    result.hasPack,
+    result.observations,
+    result.anomalies,
+    result.forecasts,
+    result.forecastInput,
+  ]);
 
   return result;
 }
