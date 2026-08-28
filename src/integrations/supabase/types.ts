@@ -600,6 +600,60 @@ export type Database = {
           },
         ]
       }
+      operational_event_ledger: {
+        Row: {
+          account_id: string
+          category: string
+          dispatch_id: string
+          event_id: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          operator_user_id: string
+          recorded_at: string
+          schema_version: number
+          sensitivity: string
+          source: string
+          ticket_id: string
+          type: string
+          work_item_id: string
+        }
+        Insert: {
+          account_id?: string
+          category?: string
+          dispatch_id?: string
+          event_id: string
+          id?: string
+          metadata?: Json
+          occurred_at: string
+          operator_user_id: string
+          recorded_at?: string
+          schema_version?: number
+          sensitivity?: string
+          source?: string
+          ticket_id?: string
+          type: string
+          work_item_id?: string
+        }
+        Update: {
+          account_id?: string
+          category?: string
+          dispatch_id?: string
+          event_id?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          operator_user_id?: string
+          recorded_at?: string
+          schema_version?: number
+          sensitivity?: string
+          source?: string
+          ticket_id?: string
+          type?: string
+          work_item_id?: string
+        }
+        Relationships: []
+      }
       qb_discoveries: {
         Row: {
           context: Json

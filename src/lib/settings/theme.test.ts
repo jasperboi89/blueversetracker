@@ -212,7 +212,18 @@ describe("holoquiet radical spatial redesign", () => {
 });
 
 describe("holoquiet environmental depth + true glass", () => {
-  const DEPTH = CSS.slice(CSS.indexOf("HOLOQUIET ENVIRONMENTAL DEPTH"));
+  // Bound the slice to the HoloQuiet depth section itself. Without an end
+  // bound it swallowed every later stylesheet section (e.g. the sign-in
+  // portal atmosphere), so unrelated styles leaked into these assertions.
+  const DEPTH = (() => {
+    const BANNER = "/* ==============================================";
+    const start = CSS.indexOf("HOLOQUIET ENVIRONMENTAL DEPTH");
+    // The first banner after the title line closes this section's own header;
+    // the one after that opens the next section.
+    const headerClose = CSS.indexOf(BANNER, start);
+    const end = headerClose === -1 ? -1 : CSS.indexOf(BANNER, headerClose + BANNER.length);
+    return CSS.slice(start, end === -1 ? undefined : end);
+  })();
 
   it("replaces the flat black environment with a dimensional field", () => {
     expect(DEPTH).toContain("--hq-env-deep");
@@ -247,7 +258,12 @@ describe("holoquiet environmental depth + true glass", () => {
   });
 
   it("keeps backdrop blur restrained", () => {
-    const blurs = [...DEPTH.matchAll(/blur\((\d+)px\)/g)].map((m) => Number(m[1]));
+    // Only `backdrop-filter` blur affects readability of content behind glass.
+    // Decorative `filter: blur()` glows (e.g. the sign-in light beams) are a
+    // different concern and are deliberately excluded from this budget.
+    const blurs = [...DEPTH.matchAll(/backdrop-filter:[^;]*?blur\((\d+)px\)/g)].map((m) =>
+      Number(m[1]),
+    );
     expect(blurs.length).toBeGreaterThan(0);
     expect(Math.max(...blurs)).toBeLessThanOrEqual(10);
   });
