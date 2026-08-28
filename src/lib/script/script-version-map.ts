@@ -8,6 +8,7 @@
  * written once and read many times.
  */
 
+import type { Json } from "@/integrations/supabase/types";
 import type {
   ScriptAnalysis,
   ScriptComplexity,
@@ -92,7 +93,8 @@ export function versionInsert(params: {
     component_count: analysis.complexity.componentCount,
     dependency_count: analysis.complexity.dependencyCount,
     unknown_count: analysis.complexity.unknownCount,
-    structure: analysis.structure as unknown,
-    complexity: analysis.complexity as unknown,
+    // Plain JSON-serialisable objects; cast satisfies the generated Json type.
+    structure: analysis.structure as unknown as Json,
+    complexity: analysis.complexity as unknown as Json,
   };
 }
