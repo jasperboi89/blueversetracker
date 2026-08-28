@@ -92,7 +92,11 @@ export type AccEventType =
   // Intelligence (Phase 3) — pattern observations + human feedback. References
   // only (ids/classes/counts); never derived content or bodies.
   | "intelligence.observation_recorded"
-  | "intelligence.feedback_recorded";
+  | "intelligence.feedback_recorded"
+  // Anomaly Detection & Early Warning (Phase 5). Deviation references only —
+  // signal ids, anomaly kinds, severity/confidence classes and counts.
+  | "intelligence.anomaly_detected"
+  | "intelligence.baseline_insufficient";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =
@@ -205,6 +209,9 @@ export const EVENT_METADATA_KEYS = [
   "patternType",
   "feedbackKind",
   "windowDays",
+  // Anomaly routing (Phase 5) — deviation magnitude and baseline size only.
+  "robustZ",
+  "baselineSamples",
 ] as const;
 
 export type AccEventMetadataKey = (typeof EVENT_METADATA_KEYS)[number];
