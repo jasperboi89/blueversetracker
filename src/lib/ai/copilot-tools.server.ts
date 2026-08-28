@@ -257,6 +257,44 @@ export async function runCopilotTool(
       };
     }
 
+    case "operational_forecast": {
+      const blob = await readBlob(supabase, userId, "account-forecasts");
+      const byAccount = (blob["byAccount"] as Record<string, Row> | undefined) ?? {};
+      const wanted = str(args["accountNumber"]).trim();
+      const records = Object.values(byAccount).filter((r) =>
+        wanted ? str(r["accountId"]) === wanted : true,
+      );
+      const flatten = (r: Row, key: string) =>
+        (Array.isArray(r[key]) ? (r[key] as Row[]) : []).map((f) => {
+          const o = (f["outcomes"] as Row | undefined) ?? {};
+          return {
+            account: str(r["accountId"]),
+            type: str(f["forecastType"]),
+            band: str(f["band"]),
+            confidence: str(f["confidence"]),
+            trend: str(f["trend"]),
+            outcomeWindow: str(f["horizon"]),
+            targetOutcome: str(f["targetOutcome"]),
+            title: str(f["title"]),
+            description: str(f["description"]).slice(0, 600),
+            comparableStates: o["comparableCount"] ?? null,
+            observedWindows: o["observedCount"] ?? null,
+            outcomeOccurred: o["occurredCount"] ?? null,
+            insufficientReason: f["insufficientReason"] ?? null,
+            whatThisDoesNotMean: str(f["whatThisDoesNotMean"]),
+            autonomy: str(f["autonomy"]),
+          };
+        });
+      return {
+        forecasts: records.flatMap((r) => flatten(r, "forecasts")).slice(0, 20),
+        evidenceGaps: records.flatMap((r) => flatten(r, "evidenceGaps")).slice(0, 20),
+        interpretation:
+          "Forecasts are comparative statements about how similar past states of this account resolved. They are not probabilities, not certainties and not causal. " +
+          "Always state the outcome window and the number of comparable states. evidenceGaps mean insufficient forecast evidence — never translate that into 'low risk'. " +
+          "Autonomy is capped at prepare: you may explain and recommend, never act.",
+      };
+    }
+
     case "script_structure": {
       const q = str(args["title"]).trim().toLowerCase();
       if (!q) return { error: "title is required" };
