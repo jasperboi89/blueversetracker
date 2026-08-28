@@ -69,6 +69,10 @@ export function AccountIntelligenceTab({ accountNumber }: { accountNumber: strin
       {/* EARLY WARNING — deviation from baseline (Phase 5) */}
       <AnomalyPanel result={intel.anomalies} />
 
+      {/* OUTLOOK — comparable-state forecasting (Phase 6). Deliberately kept
+          separate from anomalies: deviation ≠ outlook. */}
+      <OutlookPanel result={intel.forecasts} />
+
       {/* DERIVED OBSERVATIONS — pattern intelligence */}
       <section>
         <SectionHeader icon={Activity} label="Observations (derived)" />
