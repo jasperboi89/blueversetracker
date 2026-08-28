@@ -872,6 +872,71 @@ export type Database = {
         }
         Relationships: []
       }
+      script_versions: {
+        Row: {
+          complexity: Json
+          component_count: number
+          content_fingerprint: string
+          created_at: string
+          dependency_count: number
+          id: string
+          ingested_at: string
+          kind: string
+          operator_user_id: string
+          schema_version: number
+          script_id: string
+          structure: Json
+          structure_fingerprint: string
+          title: string
+          unknown_count: number
+          version_number: number
+        }
+        Insert: {
+          complexity?: Json
+          component_count?: number
+          content_fingerprint: string
+          created_at?: string
+          dependency_count?: number
+          id?: string
+          ingested_at?: string
+          kind: string
+          operator_user_id: string
+          schema_version?: number
+          script_id: string
+          structure?: Json
+          structure_fingerprint: string
+          title?: string
+          unknown_count?: number
+          version_number: number
+        }
+        Update: {
+          complexity?: Json
+          component_count?: number
+          content_fingerprint?: string
+          created_at?: string
+          dependency_count?: number
+          id?: string
+          ingested_at?: string
+          kind?: string
+          operator_user_id?: string
+          schema_version?: number
+          script_id?: string
+          structure?: Json
+          structure_fingerprint?: string
+          title?: string
+          unknown_count?: number
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "script_versions_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "is_script_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_handoffs: {
         Row: {
           created_at: string
