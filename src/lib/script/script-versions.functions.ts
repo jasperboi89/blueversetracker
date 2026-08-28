@@ -94,6 +94,9 @@ export const listLatestScriptVersions = createServerFn({ method: "GET" })
     const { data: rows, error } = await context.supabase
       .from("script_versions")
       .select(SELECT)
+      // Defence in depth: RLS already isolates the operator, but the filter
+      // keeps cross-operator rows impossible even if a policy is loosened.
+      .eq("operator_user_id", context.userId)
       .order("version_number", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
