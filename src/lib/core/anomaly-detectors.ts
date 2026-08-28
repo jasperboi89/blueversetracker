@@ -59,6 +59,8 @@ export interface AnomalyChangeFact {
 
 export interface AnomalyDurationFact {
   id: string;
+  /** Coarse work type used for comparability grouping (e.g. "logged_time"). */
+  kind?: string;
   label?: string;
   durationMs: number;
   atMs: number;
@@ -417,9 +419,10 @@ export function detectDurationAnomaly(input: AnomalyInput): AnomalySignal[] {
   // Two records sharing nothing but a timestamp are not a baseline for
   // each other, so the latest session is scored against its own kind.
   const latest = all[all.length - 1]!;
-  const kind = (latest.label ?? "").trim().toLowerCase();
-  const samples = all.filter((d) => (d.label ?? "").trim().toLowerCase() === kind);
-  const kindLabel = kind ? latest.label!.trim() : "work";
+  const keyOf = (d: AnomalyDurationFact) => (d.kind ?? d.label ?? "").trim().toLowerCase();
+  const kind = keyOf(latest);
+  const samples = all.filter((d) => keyOf(d) === kind);
+  const kindLabel = (latest.kind ?? latest.label ?? "work").trim() || "work";
 
   const history = samples.slice(0, -1).map((d) => d.durationMs / 60000);
   const baseline = buildBaseline(history, {
