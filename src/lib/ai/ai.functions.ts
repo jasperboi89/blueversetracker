@@ -749,7 +749,7 @@ export const aiScriptReasoning = createServerFn({ method: "POST" })
     await logAi(context, "script-reasoning", "");
 
     const res = await aiComplete({
-      task: "analysis",
+      task: "knowledge_interpretation",
       json: true,
       system: [
         "You explain the STRUCTURE of an answering-service IS script to the operator who maintains it.",
