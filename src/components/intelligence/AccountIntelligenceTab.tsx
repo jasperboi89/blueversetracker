@@ -4,6 +4,7 @@ import { Activity, Wrench, History, Sparkles } from "lucide-react";
 import { useAccountIntelligence } from "@/lib/core/account-intelligence";
 import { ClaimInspector, type ClaimSource } from "./ClaimInspector";
 import { AnomalyPanel } from "./AnomalyPanel";
+import { OutlookPanel } from "./OutlookPanel";
 import {
   filterTimeline,
   TIMELINE_CATEGORIES,
