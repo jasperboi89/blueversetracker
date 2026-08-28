@@ -178,7 +178,7 @@ export function generateCandidates(input: CandidateInput): Hypothesis[] {
           "A conditional rule in the script may send this case down a different path than the operator expects.",
         mechanism:
           "One of the recorded branch components evaluates differently for this input, selecting an alternative path.",
-        origin: "dependency_cortex" as unknown as HypothesisOrigin,
+        origin: "script_intelligence",
         predictions: [
           "Inputs that avoid the branch condition behave as expected.",
           "The behaviour reproduces consistently for inputs that satisfy the condition.",
