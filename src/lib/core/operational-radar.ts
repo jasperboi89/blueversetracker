@@ -1,4 +1,5 @@
 import type { AnomalySignal } from "./anomaly-contract";
+import { HORIZON_LABEL, type ForecastObservation } from "./forecast-contract";
 import type {
   ConfidenceClass,
   PatternEvidenceRef,
@@ -22,7 +23,9 @@ export type RadarCategory =
   | "resolution_match"
   | "workload"
   | "anomaly"
+  | "forecast"
   | "system";
+
 
 export type RadarSeverity = "info" | "notice" | "elevated";
 
@@ -61,6 +64,42 @@ export function anomaliesToRadar(signals: readonly AnomalySignal[]): RadarItem[]
       evidenceRefs: a.evidenceRefs,
       observationId: a.id,
       generatedAt: a.generatedAt,
+    }));
+}
+
+/**
+ * Map Phase 6 forecasts onto radar items (Phase 6.5, Part 20).
+ *
+ * OUTLOOK MUST NOT DROWN OUT NOW. Forecast items are deliberately capped below
+ * "elevated" so a real, current operational problem always outranks a
+ * future-state statement at equal evidence. Only banded, unexpired forecasts
+ * are mapped: "insufficient forecast evidence" is a state of the system, never
+ * a warning, and an elapsed horizon is history, not attention.
+ */
+export function forecastsToRadar(
+  forecasts: readonly ForecastObservation[],
+  now: number,
+): RadarItem[] {
+  return forecasts
+    .filter((f) => f.band === "elevated" || f.band === "highly_elevated")
+    .filter((f) => {
+      const end = Date.parse(f.expiresAt);
+      return !Number.isFinite(end) || end > now;
+    })
+    .map((f) => ({
+      id: `radar:${f.id}`,
+      category: "forecast" as const,
+      accountId: f.accountId,
+      title: f.title,
+      detail:
+        `${HORIZON_LABEL[f.horizon].toLowerCase()} · ${f.outcomes.occurredCount} of ` +
+        `${f.outcomes.observedCount} comparable past state(s) were followed by this outcome`,
+      severity: (f.band === "highly_elevated" ? "notice" : "info") as RadarSeverity,
+      confidence: f.confidence,
+      sourceCount: f.outcomes.observedCount,
+      evidenceRefs: f.evidenceRefs,
+      observationId: f.id,
+      generatedAt: f.generatedAt,
     }));
 }
 

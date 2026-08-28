@@ -119,6 +119,39 @@ function ForecastCard({ forecast: f }: { forecast: ForecastObservation }) {
             )}
           </Block>
 
+          {f.band !== "insufficient_evidence" && f.comparables.length > 0 && (
+            <Block label="Why these states matched">
+              <ul className="space-y-0.5 text-xs text-muted-foreground">
+                {[...new Set(f.comparables.flatMap((c) => c.matchedOn))].slice(0, 6).map((m) => (
+                  <li key={m}>· {m}</li>
+                ))}
+              </ul>
+            </Block>
+          )}
+
+          {(f.supportingAnomalyIds.length > 0 || f.supportingPatternIds.length > 0) && (
+            <Block label="Supporting signals">
+              <p className="text-xs text-muted-foreground">
+                {f.supportingAnomalyIds.length} current anomaly signal
+                {f.supportingAnomalyIds.length === 1 ? "" : "s"} ·{" "}
+                {f.supportingPatternIds.length} recorded pattern
+                {f.supportingPatternIds.length === 1 ? "" : "s"} present in this state. These are
+                inputs to the comparison, not the forecast itself.
+              </p>
+            </Block>
+          )}
+
+          {f.scriptContext && (
+            <Block label="Script context">
+              <p className="text-xs text-muted-foreground">
+                Structural read {Math.round(f.scriptContext.coverage * 100)}% ·{" "}
+                {f.scriptContext.unresolvedCount} unresolved reference
+                {f.scriptContext.unresolvedCount === 1 ? "" : "s"}. Structure only — no script
+                content is used.
+              </p>
+            </Block>
+          )}
+
           {f.recommendations.length > 0 && (
             <Block label="Suggested preparation (operator decides)">
               <ul className="space-y-0.5 text-xs text-muted-foreground">
