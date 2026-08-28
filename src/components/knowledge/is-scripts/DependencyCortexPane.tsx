@@ -338,6 +338,28 @@ export function DependencyCortexPane() {
             </ul>
             <Caveats items={derived.paths.caveats} />
           </Panel>
+
+          {(reasoning || reason.isPending || (reason.data && !reason.data.ok)) && (
+            <Panel icon={Sparkles} title="Structural reading" className="lg:col-span-2">
+              {reason.isPending ? (
+                <p className="text-xs text-muted-foreground">Reading the extracted structure…</p>
+              ) : reason.data && !reason.data.ok ? (
+                <p className="text-xs text-amber-200/90">{reason.data.error}</p>
+              ) : reasoning ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-foreground">{reasoning.summary}</p>
+                  <ReasonList label="Observations" items={reasoning.observations} />
+                  <ReasonList label="Watch" items={reasoning.risks} />
+                  <ReasonList label="Prepare these checks" items={reasoning.checks} />
+                  <ReasonList label="Not determinable from structure" items={reasoning.unknowns} />
+                  <p className="border-t border-white/5 pt-2 text-[11px] text-muted-foreground/80">
+                    Derived from redacted structural facts only — no script text was sent. Read-only:
+                    nothing here edits or deploys a script.
+                  </p>
+                </div>
+              ) : null}
+            </Panel>
+          )}
         </div>
       )}
     </div>
