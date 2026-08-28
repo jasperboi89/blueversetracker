@@ -52,11 +52,14 @@ export function DependencyCortexPane() {
 
   const entriesQuery = useQuery({
     queryKey: ["is-script-entries"],
-    queryFn: () => listEntries({ data: {} } as never),
+    queryFn: () => listEntries(),
   });
 
   const entries = useMemo(
-    () => (entriesQuery.data ?? []).filter((e) => !e.isArchived && e.scriptBody.trim().length > 0),
+    () =>
+      (entriesQuery.data?.entries ?? []).filter(
+        (e) => !e.isArchived && e.scriptBody.trim().length > 0,
+      ),
     [entriesQuery.data],
   );
 
