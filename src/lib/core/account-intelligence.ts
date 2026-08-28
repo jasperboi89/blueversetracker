@@ -4,6 +4,8 @@ import { useLedgerState, queryLedger, type LedgerEntry } from "./event-ledger";
 import { detectPatterns, type PatternInput, type PatternObservation } from "./pattern-intelligence";
 import { buildAccountTimeline, type TimelineInput, type TimelineItem } from "./account-timeline";
 import { accountCortexStore } from "./account-cortex-store";
+import { detectAnomalies, type AnomalyResult } from "./anomaly-engine";
+import { anomalyStore } from "./anomaly-store";
 import { ledgerCategory } from "./ledger-events";
 import { buildWhatFixedThis, type WhatFixedThisResult } from "@/lib/resolution/what-fixed-this";
 import type { AccEventType } from "./events";
@@ -34,6 +36,8 @@ export interface AccountIntelligenceResult {
   observations: PatternObservation[];
   timeline: TimelineItem[];
   whatFixed: WhatFixedThisResult[];
+  /** Phase 5 — deviations from baseline plus explicit "still learning" states. */
+  anomalies: AnomalyResult;
 }
 
 /** Pure assembly from a loaded pack + ledger slice. Deterministic. */
@@ -131,7 +135,45 @@ export function assembleAccountIntel(
   }));
   const whatFixed = buildWhatFixedThis({ accountNumber, memories });
 
-  return { observations, timeline, whatFixed };
+  // Phase 5 — anomaly detection over the same canonical inputs. Robust
+  // baselines only; when history is thin the engine returns baseline gaps
+  // instead of inventing a finding.
+  const anomalies = detectAnomalies({
+    accountId: accountNumber,
+    now,
+    events: patternInput.ledger.map((e) => ({
+      id: e.id,
+      type: e.type,
+      ...(e.ticketId ? { ticketId: e.ticketId } : {}),
+      atMs: e.atMs,
+    })),
+    tickets: patternInput.tickets.map((t) => ({
+      id: t.id,
+      ...(t.classification ? { classification: t.classification } : {}),
+      status: t.status,
+      ...(t.createdAtMs ? { createdAtMs: t.createdAtMs } : {}),
+      ...(t.updatedAtMs ? { updatedAtMs: t.updatedAtMs } : {}),
+    })),
+    changes: patternInput.changes.map((c) => ({
+      id: c.id,
+      ...(c.title ? { title: c.title } : {}),
+      ...(typeof c.appliedAtMs === "number" ? { appliedAtMs: c.appliedAtMs } : {}),
+    })),
+    durations: pack.recentWork
+      .map((w) => {
+        const start = parseMs(w.startedAt);
+        const end = parseMs(w.endedAt);
+        return {
+          id: w.id,
+          ...(w.label ? { label: w.label } : {}),
+          durationMs: start && end && end > start ? end - start : 0,
+          atMs: end || start,
+        };
+      })
+      .filter((d) => d.durationMs > 0),
+  });
+
+  return { observations, timeline, whatFixed, anomalies };
 }
 
 export interface AccountIntelligence extends AccountIntelligenceResult {
@@ -144,7 +186,15 @@ export function useAccountIntelligence(accountNumber: string): AccountIntelligen
   const ledgerState = useLedgerState();
 
   const result = useMemo<AccountIntelligence>(() => {
-    if (!pack) return { loading, hasPack: false, observations: [], timeline: [], whatFixed: [] };
+    if (!pack)
+      return {
+        loading,
+        hasPack: false,
+        observations: [],
+        timeline: [],
+        whatFixed: [],
+        anomalies: { anomalies: [], baselineGaps: [], generatedAt: new Date(0).toISOString() },
+      };
     const ledger = queryLedger({ accountId: accountNumber, limit: 500 }, ledgerState);
     return {
       loading,
@@ -160,7 +210,12 @@ export function useAccountIntelligence(accountNumber: string): AccountIntelligen
     } catch {
       /* persistence is best-effort */
     }
-  }, [accountNumber, result.hasPack, result.observations]);
+    try {
+      anomalyStore.evaluate(accountNumber, result.anomalies);
+    } catch {
+      /* persistence is best-effort */
+    }
+  }, [accountNumber, result.hasPack, result.observations, result.anomalies]);
 
   return result;
 }
@@ -180,7 +235,7 @@ export function toCopilotIntel(
   plan: RetrievalPlan,
   now: number,
 ): string {
-  const { observations, timeline, whatFixed } = assembleAccountIntel(
+  const { observations, timeline, whatFixed, anomalies } = assembleAccountIntel(
     accountNumber,
     pack,
     ledger,
@@ -196,6 +251,26 @@ export function toCopilotIntel(
           .map((o) => `- [${o.confidence}] ${o.title} — ${o.description}`)
           .join("\n"),
     );
+  }
+  if (planIncludes(plan, "patterns")) {
+    if (anomalies.anomalies.length) {
+      parts.push(
+        "ANOMALIES vs BASELINE (deviation only; never a cause):\n" +
+          anomalies.anomalies
+            .slice(0, 3)
+            .map(
+              (a) =>
+                `- [${a.severity}/${a.confidence}] ${a.title} — observed ${a.deviation.observed} vs typical ${a.baseline.median} (${a.baseline.metric})`,
+            )
+            .join("\n"),
+      );
+    } else if (anomalies.baselineGaps.length) {
+      parts.push(
+        "BASELINE STATUS: insufficient history to judge deviation for " +
+          anomalies.baselineGaps.map((g) => g.anomalyType).join(", ") +
+          ". Say the baseline is still forming rather than implying behavior is normal.",
+      );
+    }
   }
   if (planIncludes(plan, "resolutions") && whatFixed.length) {
     parts.push(

@@ -115,6 +115,16 @@ export const COPILOT_TOOLS: ResponsesTool[] = [
   },
   {
     type: "function",
+    name: "operational_anomalies",
+    strict: true,
+    description:
+      "Deviations from an account's established operational baseline (activity volume, issue mix, quiet-to-active shifts, work duration, reopen/escalation drift, recurrence spacing, post-change activity). " +
+      "Results are deviation statements only — never causes and never predictions. Anything returned under baselineGaps means there is NOT enough history to judge: say the baseline is still forming rather than implying behavior is normal. " +
+      "Pass null for accountNumber to see every account with a recorded deviation.",
+    parameters: schema({ accountNumber: nullableString }),
+  },
+  {
+    type: "function",
     name: "script_structure",
     strict: true,
     description:
@@ -193,6 +203,45 @@ export async function runCopilotTool(
           matchedBy: r.matchedBy,
           updatedAt: r.sourceUpdatedAt ?? null,
         })),
+      };
+    }
+
+    case "operational_anomalies": {
+      const blob = await readBlob(supabase, userId, "account-anomalies");
+      const byAccount = (blob["byAccount"] as Record<string, Row> | undefined) ?? {};
+      const wanted = str(args["accountNumber"]).trim();
+      const records = Object.values(byAccount).filter((r) =>
+        wanted ? str(r["accountId"]) === wanted : true,
+      );
+      const flatten = (r: Row, key: string) =>
+        (Array.isArray(r[key]) ? (r[key] as Row[]) : []).map((a) => {
+          const baseline = (a["baseline"] as Row | undefined) ?? {};
+          const deviation = (a["deviation"] as Row | undefined) ?? {};
+          return {
+            account: str(r["accountId"]),
+            type: str(a["anomalyType"]),
+            state: str(a["state"]),
+            title: str(a["title"]),
+            description: str(a["description"]).slice(0, 600),
+            severity: str(a["severity"]),
+            confidence: str(a["confidence"]),
+            observed: deviation["observed"] ?? null,
+            baselineMedian: baseline["median"] ?? null,
+            metric: str(baseline["metric"]),
+            samples: baseline["sampleCount"] ?? null,
+            robustZ: deviation["robustZ"] ?? null,
+            reason: a["insufficientReason"] ?? null,
+            lastObserved: str(a["lastObservedAt"]),
+          };
+        });
+      const anomalies = records.flatMap((r) => flatten(r, "anomalies")).slice(0, 20);
+      const baselineGaps = records.flatMap((r) => flatten(r, "baselineGaps")).slice(0, 20);
+      return {
+        anomalies,
+        baselineGaps,
+        interpretation:
+          "Anomalies describe deviation from a robust (median/MAD) baseline. They are not causal and not predictive. " +
+          "baselineGaps mean the system cannot judge deviation yet — report that as 'baseline still forming', never as 'normal'.",
       };
     }
 

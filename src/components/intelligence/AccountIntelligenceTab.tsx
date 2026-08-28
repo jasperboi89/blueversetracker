@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Activity, Wrench, History, Sparkles } from "lucide-react";
 import { useAccountIntelligence } from "@/lib/core/account-intelligence";
 import { ClaimInspector, type ClaimSource } from "./ClaimInspector";
+import { AnomalyPanel } from "./AnomalyPanel";
 import {
   filterTimeline,
   TIMELINE_CATEGORIES,
@@ -65,6 +66,9 @@ export function AccountIntelligenceTab({ accountNumber }: { accountNumber: strin
 
   return (
     <div className="space-y-6">
+      {/* EARLY WARNING — deviation from baseline (Phase 5) */}
+      <AnomalyPanel result={intel.anomalies} />
+
       {/* DERIVED OBSERVATIONS — pattern intelligence */}
       <section>
         <SectionHeader icon={Activity} label="Observations (derived)" />

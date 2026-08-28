@@ -1,3 +1,4 @@
+import type { AnomalySignal } from "./anomaly-contract";
 import type {
   ConfidenceClass,
   PatternEvidenceRef,
@@ -20,6 +21,7 @@ export type RadarCategory =
   | "change_followup"
   | "resolution_match"
   | "workload"
+  | "anomaly"
   | "system";
 
 export type RadarSeverity = "info" | "notice" | "elevated";
@@ -37,6 +39,29 @@ export interface RadarItem {
   /** Links back to a persisted observation for feedback/inspection. */
   observationId?: string;
   generatedAt: string;
+}
+
+/**
+ * Map Phase 5 anomaly signals onto radar items. Only established-baseline
+ * anomalies are mapped: "insufficient baseline" is a state of the system, not
+ * something that belongs on an attention surface.
+ */
+export function anomaliesToRadar(signals: readonly AnomalySignal[]): RadarItem[] {
+  return signals
+    .filter((a) => a.state === "anomaly")
+    .map((a) => ({
+      id: `radar:${a.id}`,
+      category: "anomaly" as const,
+      accountId: a.accountId,
+      title: a.title,
+      detail: `observed ${a.deviation.observed} vs typical ${a.baseline.median} ${a.baseline.metric}`,
+      severity: a.severity,
+      confidence: a.confidence,
+      sourceCount: a.sourceCount,
+      evidenceRefs: a.evidenceRefs,
+      observationId: a.id,
+      generatedAt: a.generatedAt,
+    }));
 }
 
 /** Extra, non-pattern signals the caller may fold in. */

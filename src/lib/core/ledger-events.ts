@@ -89,6 +89,12 @@ const DURABLE: Partial<Record<AccEventType, DurableRule>> = {
   // INTELLIGENCE — pattern observations + human feedback (Phase 3).
   "intelligence.observation_recorded": { category: "intelligence", sensitivity: "reference" },
   "intelligence.feedback_recorded": { category: "intelligence", sensitivity: "reference" },
+
+  // ANOMALY DETECTION (Phase 5) — a detected deviation is durable history so
+  // later phases can ask "was this flagged before?". The "still learning"
+  // counterpart is transient: it is a state of the system, not an event worth
+  // keeping forever.
+  "intelligence.anomaly_detected": { category: "intelligence", sensitivity: "reference" },
 };
 
 /**
