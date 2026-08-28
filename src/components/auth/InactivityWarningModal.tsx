@@ -14,12 +14,16 @@ export function InactivityWarningModal({
   onSignOut: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
+  const [startAt, setStartAt] = useState(() => Date.now());
   useEffect(() => {
     if (!open) return;
+    const started = Date.now();
+    setNow(started);
+    setStartAt(started);
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [open]);
-  const seconds = Math.max(0, Math.ceil(remainingMs / 1000) - Math.floor((now - now) / 1000));
+  const seconds = Math.max(0, Math.ceil(remainingMs / 1000) - Math.floor((now - startAt) / 1000));
   const mm = Math.floor(seconds / 60);
   const ss = (seconds % 60).toString().padStart(2, "0");
   return (
