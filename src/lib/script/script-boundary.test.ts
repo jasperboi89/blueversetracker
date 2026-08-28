@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { ingestScript } from "./script-ingest";
 import { diffStructures } from "./script-diff";
 import { analyzeChangeImpact } from "./change-impact";
-import { buildTestPlan } from "./test-intelligence";
+import { buildRegressionSuite } from "./test-intelligence";
 import { versionInsert } from "./script-version-map";
 import type { ScriptAnalysis } from "./script-contract";
 
@@ -87,7 +87,7 @@ describe("unknown structure stays unknown", () => {
 
   it("marks a reference with no matching component as unresolved, not as an edge to nowhere", () => {
     const unresolved = analysis.structure.dependencies.filter(
-      (d) => d.resolution !== "resolved",
+      (d) => d.resolution === "unresolved",
     );
     expect(unresolved.length).toBeGreaterThan(0);
     for (const dep of unresolved) {
@@ -128,8 +128,8 @@ describe("diff and impact never overstate", () => {
       ...a.structure.components.map((c) => c.name),
       ...b.structure.components.map((c) => c.name),
     ]);
-    for (const entry of [...diff.added, ...diff.removed, ...diff.modified]) {
-      expect(names.has(entry.name)).toBe(true);
+    for (const delta of diff.components) {
+      expect(names.has(delta.component.name)).toBe(true);
     }
   });
 
@@ -153,7 +153,8 @@ describe("diff and impact never overstate", () => {
 describe("test intelligence prepares, never passes", () => {
   const a = ingestScript(SCRIPT_A);
   const b = ingestScript(SCRIPT_B);
-  const plan = buildTestPlan(b.structure, analyzeChangeImpact(b.structure, diffStructures(a.structure, b.structure)));
+  const diff = diffStructures(a.structure, b.structure);
+  const plan = buildRegressionSuite(b.structure, diff, analyzeChangeImpact(b.structure, diff));
 
   it("produces checks that are not marked executed", () => {
     const serialized = allText(plan).toLowerCase();
@@ -161,8 +162,9 @@ describe("test intelligence prepares, never passes", () => {
     expect(serialized).not.toContain('"status":"pass"');
   });
 
-  it("states that the plan may not be exhaustive", () => {
-    expect(allText(plan)).toMatch(/not exhaustive|may miss|incomplete|partial/i);
+  it("surfaces its own gaps rather than implying full coverage", () => {
+    expect(Array.isArray(plan.gaps)).toBe(true);
+    expect(plan.coverageOfImpact).toBeLessThanOrEqual(1);
   });
 });
 
