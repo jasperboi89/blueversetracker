@@ -151,7 +151,9 @@ export function DependencyCortexPane() {
       "COMPONENTS:",
       ...s.components.slice(0, 120).map((c) => `- ${c.kind}: ${c.name}`),
       "DEPENDENCIES:",
-      ...s.dependencies.slice(0, 160).map((d) => `- ${d.from} --${d.kind}--> ${d.to} (${d.resolution})`),
+      ...s.dependencies
+        .slice(0, 160)
+        .map((d) => `- ${d.fromId} --${d.kind}--> ${d.toKey} (${d.resolution})`),
       `DIFF: added=${derived.diff.counts.componentsAdded} removed=${derived.diff.counts.componentsRemoved} modified=${derived.diff.counts.componentsModified} identical=${derived.diff.structurallyIdentical}`,
       `IMPACT: ${derived.impact.impacted.slice(0, 20).map((h) => `${h.name} (${h.relation})`).join("; ") || "none"}`,
       `CAVEATS: ${derived.impact.caveats.join("; ") || "none"}`,
