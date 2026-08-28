@@ -2,12 +2,14 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Radar as RadarIcon, ArrowUpRight } from "lucide-react";
 import {
+  anomaliesToRadar,
   rankRadar,
   type RadarCategory,
   type RadarItem,
   type RadarSeverity,
 } from "@/lib/core/operational-radar";
 import { useAccountCortexState } from "@/lib/core/account-cortex-store";
+import { allAnomalies, useAnomalyState } from "@/lib/core/anomaly-store";
 import { useRecurringRows } from "@/lib/reports/recurring-issues";
 import { useIntelligenceFeedback, suppressedRadarIds } from "@/lib/core/intelligence-feedback";
 import type { ConfidenceClass, PatternType } from "@/lib/core/pattern-intelligence";
@@ -38,6 +40,7 @@ function severityOf(s: string): RadarSeverity {
 
 function useRadarItems(): RadarItem[] {
   const cortex = useAccountCortexState();
+  const anomalyState = useAnomalyState();
   const recurring = useRecurringRows();
   const feedback = useIntelligenceFeedback();
 
@@ -89,8 +92,12 @@ function useRadarItems(): RadarItem[] {
       });
     }
 
+    // Phase 5 deviations. Baseline-gap signals are deliberately excluded —
+    // "we are still learning" is never an attention item.
+    items.push(...anomaliesToRadar(allAnomalies(anomalyState)));
+
     return rankRadar(items, suppressedRadarIds(feedback));
-  }, [cortex, recurring, feedback]);
+  }, [cortex, anomalyState, recurring, feedback]);
 }
 
 const CATEGORY_LABEL: Record<RadarCategory, string> = {
@@ -98,6 +105,7 @@ const CATEGORY_LABEL: Record<RadarCategory, string> = {
   change_followup: "Change follow-up",
   resolution_match: "Resolution match",
   workload: "Workload",
+  anomaly: "Anomaly",
   system: "System",
 };
 
