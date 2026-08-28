@@ -138,6 +138,41 @@ export function DependencyCortexPane() {
     };
   }, [analysis, previous, versions]);
 
+  /**
+   * Structural facts only — component names, edge kinds and diff/impact counts
+   * that already passed through redaction. Script source never leaves here.
+   */
+  const facts = useMemo(() => {
+    if (!analysis || !derived) return "";
+    const s = analysis.structure;
+    return [
+      `components=${analysis.complexity.componentCount} branches=${analysis.complexity.branchCount} dependencies=${analysis.complexity.dependencyCount} maxDepth=${analysis.complexity.maxDepth} loops=${analysis.complexity.cycleCount} band=${analysis.complexity.band}`,
+      `drivers: ${analysis.complexity.drivers.join("; ") || "none"}`,
+      "COMPONENTS:",
+      ...s.components.slice(0, 120).map((c) => `- ${c.kind}: ${c.name}`),
+      "DEPENDENCIES:",
+      ...s.dependencies.slice(0, 160).map((d) => `- ${d.from} --${d.kind}--> ${d.to} (${d.resolution})`),
+      `DIFF: added=${derived.diff.counts.componentsAdded} removed=${derived.diff.counts.componentsRemoved} modified=${derived.diff.counts.componentsModified} identical=${derived.diff.structurallyIdentical}`,
+      `IMPACT: ${derived.impact.impacted.slice(0, 20).map((h) => `${h.name} (${h.relation})`).join("; ") || "none"}`,
+      `CAVEATS: ${derived.impact.caveats.join("; ") || "none"}`,
+      `UNKNOWN LINES: ${s.unknowns.length}`,
+    ].join("\n");
+  }, [analysis, derived]);
+
+  const reason = useMutation({
+    mutationFn: () =>
+      aiScriptReasoning({
+        data: {
+          title: selected?.title ?? "",
+          kind: selected?.kind ?? "script",
+          coverage: analysis?.complexity.coverage ?? 0,
+          facts,
+        },
+      }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const reasoning = reason.data?.ok ? reason.data.reasoning : null;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
