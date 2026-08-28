@@ -38,6 +38,10 @@ export interface AccountIntelligenceResult {
   whatFixed: WhatFixedThisResult[];
   /** Phase 5 — deviations from baseline plus explicit "still learning" states. */
   anomalies: AnomalyResult;
+  /** Phase 6 — comparable-state outlook plus explicit evidence gaps. */
+  forecasts: ForecastResult;
+  /** Phase 6 — bounded input the forecast evaluator re-grades against. */
+  forecastInput: ForecastInput;
 }
 
 /** Pure assembly from a loaded pack + ledger slice. Deterministic. */
