@@ -164,34 +164,36 @@ export function traverse(
   }
 
   const startingComponentId = current.id;
+  let cursor: ScriptComponent = current;
   const visited = new Set<string>();
 
   /* -------------------- walk -------------------- */
 
   for (let depth = 0; ; depth += 1) {
+    const node: ScriptComponent = cursor;
     if (depth >= SIMULATION_LIMITS.maxDepth || pathTrace.length >= SIMULATION_LIMITS.maxSteps) {
       truncated = true;
       status = "partial";
       warn({
         code: "truncated",
         detail: `Traversal stopped at the ${SIMULATION_LIMITS.maxDepth}-step bound; the remainder of the path was not walked.`,
-        componentId: current.id,
+        componentId: node.id,
       });
       break;
     }
 
-    if (visited.has(current.id)) {
+    if (visited.has(node.id)) {
       cycleDetected = true;
       status = "partial";
       warn({
         code: "cycle_detected",
-        detail: `Path returns to "${current.name}" — cycle detected; traversal stopped for inspection.`,
-        componentId: current.id,
+        detail: `Path returns to "${node.name}" — cycle detected; traversal stopped for inspection.`,
+        componentId: node.id,
       });
       addStep({
-        componentId: current.id,
-        name: current.name,
-        kind: current.kind,
+        componentId: node.id,
+        name: node.name,
+        kind: node.kind,
         detail: "Cycle — this component was already visited on this path.",
         knowledge: "known",
         evidence: "repeated component on the traversed path",
@@ -199,31 +201,31 @@ export function traverse(
       });
       break;
     }
-    visited.add(current.id);
-    traversed.push(current.id);
+    visited.add(node.id);
+    traversed.push(node.id);
 
     addStep({
-      componentId: current.id,
-      name: current.name,
-      kind: current.kind,
-      detail: `Enter ${current.kind} "${current.name}".`,
+      componentId: node.id,
+      name: node.name,
+      kind: node.kind,
+      detail: `Enter ${node.kind} "${node.name}".`,
       knowledge: "known",
-      evidence: `component recognised at line ${current.line}`,
+      evidence: `component recognised at line ${node.line}`,
     });
     addTransition({
-      componentId: current.id,
-      componentName: current.name,
+      componentId: node.id,
+      componentName: node.name,
       operation: "enter",
       valueSource: "structure",
     });
 
-    const edges = outgoing.get(current.id) ?? [];
+    const edges: ScriptDependency[] = outgoing.get(node.id) ?? [];
 
     /* ---- state effects: writes / reads ---- */
     for (const dep of edges) {
       if (dep.kind === "writes") {
-        const input = inputByKey.get(dep.toKey) ?? inputByKey.get(current.key);
-        const assumption = assumptionByKey.get(dep.toKey) ?? assumptionByKey.get(current.key);
+        const input = inputByKey.get(dep.toKey) ?? inputByKey.get(node.key);
+        const assumption = assumptionByKey.get(dep.toKey) ?? assumptionByKey.get(node.key);
         const value = input?.value ?? assumption?.value;
         const source = input ? "scenario_input" : assumption ? "assumption" : "unknown";
         if (assumption && !input) {
@@ -234,15 +236,15 @@ export function traverse(
           unknownSteps += 1;
           warn({
             code: "assumption_required",
-            detail: `"${current.name}" writes "${dep.toKey}" but no value was supplied.`,
-            componentId: current.id,
+            detail: `"${node.name}" writes "${dep.toKey}" but no value was supplied.`,
+            componentId: node.id,
           });
         } else if (Object.keys(state).length < SIMULATION_LIMITS.maxStateKeys) {
           state[dep.toKey] = value;
         }
         addTransition({
-          componentId: current.id,
-          componentName: current.name,
+          componentId: node.id,
+          componentName: node.name,
           operation: "set_field",
           field: dep.toKey,
           value: state[dep.toKey] ?? "<unknown>",
@@ -252,8 +254,8 @@ export function traverse(
       } else if (dep.kind === "reads") {
         const known = state[dep.toKey];
         addTransition({
-          componentId: current.id,
-          componentName: current.name,
+          componentId: node.id,
+          componentName: node.name,
           operation: "read_field",
           field: dep.toKey,
           value: known ?? "<unknown>",
@@ -262,8 +264,8 @@ export function traverse(
         if (known === undefined) {
           warn({
             code: "assumption_required",
-            detail: `"${current.name}" reads "${dep.toKey}" before anything on this path wrote it.`,
-            componentId: current.id,
+            detail: `"${node.name}" reads "${dep.toKey}" before anything on this path wrote it.`,
+            componentId: node.id,
           });
         }
         affected.push(dep.id);
@@ -273,21 +275,21 @@ export function traverse(
         unsupportedConstructs += 1;
         warn({
           code: "unsupported_expression",
-          detail: `"${current.name}" has an unnamed reference to "${dep.toKey}"; it is not treated as a path.`,
-          componentId: current.id,
+          detail: `"${node.name}" has an unnamed reference to "${dep.toKey}"; it is not treated as a path.`,
+          componentId: node.id,
         });
       }
     }
 
-    if (current.kind === "calculation") {
-      const assumption = assumptionByKey.get(current.key);
+    if (node.kind === "calculation") {
+      const assumption = assumptionByKey.get(node.key);
       unsupportedConstructs += 1;
       if (assumption) {
         recordAssumption(assumption.key, assumption.value);
         addStep({
-          componentId: current.id,
-          name: current.name,
-          kind: current.kind,
+          componentId: node.id,
+          name: node.name,
+          kind: node.kind,
           detail: `Expression not evaluated; assumed result "${assumption.value}".`,
           knowledge: "assumed",
           evidence: "operator assumption recorded on the scenario",
@@ -296,14 +298,14 @@ export function traverse(
       } else {
         warn({
           code: "unsupported_expression",
-          detail: `Calculation "${current.name}" is not evaluated by the engine; supply an assumption to continue past it.`,
-          componentId: current.id,
+          detail: `Calculation "${node.name}" is not evaluated by the engine; supply an assumption to continue past it.`,
+          componentId: node.id,
         });
       }
     }
 
     /* ---- navigation ---- */
-    const navEdges = edges.filter((d) => NAVIGATION_KINDS.has(d.kind));
+    const navEdges: ScriptDependency[] = edges.filter((d) => NAVIGATION_KINDS.has(d.kind));
 
     for (const dep of navEdges) {
       if (dep.resolution === "unresolved" || (!dep.toId && dep.resolution !== "internal")) {
@@ -312,30 +314,30 @@ export function traverse(
     }
 
     if (navEdges.length === 0) {
-      terminalState = { componentId: current.id, name: current.name, kind: current.kind };
+      terminalState = { componentId: node.id, name: node.name, kind: node.kind };
       addTransition({
-        componentId: current.id,
-        componentName: current.name,
+        componentId: node.id,
+        componentName: node.name,
         operation: "terminal",
         valueSource: "structure",
       });
       break;
     }
 
-    const resolvable = navEdges.filter((d) => d.toId && byId.has(d.toId));
+    const resolvable: ScriptDependency[] = navEdges.filter((d) => d.toId && byId.has(d.toId));
 
     if (resolvable.length === 0) {
       status = "partial";
       const target = navEdges[0]!;
       warn({
         code: "unresolved_dependency",
-        detail: `Path stops at "${current.name}": target "${target.toKey}" is not present in this script version.`,
-        componentId: current.id,
+        detail: `Path stops at "${node.name}": target "${target.toKey}" is not present in this script version.`,
+        componentId: node.id,
       });
       addStep({
-        componentId: current.id,
-        name: current.name,
-        kind: current.kind,
+        componentId: node.id,
+        name: node.name,
+        kind: node.kind,
         detail: `Continues to "${target.toKey}", which this script does not define.`,
         knowledge: "unknown",
         evidence: `unresolved ${target.kind} edge at line ${target.line}`,
@@ -350,8 +352,8 @@ export function traverse(
     if (resolvable.length === 1) {
       chosen = resolvable[0]!;
     } else {
-      const input = inputByKey.get(current.key);
-      const assumption = assumptionByKey.get(current.key);
+      const input = inputByKey.get(node.key);
+      const assumption = assumptionByKey.get(node.key);
       const wanted = (input?.value ?? assumption?.value ?? "").trim().toLowerCase();
       if (wanted) {
         chosen = resolvable.find((d) => d.toKey === wanted) ?? resolvable.find((d) => d.toKey.includes(wanted));
@@ -362,21 +364,21 @@ export function traverse(
         status = "partial";
         warn({
           code: "ambiguous_branch",
-          detail: `"${current.name}" has ${resolvable.length} possible targets and the scenario does not select one.`,
-          componentId: current.id,
+          detail: `"${node.name}" has ${resolvable.length} possible targets and the scenario does not select one.`,
+          componentId: node.id,
         });
         warn({
           code: "assumption_required",
-          detail: `Supply a value for "${current.name}" to continue past this branch.`,
-          componentId: current.id,
+          detail: `Supply a value for "${node.name}" to continue past this branch.`,
+          componentId: node.id,
         });
         for (const cand of resolvable.slice(0, SIMULATION_LIMITS.maxAlternatePaths)) {
           alternatePaths.push([...traversed, cand.toId!]);
         }
         addStep({
-          componentId: current.id,
-          name: current.name,
-          kind: current.kind,
+          componentId: node.id,
+          name: node.name,
+          kind: node.kind,
           detail: `Branch not determined — candidates: ${resolvable.map((d) => d.toKey).join(", ")}.`,
           knowledge: "unknown",
           evidence: `${resolvable.length} recognised outgoing branch targets`,
@@ -387,7 +389,7 @@ export function traverse(
     }
 
     affected.push(chosen.id);
-    const next = byId.get(chosen.toId!)!;
+    const next: ScriptComponent = byId.get(chosen!.toId!)!;
 
     addStep({
       componentId: next.id,
@@ -420,7 +422,7 @@ export function traverse(
       valueSource: chosenSource,
     });
 
-    current = next;
+    cursor = next;
   }
 
   if (unresolved.length > 0 && status === "complete") status = "partial";
