@@ -22,7 +22,9 @@ export type RadarCategory =
   | "resolution_match"
   | "workload"
   | "anomaly"
+  | "forecast"
   | "system";
+
 
 export type RadarSeverity = "info" | "notice" | "elevated";
 
