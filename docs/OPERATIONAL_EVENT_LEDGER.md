@@ -1,8 +1,15 @@
 # Operational Event Ledger & Account Cortex
 
-**Phase 2 — Operational Intelligence Foundation**
+**Phase 2 — Operational Intelligence Foundation** (updated in Phase 3)
 Status: implemented (foundation). Extends canonical systems; introduces no
 parallel architecture.
+
+> **Phase 3 update — server-backed ledger + allowlist.** The Phase 2 local
+> bounded ledger and its consumer-facing API (`queryLedger`, `aggregateAccount`,
+> the local store) are **unchanged and preserved**. Phase 3 adds durability
+> BEHIND that API — see **Phase 3: server-backed ledger** near the end of this
+> document. The two-layer model is now: transient Event Spine → durable ledger
+> (local bounded cache + server-backed table).
 
 This document describes the two foundation pieces added in Phase 2 and the
 seams later phases build on:
@@ -140,3 +147,62 @@ signals into the Evidence Graph and add anomaly/predictive/causal signals here.
   API (Phase 3).
 
 All of these extend the modules above; none replace them.
+
+---
+
+## Phase 3: server-backed ledger + durable-event allowlist
+
+**BUILT NOW.** The Phase 2 API is untouched; durability is added behind it.
+
+### Durable-event allowlist (Part 2) — `ledger-events.ts`
+
+Not every spine event is persisted. `isDurableEvent(type)` is the single source
+of truth for what belongs in the durable ledger, plus a coarse `category`
+(account/ticket/work/resolution/programming/ai/intelligence/system) and
+`sensitivity` (reference/operational/sensitive). Noisy view/navigation/timer/
+night-plan/curator events are intentionally transient. Spec categories with no
+current event (account config change, explicit escalation/reopen, AI
+accept/reject decisions, integration health) are listed as
+`FUTURE_DURABLE_CATEGORIES` — declared, not faked.
+
+### Server table (Part 1 & 14) — `supabase/migrations/…_operational_event_ledger.sql`
+
+`operational_event_ledger` is **append-only** (grant is `select, insert` only —
+no update/delete — and there is no update/delete RLS policy), **per-operator**
+(RLS `auth.uid() = operator_user_id`), **idempotent** (`unique(operator_user_id,
+event_id)`), and **independently queryable** on account / ticket / work item /
+type / category / time (each a first-class indexed column). Event-specific
+detail is a small sanitized `metadata` JSONB — never bodies/PHI/secrets. Schema
+is versioned (`schema_version`, `LEDGER_SCHEMA_VERSION`).
+
+> **Not applied in this environment.** The migration ships in this change but is
+> not run here (the private registry is blocked, so there is no build/deploy).
+> Because the generated Supabase `Database` type does not yet include the table,
+> `ledger.functions.ts` accesses the query builder through a localized `as any`
+> (as `blob-sync.ts` already does) until types are regenerated post-deploy.
+
+### Server functions — `ledger.functions.ts`
+
+`appendLedgerEvents` (idempotent batch upsert) and `queryLedgerEvents` (bounded,
+per-operator, filtered). Auth via `requireActiveAuthorizedUser`.
+
+### Wiring behind the Phase 2 API — `event-ledger.ts`
+
+`startEventLedger()` now also: pushes durable, allowlisted events to the server
+(debounced best-effort queue, `enqueueServer`), and backfills the local cache
+from server history once on start (`hydrateFromServer`, unioned via
+`mergeLedgers`). **Every server call is best-effort** — on failure it logs and
+leaves the bounded local ledger as the working source. A ledger outage never
+disturbs ordinary operation; the local cache provides recent context.
+
+```
+Event Spine → ledger subscriber → local bounded cache  (always)
+                               ↘ server ledger          (best-effort)
+```
+
+### FOUNDATION / FUTURE
+
+Retention/cleanup jobs, a server-side query RPC with richer correlation, and a
+cross-device server-authoritative merge are later refinements. The local cache
++ blob sync remain the fallback.
+

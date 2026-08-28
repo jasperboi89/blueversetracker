@@ -14,7 +14,11 @@
  */
 
 import type { ActionType } from "@/lib/core/actions";
-import type { EvidenceEntityType, EvidenceOrigin, EvidenceConfidence } from "@/lib/core/evidence-contract";
+import type {
+  EvidenceEntityType,
+  EvidenceOrigin,
+  EvidenceConfidence,
+} from "@/lib/core/evidence-contract";
 import type { TaskKind } from "@/lib/ai/router/task-types";
 
 /* ------------------------------------------------------------------ */
@@ -61,6 +65,39 @@ export type CapabilitySideEffects = "none" | "local" | "persistent" | "external"
 export type CapabilityLifecycle = "active" | "deprecated" | "disabled" | "experimental";
 
 export type CapabilityDataClass = "public" | "internal" | "sensitive" | "restricted";
+
+/* ------------------------------------------------------------------ */
+/* Autonomy (Phase 3, Part 12)                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The autonomy progression, weakest → strongest. This CLASSIFIES how far a
+ * capability may run without a human; it grants nothing (the confirmation +
+ * permission policies remain authoritative). Phase 3 keeps AI at OBSERVE /
+ * EXPLAIN / RECOMMEND / PREPARE — never broad autonomous production actions.
+ */
+export const CAPABILITY_AUTONOMY_LEVELS = [
+  "observe",
+  "explain",
+  "recommend",
+  "prepare",
+  "execute_safe",
+  "supervised",
+  "narrow_autonomous",
+] as const;
+export type CapabilityAutonomyLevel = (typeof CAPABILITY_AUTONOMY_LEVELS)[number];
+
+/** Highest autonomy AI may operate at in Phase 3. Nothing above PREPARE. */
+export const MAX_AI_AUTONOMY_PHASE3: CapabilityAutonomyLevel = "prepare";
+
+function autonomyRank(level: CapabilityAutonomyLevel): number {
+  return CAPABILITY_AUTONOMY_LEVELS.indexOf(level);
+}
+
+/** True when a level is at or below the Phase 3 AI ceiling (prepare). */
+export function isWithinPhase3AiAutonomy(level: CapabilityAutonomyLevel): boolean {
+  return autonomyRank(level) <= autonomyRank(MAX_AI_AUTONOMY_PHASE3);
+}
 
 /* ------------------------------------------------------------------ */
 /* Policies                                                            */
@@ -194,6 +231,13 @@ export interface CapabilityDefinition {
   sideEffects: CapabilitySideEffects;
   lifecycle: CapabilityLifecycle;
   dataClass: CapabilityDataClass;
+  /**
+   * Declared autonomy ceiling (Phase 3). Optional and non-breaking: when
+   * omitted, `capabilityAutonomy()` derives a conservative default from the
+   * operation + confirmation policy. Never weaker than the confirmation policy
+   * implies.
+   */
+  autonomy?: CapabilityAutonomyLevel;
   /** Shape descriptors; validated by the adapter's Zod schema at invocation. */
   inputSchema: Record<string, string>;
   outputSchema: Record<string, string>;
@@ -215,6 +259,36 @@ export interface CapabilityDefinition {
 
 export function capabilityRef(def: Pick<CapabilityDefinition, "id" | "version">): string {
   return `${def.id}@${def.version}`;
+}
+
+/**
+ * The capability's autonomy level — declared if present, otherwise derived
+ * conservatively from operation + confirmation. Pure and deterministic. A
+ * blocked confirmation caps at "observe"; read/search stay observe/explain;
+ * prepare stays prepare; mutating operations require confirmation, so they land
+ * at execute_safe (none) or supervised (explicit) — above the Phase 3 AI ceiling
+ * so AI may only propose them.
+ */
+export function capabilityAutonomy(
+  def: Pick<CapabilityDefinition, "autonomy" | "operation" | "confirmation">,
+): CapabilityAutonomyLevel {
+  if (def.autonomy) return def.autonomy;
+  if (def.confirmation.mode === "blocked") return "observe";
+  switch (def.operation) {
+    case "read":
+    case "search":
+      return "observe";
+    case "analyze":
+      return "explain";
+    case "prepare":
+      return "prepare";
+    default: {
+      // create | update | delete | execute — never AI-autonomous in Phase 3.
+      const explicit =
+        def.confirmation.mode === "explicit" || def.confirmation.mode === "explicit_high_risk";
+      return explicit ? "supervised" : "execute_safe";
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */
