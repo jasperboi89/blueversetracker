@@ -439,3 +439,19 @@ function EmptyState({ text }: { text: string }) {
     </div>
   );
 }
+
+function ReasonList({ label, items }: { label: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-cyan-300/70">{label}</p>
+      <ul className="mt-0.5 space-y-0.5">
+        {items.map((item) => (
+          <li key={item} className="text-xs text-muted-foreground">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
