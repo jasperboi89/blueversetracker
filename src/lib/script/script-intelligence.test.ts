@@ -163,8 +163,8 @@ describe("test intelligence", () => {
     for (const c of suite.cases) expect(c.rationale.length).toBeGreaterThan(0);
   });
 
-  it("returns no cases when nothing changed", () => {
-    const s = ingestScript(SCRIPT_V1).structure;
+  it("returns no cases when nothing changed and every target resolves", () => {
+    const s = ingestScript("SECTION: A\nGOTO B\n\nSECTION: B\nMESSAGE: done").structure;
     const diff = diffStructures(s, s);
     const suite = buildRegressionSuite(s, diff, analyzeChangeImpact(s, diff));
     expect(suite.cases).toHaveLength(0);

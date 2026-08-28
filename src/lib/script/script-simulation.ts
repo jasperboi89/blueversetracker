@@ -103,6 +103,14 @@ export function enumerateStaticPaths(structure: ScriptStructure): StaticPathRepo
 
   for (const entry of entryPoints) walk(entry, [], new Set());
 
+  // Components that sit inside a cycle are reachable from no entry point, so
+  // the walk above never touches them. Seed a walk from each so a fully or
+  // partially cyclic script still reports its paths instead of looking empty.
+  for (const id of [...graph.nodes.keys()].sort()) {
+    if (visitedAnywhere.has(id) || paths.length >= MAX_PATHS) continue;
+    walk(id, [], new Set());
+  }
+
   const unreachable = [...graph.nodes.keys()]
     .filter((id) => !visitedAnywhere.has(id))
     .map((id) => graph.nodes.get(id)?.component.name ?? id)
