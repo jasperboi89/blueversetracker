@@ -388,8 +388,9 @@ export function traverse(
       }
     }
 
-    affected.push(chosen.id);
-    const next: ScriptComponent = byId.get(chosen!.toId!)!;
+    const edge: ScriptDependency = chosen!;
+    affected.push(edge.id);
+    const next: ScriptComponent = byId.get(edge.toId!)!;
 
     addStep({
       componentId: next.id,
@@ -397,13 +398,13 @@ export function traverse(
       kind: next.kind,
       detail:
         chosenSource === "structure"
-          ? `Single recognised ${chosen.kind.replace(/_/g, " ")} target.`
+          ? `Single recognised ${edge.kind.replace(/_/g, " ")} target.`
           : `Selected by ${chosenSource === "scenario_input" ? "scenario input" : "assumption"}.`,
       knowledge: chosenSource === "assumption" ? "assumed" : "known",
-      evidence: `${chosen.kind} edge at line ${chosen.line}`,
+      evidence: `${edge.kind} edge at line ${edge.line}`,
     });
 
-    if (chosen.kind === "transfers_to") {
+    if (edge.kind === "transfers_to") {
       traversed.push(next.id);
       terminalState = { componentId: next.id, name: next.name, kind: next.kind };
       addTransition({
@@ -418,7 +419,7 @@ export function traverse(
     addTransition({
       componentId: next.id,
       componentName: next.name,
-      operation: chosen.kind === "branches_to" ? "branch" : "navigate",
+      operation: edge.kind === "branches_to" ? "branch" : "navigate",
       valueSource: chosenSource,
     });
 
