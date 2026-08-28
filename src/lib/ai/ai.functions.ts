@@ -724,3 +724,72 @@ export const aiWorkSummaries = createServerFn({ method: "POST" })
       return { ok: false as const, error: "AI returned malformed summaries." };
     }
   });
+
+/**
+ * Phase 4 — contextual script reasoning.
+ *
+ * Receives ONLY sanitized structural facts (counts, component names, edges,
+ * diff/impact summaries) produced by the redaction-first ingestion pipeline.
+ * Raw script source is never sent. Autonomy is capped at OBSERVE / EXPLAIN /
+ * RECOMMEND / PREPARE — the model may not propose deployment or edits.
+ */
+const ScriptReasoningInput = z.object({
+  title: z.string().trim().max(200).default(""),
+  kind: z.string().trim().max(40).default("script"),
+  coverage: z.number().min(0).max(1),
+  facts: z.string().max(12000),
+  question: z.string().trim().max(600).optional(),
+});
+
+export const aiScriptReasoning = createServerFn({ method: "POST" })
+  .middleware([requireActiveAuthorizedUser])
+  .inputValidator((input: unknown) => ScriptReasoningInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { aiComplete } = await import("./ai-client.server");
+    await logAi(context, "script-reasoning", "");
+
+    const res = await aiComplete({
+      task: "knowledge_interpretation",
+      json: true,
+      system: [
+        "You explain the STRUCTURE of an answering-service IS script to the operator who maintains it.",
+        "You are given extracted structural facts only — never the script text. Reason strictly from those facts.",
+        "Never claim a cause; describe structure, reachability and what changed. Use correlational language.",
+        "You may OBSERVE, EXPLAIN, RECOMMEND and PREPARE checks. Never propose editing or deploying a script.",
+        data.coverage < 0.6
+          ? "Extraction coverage is LOW: state plainly that this reading is partial and may miss constructs."
+          : "",
+        'Return json shaped exactly as: {"summary":string,"observations":string[],"risks":string[],"checks":string[],"unknowns":string[]}',
+        "summary: 1-2 sentences. Each array: at most 5 short entries, [] when nothing is supported by the facts.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      prompt: [
+        `SCRIPT: ${data.title || "(untitled)"} (kind: ${data.kind})`,
+        `EXTRACTION COVERAGE: ${Math.round(data.coverage * 100)}%`,
+        "",
+        "STRUCTURAL FACTS:",
+        data.facts,
+        data.question ? `\nOPERATOR QUESTION: ${data.question}` : "",
+      ].join("\n"),
+    });
+    if (!res.ok) return { ok: false as const, error: res.error };
+
+    try {
+      const parsed = JSON.parse(res.text ?? "{}") as Record<string, unknown>;
+      const arr = (v: unknown) =>
+        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 5) : [];
+      return {
+        ok: true as const,
+        reasoning: {
+          summary: typeof parsed["summary"] === "string" ? parsed["summary"] : "",
+          observations: arr(parsed["observations"]),
+          risks: arr(parsed["risks"]),
+          checks: arr(parsed["checks"]),
+          unknowns: arr(parsed["unknowns"]),
+        },
+      };
+    } catch {
+      return { ok: false as const, error: "AI returned malformed script reasoning." };
+    }
+  });

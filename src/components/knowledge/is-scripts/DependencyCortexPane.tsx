@@ -9,6 +9,7 @@ import {
   Route as RouteIcon,
   ScanSearch,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ import { buildRegressionSuite } from "@/lib/script/test-intelligence";
 import { analyzeHistory } from "@/lib/script/script-history";
 import { enumerateStaticPaths } from "@/lib/script/script-simulation";
 import { MIN_TRUSTED_COVERAGE } from "@/lib/script/script-contract";
+import { aiScriptReasoning } from "@/lib/ai/ai.functions";
 import { eventSpine } from "@/lib/core/event-spine";
 
 /**
@@ -136,6 +138,43 @@ export function DependencyCortexPane() {
     };
   }, [analysis, previous, versions]);
 
+  /**
+   * Structural facts only — component names, edge kinds and diff/impact counts
+   * that already passed through redaction. Script source never leaves here.
+   */
+  const facts = useMemo(() => {
+    if (!analysis || !derived) return "";
+    const s = analysis.structure;
+    return [
+      `components=${analysis.complexity.componentCount} branches=${analysis.complexity.branchCount} dependencies=${analysis.complexity.dependencyCount} maxDepth=${analysis.complexity.maxDepth} loops=${analysis.complexity.cycleCount} band=${analysis.complexity.band}`,
+      `drivers: ${analysis.complexity.drivers.join("; ") || "none"}`,
+      "COMPONENTS:",
+      ...s.components.slice(0, 120).map((c) => `- ${c.kind}: ${c.name}`),
+      "DEPENDENCIES:",
+      ...s.dependencies
+        .slice(0, 160)
+        .map((d) => `- ${d.fromId} --${d.kind}--> ${d.toKey} (${d.resolution})`),
+      `DIFF: added=${derived.diff.counts.componentsAdded} removed=${derived.diff.counts.componentsRemoved} modified=${derived.diff.counts.componentsModified} identical=${derived.diff.structurallyIdentical}`,
+      `IMPACT: ${derived.impact.impacted.slice(0, 20).map((h) => `${h.name} (${h.relation})`).join("; ") || "none"}`,
+      `CAVEATS: ${derived.impact.caveats.join("; ") || "none"}`,
+      `UNKNOWN LINES: ${s.unknowns.length}`,
+    ].join("\n");
+  }, [analysis, derived]);
+
+  const reason = useMutation({
+    mutationFn: () =>
+      aiScriptReasoning({
+        data: {
+          title: selected?.title ?? "",
+          kind: selected?.kind ?? "script",
+          coverage: analysis?.complexity.coverage ?? 0,
+          facts,
+        },
+      }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const reasoning = reason.data?.ok ? reason.data.reasoning : null;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -160,6 +199,16 @@ export function DependencyCortexPane() {
         >
           <ScanSearch className="mr-2 h-3.5 w-3.5" />
           {record.isPending ? "Recording…" : "Record structural snapshot"}
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!selected || !facts || reason.isPending}
+          onClick={() => reason.mutate()}
+        >
+          <Sparkles className="mr-2 h-3.5 w-3.5" />
+          {reason.isPending ? "Reading structure…" : "Explain this structure"}
         </Button>
       </div>
 
@@ -289,6 +338,28 @@ export function DependencyCortexPane() {
             </ul>
             <Caveats items={derived.paths.caveats} />
           </Panel>
+
+          {(reasoning || reason.isPending || (reason.data && !reason.data.ok)) && (
+            <Panel icon={Sparkles} title="Structural reading" className="lg:col-span-2">
+              {reason.isPending ? (
+                <p className="text-xs text-muted-foreground">Reading the extracted structure…</p>
+              ) : reason.data && !reason.data.ok ? (
+                <p className="text-xs text-amber-200/90">{reason.data.error}</p>
+              ) : reasoning ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-foreground">{reasoning.summary}</p>
+                  <ReasonList label="Observations" items={reasoning.observations} />
+                  <ReasonList label="Watch" items={reasoning.risks} />
+                  <ReasonList label="Prepare these checks" items={reasoning.checks} />
+                  <ReasonList label="Not determinable from structure" items={reasoning.unknowns} />
+                  <p className="border-t border-white/5 pt-2 text-[11px] text-muted-foreground/80">
+                    Derived from redacted structural facts only — no script text was sent. Read-only:
+                    nothing here edits or deploys a script.
+                  </p>
+                </div>
+              ) : null}
+            </Panel>
+          )}
         </div>
       )}
     </div>
@@ -365,6 +436,22 @@ function EmptyState({ text }: { text: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-xs text-muted-foreground">
       {text}
+    </div>
+  );
+}
+
+function ReasonList({ label, items }: { label: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-cyan-300/70">{label}</p>
+      <ul className="mt-0.5 space-y-0.5">
+        {items.map((item) => (
+          <li key={item} className="text-xs text-muted-foreground">
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
