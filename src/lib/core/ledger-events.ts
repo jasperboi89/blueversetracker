@@ -95,6 +95,16 @@ const DURABLE: Partial<Record<AccEventType, DurableRule>> = {
   // counterpart is transient: it is a state of the system, not an event worth
   // keeping forever.
   "intelligence.anomaly_detected": { category: "intelligence", sensitivity: "reference" },
+
+  // RISK FORECASTING (Phase 6) — forecast lifecycle transitions are durable so
+  // trajectory and outcome evaluation have a real history to grade. Only ids,
+  // types, bands, horizons and counts are carried; recalculation with an
+  // unchanged band emits nothing.
+  "intelligence.forecast_created": { category: "intelligence", sensitivity: "reference" },
+  "intelligence.forecast_updated": { category: "intelligence", sensitivity: "reference" },
+  "intelligence.forecast_resolved": { category: "intelligence", sensitivity: "reference" },
+  "intelligence.forecast_expired": { category: "intelligence", sensitivity: "reference" },
+  "intelligence.forecast_acknowledged": { category: "intelligence", sensitivity: "reference" },
 };
 
 /**
