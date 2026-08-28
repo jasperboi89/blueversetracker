@@ -33,6 +33,7 @@ import { buildRegressionSuite } from "@/lib/script/test-intelligence";
 import { analyzeHistory } from "@/lib/script/script-history";
 import { enumerateStaticPaths } from "@/lib/script/script-simulation";
 import { MIN_TRUSTED_COVERAGE } from "@/lib/script/script-contract";
+import { aiScriptReasoning } from "@/lib/ai/ai.functions";
 import { eventSpine } from "@/lib/core/event-spine";
 
 /**
