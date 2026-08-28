@@ -38,9 +38,13 @@ what it must become, and the seam that gets us there.
   predictive intelligence.
 - **Seam / non-goal:** do **not** mutate the Spine into a database-backed event
   store. The clean path is an append-only sink behind the existing `events.ts`
-  emit path (a subscriber that persists sanitized events server-side), so the
-  Spine's shape is unchanged and the ledger consumes the same event contract.
-- **Status:** transient layer exists; durable ledger **to be built**.
+  emit path (a subscriber that persists sanitized events), so the Spine's shape
+  is unchanged and the ledger consumes the same event contract.
+- **Status:** transient layer exists; durable ledger **BUILT in Phase 2** —
+  `event-ledger.ts` is a durable sink on `eventSpine.subscribe`, persisted +
+  cloud-synced, bounded, with query/aggregate APIs. A server-backed append-only
+  table (for scale) is the remaining Phase 3 upgrade behind the same API. See
+  `docs/OPERATIONAL_EVENT_LEDGER.md`.
 
 ### Memory Cortex → temporal operational memory
 - **Today:** `src/lib/memory/*` — `experience-compiler`, `memory-runtime`,
@@ -62,9 +66,14 @@ what it must become, and the seam that gets us there.
   view with risk scoring, anomaly flags, and recurring-pattern learning surfaced
   on the account detail route.
 - **Seam:** the ports interface (`AccountContextPorts`) already isolates
-  sources; add a `worldModel` port + a persisted projection. Reuse the pack, do
-  not fork it.
-- **Status:** pack assembly exists; persistent world model **to build**.
+  sources. Phase 2 added Account Cortex as a *consumer* of the pack + ledger, not
+  a fork of the pack.
+- **Status:** pack assembly exists; **Account Cortex foundation BUILT in
+  Phase 2** — `account-cortex.ts` derives a deterministic, evidence-shaped
+  per-account world model from the durable ledger aggregate + bounded pack facts,
+  wired into Copilot context. A *persistent* world model (accumulated/scored over
+  time) and risk/anomaly signals are the remaining build. See
+  `docs/OPERATIONAL_EVENT_LEDGER.md`.
 - *Phase-1 note:* the Coverage Watch port is severed (returns empty) and its
   projection surfacing removed; the pack shape is otherwise intact.
 
@@ -164,44 +173,56 @@ what it must become, and the seam that gets us there.
 | Layer | Exists? | Role | Do NOT |
 | --- | --- | --- | --- |
 | **1. Fast transient event context** | ✅ `event-spine.ts` | Current-shift coordination buffer (bounded, persisted per shift). | Grow it into a database. |
-| **2. Durable operational event ledger** | ⛔ to build | Long-term, auditable events for learning, correlation, analytics, prediction. | Reuse the Spine's store; build a separate append-only sink behind `events.ts`. |
+| **2. Durable operational event ledger** | ✅ `event-ledger.ts` (Phase 2) | Long-term, auditable events for learning, correlation, analytics, prediction. Bounded local + cloud blob; server-backed table is Phase 3. | Reuse the Spine's store; it is a separate sink on the same bus. |
 
-The migration path is additive: both layers consume the **same** `events.ts`
-contract. The Spine keeps buffering; a new server-side subscriber persists
-sanitized events to the ledger. No breaking change to emitters.
+The migration path was additive and is now in place: both layers consume the
+**same** `events.ts` contract. The Spine keeps buffering; the ledger subscribes
+via `eventSpine.subscribe` and persists sanitized events durably. No change to
+emitters. Phase 3 swaps the ledger's persistence backend for a server-backed
+append-only table behind the same `record()`/`queryLedger()` API.
 
 ---
 
 ## What exists vs. what must be built
 
-**Already exists (extend, don't rebuild):** Event Spine (transient), Memory
-Cortex (compile + retrieve), Account Context Pack, Resolution Memory (ranked
+**Already exists (extend, don't rebuild):** Event Spine (transient) **+ durable
+Event Ledger (Phase 2)**, Memory Cortex (compile + retrieve), Account Context
+Pack **+ Account Cortex world model (Phase 2)**, Resolution Memory (ranked
 known-fixes), AI Router (task routing + deterministic intercept + tiers),
 Capability Registry (permissions/health/invocation), Evidence Graph + Reality
 Boundary (provenance/confidence/freshness/supersession), MCP (read tools), NBA
-(deterministic), Copilot (context-aware) + Command Palette + command-registry
-seam, Action Ledger + Safe Action Executor.
+(deterministic), Copilot (context-aware, now fed the world model) + Command
+Palette + command-registry seam, Action Ledger + Safe Action Executor.
 
-**Must eventually be built:** durable Operational Event Ledger; persistent
-Account world models; temporal/longitudinal memory; causal + temporal evidence
-edges; predictive risk + anomaly detection; autonomy levels on capabilities +
-approval workflow; multi-provider (local/private/cloud) routing with
-traceability; governed MCP write tools; NL command providers; predictive NBA;
-operational digital twin & simulation.
+**Must eventually be built:** server-backed durable ledger (scale); *persistent*
+Account world models (accumulated/scored over time); temporal/longitudinal
+memory; causal + temporal evidence edges; predictive risk + anomaly detection;
+autonomy levels on capabilities + approval workflow; multi-provider
+(local/private/cloud) routing with traceability; governed MCP write tools; NL
+command providers; predictive NBA; operational digital twin & simulation.
 
 ---
 
-## Recommended Phase 2 (candidate)
+## Phase 2 — delivered (Operational Intelligence Foundation)
 
-1. **Durable Operational Event Ledger (Layer 2)** behind `events.ts` — the
-   foundation everything predictive depends on. Read-only analytics first.
-2. **Autonomy levels** on `capability-contract` + wire the executor's
+1. ✅ **Durable Operational Event Ledger (Layer 2)** — `event-ledger.ts`,
+   consuming `events.ts` via `eventSpine.subscribe`; bounded, persisted +
+   cloud-synced; query/aggregate APIs. See `docs/OPERATIONAL_EVENT_LEDGER.md`.
+2. ✅ **Account Cortex foundation** — `account-cortex.ts` world model over the
+   ledger aggregate + bounded pack facts, evidence-shaped signals.
+3. ✅ **Contextual Copilot wiring** — the world model flows into Copilot account
+   context through the existing single account-context path.
+
+## Recommended Phase 3 (candidate)
+
+1. **Server-backed durable ledger** behind the same `record()`/`queryLedger()`
+   API (scale beyond the local blob cap).
+2. **Persistent, scored Account world model** surfaced on the account detail
+   route (Account Cortex UI) with the first risk/anomaly signals.
+3. **Autonomy levels** on `capability-contract` + the executor's
    Prepare → Approve → Execute → Verify path; expose in Settings + Audit Log.
-3. **Provider abstraction** in `ai-client.server` + record served model/provider
+4. **Provider abstraction** in `ai-client.server` + record served model/provider
    on every completion (traceability groundwork).
-4. **Account world-model** projection on the account detail route (persisted,
-   risk/anomaly flags) — the first "Cortex" surface.
-5. **Rename `handoff_generation` → `summary_generation`** and retire the
-   dormant Shift Handoff / Coverage Watch code + tables once rollback window
-   closes.
-6. Resolve `/constellations` (fold into Command Center or remove).
+5. **Rename `handoff_generation` → `summary_generation`** and retire the dormant
+   Shift Handoff / Coverage Watch code + tables once the rollback window closes.
+6. Resolve `/constellations` (surface for Quantum Bloom, or retire).
