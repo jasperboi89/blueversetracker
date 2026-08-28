@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireActiveAuthorizedUser } from "@/integrations/supabase/require-authorized";
 import { SCRIPT_LIMITS } from "./script-contract";
 import { ingestScript } from "./script-ingest";
 import { rowToVersion, versionInsert } from "./script-version-map";
@@ -16,7 +16,7 @@ const SELECT =
  * is persisted, and the table is insert+select only.
  */
 export const recordScriptVersion = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: unknown) =>
     z
       .object({
@@ -72,7 +72,7 @@ export const recordScriptVersion = createServerFn({ method: "POST" })
 
 /** Version history for one script, newest first. */
 export const listScriptVersions = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAuthorizedUser])
   .inputValidator((input: unknown) =>
     z.object({ scriptId: z.string().uuid(), limit: z.number().int().min(1).max(50).default(20) }).parse(input),
   )
@@ -89,11 +89,14 @@ export const listScriptVersions = createServerFn({ method: "GET" })
 
 /** Latest recorded version of every script the operator has analysed. */
 export const listLatestScriptVersions = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAuthorizedUser])
   .handler(async ({ context }) => {
     const { data: rows, error } = await context.supabase
       .from("script_versions")
       .select(SELECT)
+      // Defence in depth: RLS already isolates the operator, but the filter
+      // keeps cross-operator rows impossible even if a policy is loosened.
+      .eq("operator_user_id", context.userId)
       .order("version_number", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
