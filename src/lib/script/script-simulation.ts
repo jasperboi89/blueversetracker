@@ -41,7 +41,7 @@ const MAX_DEPTH = 25;
 function entryPointsOf(graph: DependencyGraph): string[] {
   const targeted = new Set<string>();
   for (const node of graph.nodes.values()) {
-    for (const edge of node.outgoing) if (edge.toId) targeted.add(edge.toId);
+    for (const id of node.dependsOn) targeted.add(id);
   }
   const entries = [...graph.nodes.keys()].filter((id) => !targeted.has(id));
   // A fully cyclic graph has no entry point; fall back to the first node so the
@@ -86,7 +86,7 @@ export function enumerateStaticPaths(structure: ScriptStructure): StaticPathRepo
       return;
     }
 
-    const onward = node.outgoing.filter((e) => e.toId && graph.nodes.has(e.toId));
+    const onward = node.dependsOn.filter((id) => graph.nodes.has(id));
     if (onward.length === 0) {
       paths.push({
         nodeIds: nextTrail,
@@ -98,7 +98,7 @@ export function enumerateStaticPaths(structure: ScriptStructure): StaticPathRepo
     }
 
     const nextSeen = new Set(seen).add(id);
-    for (const edge of onward) walk(edge.toId!, nextTrail, nextSeen);
+    for (const nextId of onward) walk(nextId, nextTrail, nextSeen);
   };
 
   for (const entry of entryPoints) walk(entry, [], new Set());
