@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { GreetingPanel } from "@/components/home/GreetingPanel";
+import { CommandHeader } from "@/components/home/CommandHeader";
+import { Zone } from "@/components/home/Zone";
+import { ScriptTwinTile } from "@/components/home/ScriptTwinTile";
+import { GovernedActionsBand } from "@/components/home/GovernedActionsBand";
 import { ShiftCard } from "@/components/home/ShiftCard";
 import { AlertCenter } from "@/components/home/AlertCenter";
 import { NextBestActionStrip } from "@/components/home/NextBestActionStrip";
@@ -106,39 +110,19 @@ const HOME_PANES: Array<{
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Command Center — Account Intel Hub" },
+      { title: "Command Center — Account Command Center" },
       { name: "description", content: "BlueVerse command center for AnSer Ops night shift." },
-      { property: "og:title", content: "Account Intel Hub" },
+      { property: "og:title", content: "Account Command Center" },
       {
         property: "og:description",
         content: "BlueVerse command center for AnSer Ops night shift.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Home,
 });
-
-/** Section band with an operational eyebrow — the backbone of the new hierarchy. */
-function Band({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-          {label}
-        </h2>
-        <span
-          aria-hidden
-          className="h-px flex-1"
-          style={{
-            background:
-              "linear-gradient(90deg, color-mix(in oklab, var(--cyan-glow) 30%, transparent), transparent)",
-          }}
-        />
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function Home() {
   const theme = useTheme();
@@ -158,37 +142,51 @@ function Home() {
         </PaneCanvas>
       ) : (
         <>
-          {/* Orientation — who, when, and the state of the shift. */}
-          <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-            <GreetingPanel />
+          {/* Command header — live operator presence, clock and system state. */}
+          <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+            <CommandHeader />
             <ShiftCard />
           </div>
 
-          {/* Priority intelligence — what to do next and the AI read on it. */}
-          <Band label="Priority">
+          {/* NOW — what matters this minute. */}
+          <Zone tone="now" label="Now" hint="what needs you this minute">
             <NextBestActionStrip />
-            <BriefingPanel />
-          </Band>
-
-          {/* Work intelligence — grounded radar, then what needs attention. */}
-          <Band label="Work Intelligence">
-            <IntelligenceLegend />
-            <RadarBand />
             <div className="grid gap-4 lg:grid-cols-2">
               <NightPlan />
               <AlertCenter />
             </div>
-          </Band>
+          </Zone>
 
-          {/* Operations — reference surfaces, lookups, and shift history. */}
-          <Band label="Operations">
+          {/* OUTLOOK — what may matter next, honestly labelled. */}
+          <Zone tone="outlook" label="Outlook" hint="what may matter next">
+            <BriefingPanel />
+          </Zone>
+
+          {/* OPERATIONAL RADAR — what changed and what to inspect next. */}
+          <Zone tone="radar" label="Operational Radar" hint="what changed · why it matters">
+            <IntelligenceLegend />
+            <RadarBand />
+          </Zone>
+
+          {/* GOVERNED ACTIONS — the lifecycle, never implying completion. */}
+          <Zone tone="governed" label="Governed Actions" hint="proposed → confirmed → executed → verified">
+            <GovernedActionsBand />
+          </Zone>
+
+          {/* CAPABILITIES — Script Intelligence as a first-class surface. */}
+          <Zone tone="radar" label="Capabilities">
+            <ScriptTwinTile />
+          </Zone>
+
+          {/* OPERATIONS — reference surfaces, lookups, and shift history. */}
+          <Zone tone="ops" label="Operations">
             <QuickStart />
             <div className="grid gap-4 lg:grid-cols-2">
               <LookupCards />
               <OverviewCards />
             </div>
             <ShiftLedger />
-          </Band>
+          </Zone>
         </>
       )}
       <ShiftSummaryButton />

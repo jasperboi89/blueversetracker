@@ -14,6 +14,7 @@ import {
   Inbox,
   LibraryBig,
   Trophy,
+  TerminalSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -76,6 +77,12 @@ const dispatchItems: NavItem[] = [
 /** KNOWLEDGE — runbooks, scripts and notes. */
 const knowledgeItems: NavItem[] = [
   { title: "Knowledge Vault", url: "/knowledge-vault", icon: LibraryBig, accent: "oklch(0.8 0.16 190)" },
+  {
+    title: "Script Twin",
+    url: "/knowledge-vault?section=is-scripts",
+    icon: TerminalSquare,
+    accent: "var(--electric)",
+  },
 ];
 
 /** INTELLIGENCE — look back, correlate, and report. */
@@ -158,7 +165,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="leading-tight">
               <div className="text-sm font-semibold tracking-wide text-foreground">
-                Account Intel Hub
+                Account Command Center
               </div>
               <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                 AnSer Ops
