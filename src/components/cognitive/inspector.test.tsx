@@ -231,10 +231,9 @@ describe("privacy boundary", () => {
   });
 
   it("escapes untrusted worker text instead of rendering HTML", () => {
+    const base = fixtureRun();
     const run = fixtureRun({
-      contributions: [
-        fixtureOutput("investigator", { summary: "<img src=x onerror=alert(1)>" }),
-      ],
+      response: { ...base.response!, answer: "<img src=x onerror=alert(1)>" },
     });
     const html = render(run);
     expect(html).not.toContain("<img src=x");
