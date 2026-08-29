@@ -85,7 +85,10 @@ function link(
 /** Drive a hypothesis all the way to a legitimate VERIFIED state. */
 function verifiedFixture(): { inv: Investigation; hId: string } {
   let inv = baseInvestigation();
-  const a = hypo(1, "Field cleared during back navigation", ["back navigation clears the field"]);
+  const a: Hypothesis = {
+    ...hypo(1, "Field cleared during back navigation", ["back navigation clears the field"]),
+    hypothesisType: "data_state",
+  };
   const b = hypo(2, "Downstream overwrite of destination", ["destination overwritten later"]);
   inv = addHypotheses(inv, [a, b], NOW).investigation;
   inv = linkEvidence(
