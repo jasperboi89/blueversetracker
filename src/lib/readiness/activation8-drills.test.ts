@@ -7,7 +7,7 @@
  * claims a change landed when it did not.
  */
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerPort } from "@/lib/core/action-executor";
 import type { ConfirmationProof, ExecutionPlan } from "@/lib/execution/execution-contract";
 import { buildExecutionPlan } from "@/lib/execution/execution-plan";
