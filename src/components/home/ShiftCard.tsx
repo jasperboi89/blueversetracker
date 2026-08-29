@@ -10,6 +10,8 @@ import {
 } from "@/lib/shift";
 import { useNow } from "@/hooks/use-now";
 import { CelebrationOverlay } from "./CelebrationOverlay";
+import { ShiftTimeline } from "./ShiftTimeline";
+
 import { useTheme } from "@/lib/settings/theme-store";
 import { triggerCelebration } from "@/lib/quantum-bloom/celebration-bus";
 
@@ -69,7 +71,7 @@ export function ShiftCard() {
   const c = 2 * Math.PI * r;
 
   const accent = isNearEnd ? "var(--gold-glow)" : "var(--cyan-glow)";
-  const accent2 = isNearEnd ? "var(--cyan-glow)" : "var(--electric)";
+  
 
   return (
     <>
@@ -141,20 +143,9 @@ export function ShiftCard() {
             </span>
             <span className="text-muted-foreground/70">{message}</span>
           </div>
-          <div
-            className="relative h-2 overflow-hidden rounded-full"
-            style={{ background: "oklch(0.7 0.12 235 / 0.12)" }}
-          >
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${pct}%`,
-                background: `linear-gradient(90deg, ${accent2}, ${accent})`,
-                boxShadow: `0 0 12px ${accent}`,
-              }}
-            />
-          </div>
+          <ShiftTimeline now={now} progress={progress} />
         </div>
+
       </div>
 
       {phase === "finalizing" && status === "complete" && (

@@ -160,7 +160,7 @@ export function NightPlan() {
               </span>
             </div>
             {isEmpty ? (
-              <p className="mt-1 text-sm text-muted-foreground">No plan items yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Nothing planned yet — add your first item to shape the night.</p>
             ) : allDone ? (
               <p className="mt-1 text-sm text-foreground">All planned items completed</p>
             ) : (
