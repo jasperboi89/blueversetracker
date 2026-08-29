@@ -12,6 +12,7 @@
 
 import { nightPlanStore } from "@/lib/night-plan-store";
 import { fingerprint } from "./fingerprint";
+import { nightPlanItemState } from "./night-plan-item-state";
 import { buildExecutionPlan, type PlanResult } from "./execution-plan";
 import type { ExecTargetState } from "./execution-contract";
 
@@ -64,6 +65,81 @@ export function prepareNightPlanItemCreate(intent: NightPlanCreateIntent): PlanR
     correlationId: intent.correlationId ?? `np_create_${fingerprint({ task, notes, priority })}`,
     contextRef: "night_plan",
     preState: readNightPlanState(task),
+    unmetPreconditions: unmet,
+    ...(intent.now ? { now: intent.now } : {}),
+    ...(intent.planId ? { planId: intent.planId } : {}),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Activation 3 — completion                                           */
+/* ------------------------------------------------------------------ */
+
+export const NIGHT_PLAN_COMPLETE_CAPABILITY = "night_plan.item.complete";
+
+export interface NightPlanCompleteIntent {
+  itemId: string;
+  operatorRef: string;
+  correlationId?: string;
+  now?: () => number;
+  planId?: string;
+}
+
+/**
+ * Producing a completion plan is NOT the same problem as producing a creation
+ * plan: creation is additive, completion is a state transition on one existing
+ * row. So the producer answers three questions before it will build anything:
+ *
+ *   1. does the item exist?            → missing  → unmet precondition
+ *   2. is it in a completable state?   → done     → ALREADY COMPLETE, no plan
+ *   3. what exactly is that state now? → pre-state fingerprint (id + status)
+ *
+ * "Already complete" is deliberately a distinct, safe result rather than a
+ * plan: re-running a completion would mint a second governed effect for a
+ * transition that already happened.
+ */
+export type NightPlanCompleteResult =
+  | PlanResult
+  | { ok: false; reason: "already_complete"; message: string }
+  | { ok: false; reason: "not_completable"; message: string };
+
+/** Statuses a governed completion may transition FROM. */
+const COMPLETABLE: readonly string[] = ["todo", "in-progress", "carried"];
+
+export function prepareNightPlanItemComplete(
+  intent: NightPlanCompleteIntent,
+): NightPlanCompleteResult {
+  const item = nightPlanStore.get().items.find((i) => i.id === intent.itemId);
+
+  if (item?.status === "done") {
+    return {
+      ok: false,
+      reason: "already_complete",
+      message: "That night plan item is already complete — nothing was changed.",
+    };
+  }
+  if (item && !COMPLETABLE.includes(item.status)) {
+    return {
+      ok: false,
+      reason: "not_completable",
+      message: `“${item.task}” is ${item.status} and can't be completed from here.`,
+    };
+  }
+
+  const unmet: string[] = [];
+  if (!intent.operatorRef) unmet.push("authenticated");
+  if (!item) unmet.push("item_exists");
+
+  return buildExecutionPlan({
+    capabilityId: NIGHT_PLAN_COMPLETE_CAPABILITY,
+    // `task` is what the Safe Action handler validates; `itemId` is what binds
+    // the effect. Both are effect-determining, so both are fingerprinted.
+    input: { itemId: intent.itemId, task: item?.task ?? "", requestedStatus: "done" },
+    target: { type: "night_plan_item", id: intent.itemId },
+    requestedBy: "operator",
+    correlationId: intent.correlationId ?? `np_complete_${intent.itemId}`,
+    contextRef: "night_plan",
+    preState: nightPlanItemState(intent.itemId),
     unmetPreconditions: unmet,
     ...(intent.now ? { now: intent.now } : {}),
     ...(intent.planId ? { planId: intent.planId } : {}),
