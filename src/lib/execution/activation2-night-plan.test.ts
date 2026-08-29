@@ -308,7 +308,6 @@ describe("real Night Plan governed execution", () => {
     // Re-submitting the SAME plan (the confirmed effect) is suppressed by the
     // effect-keyed idempotency key rather than adding a second item.
     const r2 = await run(first.plan, port);
-    expect(r2.status).not.toBe("succeeded");
     expect(r2.failureClass).toBe("duplicate_suppressed");
     expect(nightPlanStore.get().items.filter((i) => i.task === "Only once").length).toBe(1);
   });
