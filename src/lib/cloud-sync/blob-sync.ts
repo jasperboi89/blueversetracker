@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportSyncStatus } from "./sync-health";
+
 
 /**
  * Cloud-sync a store via a single JSON blob per user.
