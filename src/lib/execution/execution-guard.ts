@@ -16,7 +16,7 @@ import { healthMapFor, type SourceHealthMap } from "@/lib/capability/capability-
 import type { HubRole } from "@/lib/auth/authorization.functions";
 import { getExecutableCapability, isExecutable } from "./executable-registry";
 import { checkExecutionControl } from "./kill-switch";
-import type { ExecFailureClass, ExecutionPlan } from "./execution-contract";
+import { isExecMutating, type ExecFailureClass, type ExecutionPlan } from "./execution-contract";
 import { verifyPlanIntegrity } from "./execution-plan";
 
 export interface GuardContext {
