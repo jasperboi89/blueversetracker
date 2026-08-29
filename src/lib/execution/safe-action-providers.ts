@@ -9,7 +9,7 @@
 
 import { getActionHandler } from "@/lib/core/action-handlers";
 import { nightPlanStore } from "@/lib/night-plan-store";
-import { ticketsStore } from "@/lib/tickets-store";
+import { ticketsStore, type Ticket } from "@/lib/tickets-store";
 import { fingerprint } from "./fingerprint";
 import { registerProvider, type ExecutionProvider, type ProviderApplyOutcome } from "./execution-provider";
 import type { ActionType } from "@/lib/core/actions";
@@ -57,14 +57,14 @@ const nightPlanComplete: ExecutionProvider = {
   readState: async (plan) => {
     const task = String(plan.input["task"] ?? "");
     const item = nightPlanStore.get().items.find((i) => i.task === task);
-    return item ? state({ done: Boolean(item.done) }) : null;
+    return item ? state({ status: item.status }) : null;
   },
   apply: (plan) => runHandler("complete_night_plan_item", plan.input),
   verify: async (plan) => {
     const task = String(plan.input["task"] ?? "");
     const item = nightPlanStore.get().items.find((i) => i.task === task);
     if (!item) return "unavailable";
-    return item.done ? "verified" : "failed";
+    return item.status === "done" ? "verified" : "failed";
   },
 };
 
@@ -74,16 +74,16 @@ const ticketClassify: ExecutionProvider = {
   capabilityId: "freshdesk.ticket.classify",
   readState: async (plan) => {
     const number = String(plan.input["ticketNumber"] ?? "");
-    const ticket = ticketsStore.get().tickets.find((t) => t.number === number);
-    return ticket ? state({ classification: ticket.classification ?? null }) : null;
+    const ticket = ticketsStore.getState().tickets.find((t: Ticket) => t.number === number);
+    return ticket ? state({ classification: ticket.issueClassification ?? null }) : null;
   },
   apply: (plan) => runHandler("set_ticket_classification", plan.input),
   verify: async (plan) => {
     const number = String(plan.input["ticketNumber"] ?? "");
     const wanted = String(plan.input["classification"] ?? "");
-    const ticket = ticketsStore.get().tickets.find((t) => t.number === number);
+    const ticket = ticketsStore.getState().tickets.find((t: Ticket) => t.number === number);
     if (!ticket) return "unavailable";
-    return ticket.classification === wanted ? "verified" : "failed";
+    return ticket.issueClassification === wanted ? "verified" : "failed";
   },
 };
 
