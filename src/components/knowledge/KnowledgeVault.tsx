@@ -249,10 +249,12 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function KnowledgeVault() {
+export function KnowledgeVault({
+  initialSection = "notes",
+}: { initialSection?: "notes" | "is-scripts" } = {}) {
   const aiSettings = useAISettings();
   const workspace = useVaultWorkspace();
-  const [section, setSection] = useState<"notes" | "is-scripts">("notes");
+  const [section, setSection] = useState<"notes" | "is-scripts">(initialSection);
   const [folders, setFolders] = useState<KnowledgeFolder[]>([]);
   const [notes, setNotes] = useState<KnowledgeNote[]>([]);
   const [loading, setLoading] = useState(true);
