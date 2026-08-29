@@ -11,6 +11,7 @@ import { getActionHandler } from "@/lib/core/action-handlers";
 import { nightPlanStore } from "@/lib/night-plan-store";
 import { ticketsStore, type Ticket } from "@/lib/tickets-store";
 import { fingerprint } from "./fingerprint";
+import { nightPlanItemState, nightPlanItemSummary } from "./night-plan-item-state";
 import { getProvider, registerProvider, type ExecutionProvider, type ProviderApplyOutcome } from "./execution-provider";
 import type { ActionType } from "@/lib/core/actions";
 import type { ExecTargetState, ExecutionPlan } from "./execution-contract";
@@ -54,17 +55,14 @@ const nightPlanCreate: ExecutionProvider = {
 
 const nightPlanComplete: ExecutionProvider = {
   capabilityId: "night_plan.item.complete",
-  readState: async (plan) => {
-    const task = String(plan.input["task"] ?? "");
-    const item = nightPlanStore.get().items.find((i) => i.task === task);
-    return item ? state({ status: item.status }) : null;
-  },
+  // Activation 3: identity is the item id, never the task text, so a rename or
+  // a duplicate title can't redirect the effect.
+  readState: async (plan) => nightPlanItemState(String(plan.input["itemId"] ?? "")),
   apply: (plan) => runHandler("complete_night_plan_item", plan.input),
   verify: async (plan) => {
-    const task = String(plan.input["task"] ?? "");
-    const item = nightPlanStore.get().items.find((i) => i.task === task);
-    if (!item) return "unavailable";
-    return item.status === "done" ? "verified" : "failed";
+    const summary = nightPlanItemSummary(String(plan.input["itemId"] ?? ""));
+    if (!summary) return "unavailable";
+    return summary.completed ? "verified" : "failed";
   },
 };
 
