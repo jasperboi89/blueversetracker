@@ -352,7 +352,16 @@ export interface Hypothesis {
   schemaVersion: number;
   /** How reading changes if a key assumption fails. */
   sensitivity?: string;
+  /**
+   * Part 35 — when the canonical rule was satisfied. A verified conclusion is
+   * still challengeable: this timestamp is never cleared, so a later
+   * contradiction reopens the hypothesis WITHOUT erasing that it was verified.
+   */
+  verifiedAt?: string;
+  /** Set when new contradictory evidence reopened a previously verified reading. */
+  verificationReopenedAt?: string;
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Parts 22 / 30 / 37 — the investigation                               */

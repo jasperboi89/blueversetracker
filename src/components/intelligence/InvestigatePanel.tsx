@@ -14,7 +14,7 @@ import {
   type Investigation,
 } from "@/lib/investigation/hypothesis-contract";
 import { generateCandidates } from "@/lib/investigation/hypothesis-generation";
-import { rankHypotheses } from "@/lib/investigation/hypothesis-strength";
+import { evaluateVerification, rankHypotheses } from "@/lib/investigation/hypothesis-strength";
 import { searchAlternatives } from "@/lib/investigation/investigation-engine";
 import { investigationStore, useInvestigations } from "@/lib/investigation/investigation-store";
 
@@ -54,11 +54,22 @@ function HypothesisCard({
   investigation,
   hypothesis: h,
   onReject,
+  onVerify,
 }: {
   investigation: Investigation;
   hypothesis: Hypothesis;
   onReject: () => void;
+  onVerify: () => void;
 }) {
+  // The canonical rule, rendered as a checklist. The operator can see exactly
+  // what is still missing — verification is never a judgement call in the UI.
+  const verification = evaluateVerification(
+    h,
+    investigation.hypotheses,
+    investigation.evidence,
+    investigation.tests,
+    { operatorConfirmed: true, structuralCoverage: investigation.scriptContext?.recognition },
+  );
   const against = investigation.evidence.filter(
     (e) => e.hypothesisId === h.id && e.stance === "contradicts",
   );
@@ -93,6 +104,22 @@ function HypothesisCard({
           </button>
         )}
       </div>
+
+      {/* A verified reading that later evidence challenged stays visible as
+          history — the earlier verification is never erased, and the card says
+          plainly that it now requires review. */}
+      {h.verificationReopenedAt && (
+        <p
+          className="mt-2 rounded-md px-2 py-1 text-[11px]"
+          style={{
+            color: "var(--status-warning)",
+            background: "color-mix(in oklab, var(--status-warning) 12%, transparent)",
+          }}
+        >
+          Verified earlier{h.verifiedAt ? ` (${new Date(h.verifiedAt).toLocaleDateString()})` : ""}, then reopened by new
+          contradictory evidence. Requires review — it is no longer treated as established.
+        </p>
+      )}
 
       {/* CONTRADICTIONS FIRST — never buried under supporting evidence. */}
       {against.length > 0 && (
@@ -136,6 +163,35 @@ function HypothesisCard({
         <p className="mt-1 text-[10px] text-muted-foreground/70">
           Predicts: {h.predictions.map((p) => p.statement).join(" · ")}
         </p>
+      )}
+
+      {h.status !== "rejected" && h.status !== "verified" && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[10px] uppercase tracking-wide text-muted-foreground/70">
+            Verification requirements ({verification.requirements.filter((r) => r.met).length}/
+            {verification.requirements.length} met)
+          </summary>
+          <ul className="mt-1 space-y-0.5">
+            {verification.requirements.map((r) => (
+              <li key={r.id} className="text-[11px] text-muted-foreground">
+                {r.met ? "✓" : "✗"} {r.label}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            disabled={verification.unmet.length > 1}
+            onClick={onVerify}
+            className="mt-2 rounded-md border border-border/50 px-2 py-1 text-[11px] text-foreground disabled:opacity-40"
+            title={
+              verification.unmet.length > 1
+                ? "Requirements are still unmet — verification is not available."
+                : "Confirm as operator and apply the canonical verification rule."
+            }
+          >
+            Confirm and attempt verification
+          </button>
+        </details>
       )}
     </div>
   );
@@ -348,6 +404,7 @@ export function InvestigatePanel({
                 onReject={() =>
                   investigationStore.reject(active.id, h.id, "Ruled out by operator review.")
                 }
+                onVerify={() => investigationStore.verify(active.id, h.id, true)}
               />
             ))}
           </div>
