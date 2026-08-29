@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { AlertTriangle, CheckCircle2, HelpCircle, Power, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ import type { LedgerPort } from "@/lib/core/action-executor";
  * anything on its own.
  */
 
-const STATUS_ICON: Record<string, JSX.Element> = {
+const STATUS_ICON: Record<string, ReactElement> = {
   succeeded: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />,
   failed: <XCircle className="h-3.5 w-3.5 text-destructive" />,
   rejected: <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />,
