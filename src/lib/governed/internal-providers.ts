@@ -68,7 +68,7 @@ const knowledgeNoteCreate: ExecutionProvider = {
       const fns = await import("@/lib/knowledge/knowledge.functions");
       const vault = await fns.listKnowledgeVault();
       const title = String(plan.input["title"] ?? "");
-      return vault.notes.some((n) => n.title === title) ? "verified" : "failed";
+      return vault.notes.some((n: { title: string }) => n.title === title) ? "verified" : "failed";
     } catch {
       return "unavailable";
     }
