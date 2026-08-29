@@ -17,6 +17,7 @@ import {
   type InjectionMarker,
   type RunBudgetUsage,
   type RunClaimValidationIssue,
+  type RouteStep,
   type RunEvent,
   type RunStopReason,
   type SkippedWorker,
@@ -496,4 +497,33 @@ export function fingerprint(output: WorkerOutput): string {
     hash = (hash * 31 + s.charCodeAt(i)) | 0;
   }
   return `${output.workerId}-${(hash >>> 0).toString(36)}`;
+}
+
+/**
+ * Deterministic policy for a worker-raised specialist request (§9). The worker
+ * never invokes anything itself; this decides, once, with a stated reason.
+ */
+function grantSpecialist(
+  to: WorkerId,
+  done: Set<WorkerId>,
+  queue: RouteStep[],
+  snapshot: CanonicalSnapshot,
+  usage: RunBudgetUsage,
+  budget: RunBudget,
+): { granted: boolean; reason: string } {
+  if (!isSpecialist(to)) return { granted: false, reason: "only specialists may be requested." };
+  if (done.has(to) || queue.some((s) => s.workerId === to)) {
+    return { granted: false, reason: "that specialist is already part of this run." };
+  }
+  if (!isWorkerAvailable(to)) return { granted: false, reason: "that specialist is unavailable." };
+  if (usage.workers >= budget.maxWorkers || usage.invocations >= budget.maxWorkerInvocations) {
+    return { granted: false, reason: "the run budget does not allow another specialist." };
+  }
+  if (to === "simulator" && !snapshot.scriptStructures.length) {
+    return { granted: false, reason: "no canonical script structure is available to simulate against." };
+  }
+  if (to === "forecaster" && !snapshot.forecasts.length) {
+    return { granted: false, reason: "no canonical forecast exists to read." };
+  }
+  return { granted: true, reason: "the request is within budget and canonically supported." };
 }
