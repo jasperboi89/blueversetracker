@@ -288,9 +288,12 @@ export function attemptVerification(
               status: "verified" as const,
               strength: "verified" as const,
               relationClaim: "sufficient_under_tested_conditions" as const,
+              verifiedAt: iso,
+              verificationReopenedAt: undefined,
               updatedAt: iso,
               hypothesisVersion: x.hypothesisVersion + 1,
             }
+
           : x,
       ),
       updatedAt: iso,
