@@ -266,10 +266,13 @@ describe("drill: emergency stop", () => {
 
   it("falls closed when the stored control record is unreadable", async () => {
     window.localStorage.setItem("aih:exec:control:v1", "{ this is not json");
-    const mod = await import("@/lib/execution/kill-switch?fresh-corrupt");
+    vi.resetModules();
+    const mod = await import("@/lib/execution/kill-switch");
     expect(mod.executionControl.mode()).toBe("disabled");
+    vi.resetModules();
     window.localStorage.removeItem("aih:exec:control:v1");
   });
+
 });
 
 /* ------------------------------------------------------------------ */
