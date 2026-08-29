@@ -114,6 +114,7 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
   const hydrateForUser = async (userId: string) => {
     activeUserId = userId;
     lastPushedJson = null;
+    failures = 0;
     try {
       const { data, error } = await supabase
         .from(TABLE)
@@ -126,18 +127,29 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
         try {
           opts.applyServerSnapshot(data.data as TState);
           lastPushedJson = JSON.stringify(data.data);
+          reportSyncStatus(opts.storeKey, "synced");
         } catch (err) {
           console.error(`[cloud-sync:${opts.storeKey}] apply failed`, err);
+          reportSyncStatus(opts.storeKey, "sync_failed", {
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       } else {
         // First time for this user — upload current local state if it has anything.
         const localSnap = opts.getSnapshot();
         if (!opts.isEmpty || !opts.isEmpty(localSnap)) {
           await push();
+        } else {
+          reportSyncStatus(opts.storeKey, "synced");
         }
       }
     } catch (err) {
+      // Read failed: local state is untouched and authoritative for now. Say so
+      // rather than letting the screen imply the cloud copy was loaded.
       console.error(`[cloud-sync:${opts.storeKey}] hydrate failed`, err);
+      reportSyncStatus(opts.storeKey, "sync_failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     // Attach store listener (once per user session).
@@ -151,8 +163,11 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
   const stopSyncing = () => {
     activeUserId = null;
     lastPushedJson = null;
+    failures = 0;
+    reportSyncStatus(opts.storeKey, "local_only");
     if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
     if (storeUnsub) { storeUnsub(); storeUnsub = null; }
+
   };
 
   // Initial session check
