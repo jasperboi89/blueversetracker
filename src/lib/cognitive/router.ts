@@ -173,8 +173,13 @@ export function planRoute(ctx: RouteContext): RoutePlan {
   return {
     direct,
     ...(direct
-      ? { directReason: "This is answered from deterministic portal state; no specialist cognition adds value." }
+      ? {
+          directReason: unavailableWorkers.length
+            ? "Every worker this question needs is unavailable, so no cognition could run."
+            : "This is answered from deterministic portal state; no specialist cognition adds value.",
+        }
       : {}),
+    unavailableWorkers,
     intentClass,
     steps,
     criticRequired: criticRequired && steps.length > 0,
