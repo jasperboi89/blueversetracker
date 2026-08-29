@@ -507,7 +507,8 @@ describe("observability", () => {
     const { port } = fakeLedger();
     const receipt = await run(plan, port);
     const phases = receipt.events.map((e) => e.phase);
-    for (const phase of ["resolve", "precondition", "authorize", "confirm", "reserve", "conflict_check", "apply", "verify", "audit"]) {
+    // `precondition` only appears when something is unmet; a clean run skips it.
+    for (const phase of ["resolve", "authorize", "confirm", "reserve", "conflict_check", "apply", "verify", "audit"]) {
       expect(phases).toContain(phase);
     }
     expect(receipt.events.map((e) => e.note).join(" ")).toContain("complete_night_plan_item");
