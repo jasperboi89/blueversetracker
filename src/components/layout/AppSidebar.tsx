@@ -76,6 +76,12 @@ const dispatchItems: NavItem[] = [
 /** KNOWLEDGE — runbooks, scripts and notes. */
 const knowledgeItems: NavItem[] = [
   { title: "Knowledge Vault", url: "/knowledge-vault", icon: LibraryBig, accent: "oklch(0.8 0.16 190)" },
+  {
+    title: "Script Twin",
+    url: "/knowledge-vault?section=is-scripts",
+    icon: TerminalSquare,
+    accent: "var(--electric)",
+  },
 ];
 
 /** INTELLIGENCE — look back, correlate, and report. */

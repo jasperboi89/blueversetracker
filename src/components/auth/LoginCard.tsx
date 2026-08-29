@@ -113,7 +113,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
       <div className="auth-stagger mb-5 flex items-center justify-between text-[9px] uppercase tracking-[0.26em] text-muted-foreground/70"
         style={{ animation: "auth-stagger-in 700ms 380ms ease-out both" }}
       >
-        <span>Secure Access Terminal</span>
+        <span>Secure operator access</span>
         <span className="flex items-center gap-1.5">
           <span
             className="inline-block h-1.5 w-1.5 rounded-full"
@@ -132,10 +132,10 @@ export function LoginCard({ next }: { next?: string } = {}) {
       >
         <ShieldIcon3D />
         <h2 className="mt-4 text-lg font-semibold tracking-wide text-foreground">
-          Authorized Sign-In
+          Operator Sign-In
         </h2>
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          Account Intel Hub · AnSer Ops
+          Account Command Center · AnSer Ops
         </div>
         <div
           className="mt-3 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
@@ -145,7 +145,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
             border: "1px solid oklch(0.55 0.2 240 / 0.35)",
           }}
         >
-          HIPAA-Safeguarded · Internal Use
+          Protected session environment
         </div>
       </div>
 
@@ -201,7 +201,7 @@ export function LoginCard({ next }: { next?: string } = {}) {
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <span className="text-[12px] uppercase tracking-[0.22em]">Enter Hub</span>
+              <span className="text-[12px] uppercase tracking-[0.22em]">Enter Command Center</span>
             )}
           </Button>
           <button
