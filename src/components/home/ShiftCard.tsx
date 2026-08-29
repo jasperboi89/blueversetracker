@@ -71,7 +71,7 @@ export function ShiftCard() {
   const c = 2 * Math.PI * r;
 
   const accent = isNearEnd ? "var(--gold-glow)" : "var(--cyan-glow)";
-  const accent2 = isNearEnd ? "var(--cyan-glow)" : "var(--electric)";
+  
 
   return (
     <>
