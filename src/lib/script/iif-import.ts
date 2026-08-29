@@ -67,14 +67,16 @@ export function importIif(input: IifImportInput): IifImportResult {
     return {
       accepted: false,
       reason: "unreadable_encoding",
-      detail: "The file could not be decoded as UTF-8 text. Re-export it as plain text.",
+      detail:
+        "This file could not be decoded as UTF-8 text \u2014 it appears to use a binary format that this importer does not currently support. If your Amtelco IS toolset can re-export the script as plain text (tab-delimited, CSV, or XML), import that instead.",
     };
   }
   if (BINARY.test(raw.slice(0, 20_000))) {
     return {
       accepted: false,
       reason: "binary_content",
-      detail: "The file looks binary rather than a text export. Nothing was parsed.",
+      detail:
+        "This file appears to use a binary format that this importer does not currently support, so nothing was parsed. If your Amtelco IS toolset can re-export the script as plain text (tab-delimited, CSV, or XML), import that instead.",
     };
   }
 

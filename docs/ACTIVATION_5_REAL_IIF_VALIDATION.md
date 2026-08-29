@@ -123,17 +123,30 @@ behavior (assertions runtime-verified against the real importer):
 2. If only the binary format exists, the correct path is a **documented binary
    spec** (from Amtelco or reliable reference), fed to a *separate, clearly
    bounded* binary decoder — a future activation, never guessed from one sample.
-3. Optional low-risk UX improvement (deferred — not made here, to avoid an
-   untested change to a mature module): make the refusal message Amtelco-binary
-   aware ("this looks like a binary IS export; re-export as text"), verified by
-   running the full suite in an environment that can execute it.
+3. UX correction (**implemented in this closure gate**): the two binary-signal
+   refusals (`unreadable_encoding`, `binary_content`) now surface a factual,
+   bounded operator message — *"appears to use a binary format that this importer
+   does not currently support"* with re-export-as-text guidance — instead of a
+   bare encoding code. Only the human-readable `detail` string changed; the
+   `reason` codes, the 4 MB size limit, and the fail-closed refusal are unchanged.
+   No binary is parsed or reverse-engineered and no bytes are surfaced. Verified
+   against the genuine file (both read paths) and the synthetic mirrors via a
+   `bun` harness.
 
 ## Environment limitation
 
-This sandbox cannot run the test suite (`vitest` not installed) or a production
-build (private registry blocked). The Activation 5 assertions were instead
-**executed against the real importer via a `bun` harness** (all pass); the
-committed vitest file mirrors those assertions 1:1 and will run in a full
-environment. The 996-test baseline was **not** re-run here — no existing test
-was modified (a new, isolated test file was added), so the baseline is not at
-risk from this change.
+This sandbox cannot run the `vitest` suite (`vitest` not installed) or a
+production build (private registry blocked — `bun install` returns 403). The
+Activation 5 assertions were instead **executed against the real importer via a
+`bun` harness** (all pass); the committed vitest file mirrors those assertions
+1:1 and will run in a full environment.
+
+The one application-source change (the two refusal `detail` strings in
+`iif-import.ts`) was type-checked with `tsc` (that file reports **zero** errors;
+the only `tsc` noise is the environment-wide `Cannot find module 'vitest'` that
+affects every test file equally) and behavior-verified via `bun` against the
+genuine file and all four Activation-4 exact-reason inputs (`empty_file`,
+`too_large`, `binary_content`, `unreadable_encoding` all still classify
+correctly). No pre-existing baseline test was modified. The full `vitest`
+suite / typecheck / build could **not** be executed here; that verification must
+run in a full environment before release.

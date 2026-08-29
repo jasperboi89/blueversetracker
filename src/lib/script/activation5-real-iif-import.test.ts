@@ -45,7 +45,11 @@ describe("Activation 5 — genuine binary Amtelco export is safely refused", () 
   it("rejects a binary export decoded as UTF-8 (the UI read path)", () => {
     const r = importIif({ fileName: "SampleScript.iif", text: BINARY_AS_UTF8, sizeBytes: 104994 });
     expect(r.accepted).toBe(false);
-    if (!r.accepted) expect(r.reason).toBe("unreadable_encoding");
+    if (!r.accepted) {
+      expect(r.reason).toBe("unreadable_encoding");
+      // The operator sees a factual, bounded explanation — not a raw "encoding" code.
+      expect(r.detail).toContain("binary format that this importer does not currently support");
+    }
   });
 
   it("rejects a byte-preserving binary export as binary_content", () => {
@@ -55,7 +59,10 @@ describe("Activation 5 — genuine binary Amtelco export is safely refused", () 
       sizeBytes: 104994,
     });
     expect(r.accepted).toBe(false);
-    if (!r.accepted) expect(r.reason).toBe("binary_content");
+    if (!r.accepted) {
+      expect(r.reason).toBe("binary_content");
+      expect(r.detail).toContain("binary format that this importer does not currently support");
+    }
   });
 
   it("never fabricates structure from a refused binary export", () => {
