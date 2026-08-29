@@ -246,10 +246,12 @@ describe("disagreement and canonical authority", () => {
       contributions: [
         contribution({
           workerId: "simulator",
+          evidence: [{ kind: "script_structure", id: "ss-1" }],
           claims: [{ id: "s1", statement: "The current structure takes path C.", type: "simulated_outcome", confidence: "moderate", evidence: [{ kind: "script_structure", id: "ss-1" }], limitations: ["Simulated only."] }],
         }),
         contribution({
           workerId: "researcher",
+          evidence: [{ kind: "knowledge_note", id: "kn-1" }],
           claims: [{ id: "r1", statement: "Documentation records path B.", type: "historical_precedent", confidence: "low", evidence: [{ kind: "knowledge_note", id: "kn-1" }], limitations: [] }],
         }),
       ],
