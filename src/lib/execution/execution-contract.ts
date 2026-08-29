@@ -123,6 +123,19 @@ export interface ExecutableCapability {
   maxAttempts: number;
   /** Test-only capability: hidden from operator surfaces. */
   fixtureOnly?: boolean;
+  /**
+   * The canonical Safe Action identifier this capability reserves under in the
+   * durable Action Ledger. The external capability id (`night_plan.item.create`)
+   * and the audited action type (`add_night_plan_item`) are deliberately
+   * different vocabularies: the ledger predates the execution layer and its
+   * server-side `z.enum` is the authority for what may be audited.
+   *
+   * `null` = this capability has NO audited action type and therefore cannot be
+   * executed at all (fails closed at preflight).
+   * `"fixture_only"` = deterministic test contract; the real server enum rejects
+   * it, so it can never reserve against production audit.
+   */
+  ledgerActionType: ExecLedgerActionType | null;
 }
 
 /* ------------------------------------------------------------------ */
