@@ -554,6 +554,8 @@ export interface RoutePlan {
   directReason?: string;
   intentClass: WorkerTaskKind | "direct";
   steps: RouteStep[];
+  /** Workers the route wanted but could not use because they are unavailable (§41). */
+  unavailableWorkers?: WorkerId[];
   criticRequired: boolean;
   criticReason: string;
   guardianRequired: boolean;
