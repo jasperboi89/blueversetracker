@@ -172,6 +172,11 @@ export function recordTestResult(
   const iso = now.toISOString();
   const test = inv.tests.find((t) => t.id === testId);
   if (!test) return { investigation: inv, entries: [] };
+  // Part 44 — a recorded result is history. Re-recording would let a later pass
+  // overwrite what the test actually showed, so it is refused outright; a
+  // correction must be prepared as a NEW test.
+  if (test.status === "recorded") return { investigation: inv, entries: [] };
+
 
   const effect = effectOfResult(test, outcomeKey);
   const recordedTest: DiscriminatingTest = {
