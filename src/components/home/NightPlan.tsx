@@ -717,6 +717,9 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
   const [priority, setPriority] = useState<Priority>(item.priority);
   const [deciding, setDeciding] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const identity = useHubIdentityOptional();
+  const [governedPlan, setGovernedPlan] = useState<ExecutionPlan | null>(null);
+  const [governedBusy, setGovernedBusy] = useState(false);
 
   useEffect(() => {
     setTask(item.task);
@@ -740,6 +743,28 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
     toast.success(message, { duration: 2200 });
     onClose();
   };
+
+  /**
+   * Activation 3 — governed completion. Manual "Completed" is preserved as the
+   * fast path; this option prepares an immutable, fingerprinted plan bound to
+   * this item's current state and routes it through the canonical confirmation
+   * dialog. Nothing is written here.
+   */
+  const completeWithReview = () => {
+    if (governedBusy) return;
+    const result = prepareNightPlanItemComplete({
+      itemId: item.id,
+      operatorRef: identity?.userId ?? "",
+    });
+    if (!result.ok) {
+      if (result.reason === "already_complete") toast.info(result.message);
+      else toast.error(result.message);
+      return;
+    }
+    executionStore.propose(result.plan, identity?.userId ?? "");
+    setGovernedPlan(result.plan);
+  };
+
 
   return (
     <>
