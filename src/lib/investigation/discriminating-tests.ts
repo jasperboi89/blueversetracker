@@ -95,9 +95,9 @@ function classifyUtility(
 export function buildDiscriminatingTests(input: DiscriminatingTestInput): DiscriminatingTest[] {
   const now = input.now ?? new Date();
   const iso = now.toISOString();
-  const live = input.hypotheses.filter(
-    (h) => h.status !== "rejected" && h.status !== "expired" && h.hypothesisType !== "unknown",
-  );
+  // An uncategorised hypothesis is still testable as long as it is live; only
+  // ruled-out and expired explanations are excluded from test design.
+  const live = input.hypotheses.filter((h) => h.status !== "rejected" && h.status !== "expired");
   const missing = (input.prerequisites ?? []).filter((p) => !p.available).map((p) => p.label);
   const tests: DiscriminatingTest[] = [];
 
