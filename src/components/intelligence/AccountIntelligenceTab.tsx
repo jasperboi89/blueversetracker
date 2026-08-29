@@ -5,6 +5,7 @@ import { useAccountIntelligence } from "@/lib/core/account-intelligence";
 import { ClaimInspector, type ClaimSource } from "./ClaimInspector";
 import { AnomalyPanel } from "./AnomalyPanel";
 import { OutlookPanel } from "./OutlookPanel";
+import { InvestigatePanel } from "./InvestigatePanel";
 import {
   filterTimeline,
   TIMELINE_CATEGORIES,
@@ -73,6 +74,14 @@ export function AccountIntelligenceTab({ accountNumber }: { accountNumber: strin
       {/* OUTLOOK — comparable-state forecasting (Phase 6). Deliberately kept
           separate from anomalies: deviation ≠ outlook. */}
       <OutlookPanel result={intel.forecasts} />
+
+      {/* INVESTIGATE — causal hypotheses (Phase 8). Separate from OUTLOOK and
+          ANOMALY: these are candidate explanations under test, not facts. */}
+      <InvestigatePanel
+        accountNumber={accountNumber}
+        patterns={intel.observations}
+        anomalies={intel.anomalies.anomalies}
+      />
 
       {/* DERIVED OBSERVATIONS — pattern intelligence */}
       <section>

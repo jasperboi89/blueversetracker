@@ -137,6 +137,19 @@ export const COPILOT_TOOLS: ResponsesTool[] = [
   },
   {
     type: "function",
+    name: "operational_investigation",
+    strict: true,
+    description:
+      "Open causal investigations for an account: the competing explanations under consideration, the evidence for and AGAINST each, prepared discriminating tests, and the current conclusion. " +
+      "Report contradictions and counterexamples FIRST, before supporting evidence. " +
+      "A hypothesis is a candidate explanation, never a confirmed cause: say 'one explanation consistent with the evidence', 'associated with', or 'temporally related to' — never 'caused by', 'because of', 'due to' or 'the root cause is'. " +
+      "Only a hypothesis whose status is 'verified' may be described as established, and even then only under the conditions actually tested. " +
+      "When the conclusion is insufficient_evidence or multiple_plausible_explanations, say so plainly and name the next discriminating test instead of picking a favourite. " +
+      "You may explain, compare and recommend a test; you may never run a test, change a script, or act on a hypothesis. Pass null for accountNumber to see every investigation.",
+    parameters: schema({ accountNumber: nullableString }),
+  },
+  {
+    type: "function",
     name: "script_structure",
     strict: true,
     description:
@@ -254,6 +267,60 @@ export async function runCopilotTool(
         interpretation:
           "Anomalies describe deviation from a robust (median/MAD) baseline. They are not causal and not predictive. " +
           "baselineGaps mean the system cannot judge deviation yet — report that as 'baseline still forming', never as 'normal'.",
+      };
+    }
+
+    case "operational_investigation": {
+      const blob = await readBlob(supabase, userId, "investigations");
+      const byId = (blob["byId"] as Record<string, Row> | undefined) ?? {};
+      const wanted = str(args["accountNumber"]).trim();
+      const records = Object.values(byId).filter((r) =>
+        wanted ? str(r["accountId"]) === wanted : true,
+      );
+      const investigations = records.slice(0, 10).map((inv) => {
+        const evidence = Array.isArray(inv["evidence"]) ? (inv["evidence"] as Row[]) : [];
+        const tests = Array.isArray(inv["tests"]) ? (inv["tests"] as Row[]) : [];
+        const conclusion = (inv["conclusion"] as Row | undefined) ?? {};
+        return {
+          account: str(inv["accountId"]),
+          title: str(inv["title"]).slice(0, 200),
+          status: str(inv["status"]),
+          conclusion: str(conclusion["kind"]),
+          conclusionSummary: str(conclusion["summary"]).slice(0, 400),
+          nextStep: str(conclusion["nextStep"]).slice(0, 300),
+          autonomy: str(inv["autonomy"]),
+          hypotheses: (Array.isArray(inv["hypotheses"]) ? (inv["hypotheses"] as Row[]) : [])
+            .slice(0, 8)
+            .map((h) => ({
+              id: str(h["id"]),
+              title: str(h["title"]).slice(0, 200),
+              type: str(h["hypothesisType"]),
+              status: str(h["status"]),
+              strength: str(h["strength"]),
+              relationClaim: str(h["relationClaim"]),
+              // Contradicting evidence is listed first, deliberately.
+              contradictedBy: evidence
+                .filter((e) => str(e["hypothesisId"]) === str(h["id"]) && str(e["stance"]) === "contradicts")
+                .map((e) => str(e["statement"]).slice(0, 240)),
+              supportedBy: evidence
+                .filter((e) => str(e["hypothesisId"]) === str(h["id"]) && str(e["stance"]) === "supports")
+                .map((e) => str(e["statement"]).slice(0, 240)),
+            })),
+          preparedTests: tests.slice(0, 6).map((t) => ({
+            title: str(t["title"]).slice(0, 200),
+            utility: str(((t["utility"] as Row | undefined) ?? {})["klass"]),
+            status: str(t["status"]),
+            outcome: str(((t["result"] as Row | undefined) ?? {})["outcomeKey"]),
+          })),
+        };
+      });
+      return {
+        investigations,
+        interpretation:
+          "These are candidate explanations under investigation, not established causes. Present contradicting evidence before supporting evidence. " +
+          "Never use causal language for a hypothesis that is not status 'verified'; use 'associated with' or 'one explanation consistent with the evidence'. " +
+          "insufficient_evidence and multiple_plausible_explanations are honest answers — report them and name the next discriminating test. " +
+          "Autonomy is capped at prepare: you may explain and recommend a test, never run one or change a script.",
       };
     }
 

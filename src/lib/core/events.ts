@@ -103,7 +103,20 @@ export type AccEventType =
   | "intelligence.forecast_updated"
   | "intelligence.forecast_resolved"
   | "intelligence.forecast_expired"
-  | "intelligence.forecast_acknowledged";
+  | "intelligence.forecast_acknowledged"
+  // Causal Hypothesis Engine (Phase 8). References only — investigation ids,
+  // hypothesis ids/types, strength classes, test utility and outcome keys.
+  // Never mechanisms in prose, ticket bodies, notes or model output.
+  | "investigation.opened"
+  | "investigation.hypothesis_proposed"
+  | "investigation.hypothesis_strengthened"
+  | "investigation.hypothesis_weakened"
+  | "investigation.hypothesis_rejected"
+  | "investigation.hypothesis_verified"
+  | "investigation.test_prepared"
+  | "investigation.test_result_recorded"
+  | "investigation.conclusion_updated"
+  | "investigation.closed";
 
 /** Where the event came from — a store, a route, or the Copilot executor. */
 export type AccEventSource =
@@ -124,6 +137,7 @@ export type AccEventSource =
   | "capability"
   | "agent"
   | "intelligence"
+  | "investigation"
   | "script"
   | "route"
   | "system";
