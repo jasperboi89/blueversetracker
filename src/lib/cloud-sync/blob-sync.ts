@@ -39,8 +39,14 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
   let pushTimer: ReturnType<typeof setTimeout> | null = null;
   let storeUnsub: (() => void) | null = null;
   let lastPushedJson: string | null = null;
+  let failures = 0;
 
-  const RETRY_MS = 10_000;
+  // Bounded exponential backoff. An unbounded 10s loop hid a real outage
+  // behind console noise; after the ceiling we stop retrying and say so.
+  const RETRY_BASE_MS = 5_000;
+  const RETRY_MAX_MS = 120_000;
+  const MAX_RETRIES = 6;
+  const retryDelay = (n: number) => Math.min(RETRY_BASE_MS * 2 ** (n - 1), RETRY_MAX_MS);
 
   const push = async () => {
     if (!activeUserId) return;
@@ -79,12 +85,26 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
       // change (or the retry below) will re-attempt instead of silently
       // dropping this snapshot.
       lastPushedJson = json;
+      failures = 0;
+      reportSyncStatus(opts.storeKey, "synced");
     } catch (err) {
-      console.error(`[cloud-sync:${opts.storeKey}] push failed, retrying`, err);
+      failures += 1;
+      const message = err instanceof Error ? err.message : String(err);
+      if (failures > MAX_RETRIES) {
+        // Stop pretending. This device now holds work the cloud does not have,
+        // and the operator is told rather than left with a silent console loop.
+        console.error(`[cloud-sync:${opts.storeKey}] push failed ${failures}x; giving up until the next change`, err);
+        reportSyncStatus(opts.storeKey, "sync_failed", { failures, error: message });
+        if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+        return;
+      }
+      console.error(`[cloud-sync:${opts.storeKey}] push failed, retry ${failures}/${MAX_RETRIES}`, err);
+      reportSyncStatus(opts.storeKey, "retrying", { failures, error: message });
       if (pushTimer) clearTimeout(pushTimer);
-      pushTimer = setTimeout(push, RETRY_MS);
+      pushTimer = setTimeout(push, retryDelay(failures));
     }
   };
+
 
   const schedulePush = () => {
     if (pushTimer) clearTimeout(pushTimer);
