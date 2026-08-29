@@ -183,15 +183,22 @@ export function verifyBackup(raw: string): VerifyResult {
 
 export type RestoreResult =
   | { ok: true; summary: RestoreSummary; safetyCopy: BackupFile }
-  | { ok: false; reason: string };
+  /**
+   * A refused or aborted restore. `rolledBack` says whether the workspace was
+   * put back exactly as it was; when it is false the workspace may be mixed and
+   * `safetyCopy` is the file the operator must save and restore from.
+   */
+  | { ok: false; reason: string; rolledBack?: boolean; safetyCopy?: BackupFile };
 
 /**
- * Restores a verified backup. Always takes a safety copy of the CURRENT state
- * first and rolls back to it if any write fails, so a failed restore leaves
- * the workspace exactly where it started rather than half-overwritten.
+ * Restores a verified backup.
  *
- * The caller is expected to reload the app afterwards: in-memory stores hold
- * the pre-restore state until they re-read local storage.
+ * Order matters: backup values are written FIRST and stale keys are pruned
+ * only after every write succeeded. A write that fails part-way therefore
+ * cannot leave the workspace emptied — and the pre-restore safety copy is used
+ * to put it back. If even the rollback cannot be written (a genuinely full or
+ * broken device), we say so plainly and hand the safety copy back rather than
+ * pretending the workspace is intact.
  */
 export function restoreBackup(
   raw: string,
@@ -199,39 +206,49 @@ export function restoreBackup(
 ): RestoreResult {
   const mode: RestoreMode = opts.mode ?? "replace";
   const verified = verifyBackup(raw);
-  if (!verified.ok) return { ok: false, reason: verified.reason };
+  if (!verified.ok) return { ok: false, reason: verified.reason, rolledBack: true };
 
   const store = storage(opts.store);
-  if (!store) return { ok: false, reason: "Local storage is unavailable, so nothing was restored." };
+  if (!store) return { ok: false, reason: "Local storage is unavailable, so nothing was restored.", rolledBack: true };
 
   const safetyCopy = createBackup({ takenBy: "pre-restore safety copy", store });
-  const existing = workspaceKeys(store);
   let removed = 0;
   let restored = 0;
 
   try {
-    if (mode === "replace") {
-      for (const k of existing) {
-        store.removeItem(k);
-        removed += 1;
-      }
-    }
     for (const [k, v] of Object.entries(verified.file.entries)) {
       store.setItem(k, v);
       restored += 1;
     }
+    if (mode === "replace") {
+      for (const k of workspaceKeys(store)) {
+        if (!(k in verified.file.entries)) {
+          store.removeItem(k);
+          removed += 1;
+        }
+      }
+    }
   } catch (err) {
-    // Roll back to the safety copy — a partial restore is the one outcome we
-    // never accept.
+    let rolledBack = true;
     try {
-      for (const k of workspaceKeys(store)) store.removeItem(k);
+      for (const k of workspaceKeys(store)) {
+        if (!(k in safetyCopy.entries)) store.removeItem(k);
+      }
       for (const [k, v] of Object.entries(safetyCopy.entries)) store.setItem(k, v);
-    } catch { /* nothing further we can do; the safety copy is still returned */ }
+    } catch {
+      rolledBack = false;
+    }
+    const why = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
-      reason: `The restore could not be completed (${err instanceof Error ? err.message : String(err)}), so the workspace was put back the way it was.`,
+      rolledBack,
+      safetyCopy,
+      reason: rolledBack
+        ? `The restore could not be completed (${why}), so the workspace was put back the way it was.`
+        : `The restore could not be completed (${why}) and this device could not be put back automatically. Save the recovery copy offered here and restore it once there is space.`,
     };
   }
 
   return { ok: true, summary: { restored, removed, mode }, safetyCopy };
 }
+
