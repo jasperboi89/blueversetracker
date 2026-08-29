@@ -804,6 +804,15 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
                 />
                 {isActive(item.status) && (
                   <DecisionOption
+                    icon={ShieldCheck}
+                    color="var(--electric)"
+                    title="Complete with review"
+                    detail="Confirm, apply, then verify the completion actually saved."
+                    onClick={completeWithReview}
+                  />
+                )}
+                {isActive(item.status) && (
+                  <DecisionOption
                     icon={RotateCcw}
                     color="var(--cyan-glow)"
                     title="Carry Over"
@@ -888,6 +897,37 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
         open={convertOpen}
         onOpenChange={setConvertOpen}
         onConverted={onClose}
+      />
+
+      <ConfirmExecutionDialog
+        plan={governedPlan}
+        operatorRef={identity?.userId ?? ""}
+        open={!!governedPlan}
+        onOpenChange={(v) => !v && setGovernedPlan(null)}
+        onConfirmed={(proof) => {
+          const plan = governedPlan;
+          setGovernedPlan(null);
+          if (!plan) return;
+          setGovernedBusy(true);
+          void runGovernedExecution(plan, {
+            operatorRef: identity?.userId ?? "",
+            role: identity?.role ?? null,
+            confirmation: proof,
+          })
+            .then((receipt) => {
+              const { tone, text } = receiptHeadline(receipt);
+              if (tone === "success") {
+                toast.success(text, { duration: 4000 });
+                setDeciding(false);
+                onClose();
+              } else if (tone === "warning") {
+                toast.warning(text, { duration: 6000 });
+              } else {
+                toast.error(text, { duration: 6000 });
+              }
+            })
+            .finally(() => setGovernedBusy(false));
+        }}
       />
     </>
   );
