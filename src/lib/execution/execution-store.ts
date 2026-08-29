@@ -11,9 +11,20 @@ import type { ConfirmationProof, ExecutionPlan, ExecutionReceipt } from "./execu
 
 export const MAX_RETAINED_EXECUTIONS = 40;
 
+/** Operator-facing queue state. Never collapses proposed with executed. */
+export type QueueStatus =
+  | "proposed"
+  | "confirmed"
+  | "executed"
+  | "verified"
+  | "cancelled"
+  | "failed";
+
 export interface ExecutionEntry {
   plan: ExecutionPlan;
-  status: "awaiting_confirmation" | "running" | "done";
+  status: "awaiting_confirmation" | "running" | "done" | "cancelled";
+  /** Why this change is being proposed, in the operator's own terms. */
+  reason?: string;
   confirmation?: ConfirmationProof;
   receipt?: ExecutionReceipt;
   operatorRef: string;
@@ -33,14 +44,41 @@ function upsert(entry: ExecutionEntry): void {
 }
 
 export const executionStore = {
-  propose(plan: ExecutionPlan, operatorRef: string): void {
-    upsert({ plan, status: "awaiting_confirmation", operatorRef, updatedAt: new Date().toISOString() });
+  propose(plan: ExecutionPlan, operatorRef: string, reason?: string): void {
+    upsert({
+      plan,
+      status: "awaiting_confirmation",
+      operatorRef,
+      ...(reason ? { reason } : {}),
+      updatedAt: new Date().toISOString(),
+    });
+  },
+  cancel(planId: string): void {
+    const existing = entries.find((e) => e.plan.id === planId);
+    if (!existing || existing.status === "done") return;
+    upsert({ ...existing, status: "cancelled", updatedAt: new Date().toISOString() });
   },
   markRunning(plan: ExecutionPlan, confirmation: ConfirmationProof, operatorRef: string): void {
-    upsert({ plan, status: "running", confirmation, operatorRef, updatedAt: new Date().toISOString() });
+    const existing = entries.find((e) => e.plan.id === plan.id);
+    upsert({
+      ...existing,
+      plan,
+      status: "running",
+      confirmation,
+      operatorRef,
+      updatedAt: new Date().toISOString(),
+    });
   },
   complete(plan: ExecutionPlan, receipt: ExecutionReceipt, operatorRef: string): void {
-    upsert({ plan, status: "done", receipt, operatorRef, updatedAt: new Date().toISOString() });
+    const existing = entries.find((e) => e.plan.id === plan.id);
+    upsert({
+      ...existing,
+      plan,
+      status: "done",
+      receipt,
+      operatorRef,
+      updatedAt: new Date().toISOString(),
+    });
   },
   list(): ExecutionEntry[] {
     return entries;
@@ -64,6 +102,25 @@ export function useExecutions(): ExecutionEntry[] {
     () => entries,
     () => entries,
   );
+}
+
+/**
+ * The queue state an operator sees. VERIFIED is only ever reported when
+ * verification actually confirmed the effect.
+ */
+export function queueStatus(entry: ExecutionEntry): QueueStatus {
+  if (entry.status === "cancelled") return "cancelled";
+  if (entry.status === "awaiting_confirmation") return "proposed";
+  if (entry.status === "running") return "confirmed";
+  const receipt = entry.receipt;
+  if (!receipt) return "confirmed";
+  if (receipt.status === "succeeded") {
+    return receipt.verification.status === "verified" ? "verified" : "executed";
+  }
+  if (receipt.status === "uncertain" || receipt.status === "compensation_available") {
+    return "executed";
+  }
+  return "failed";
 }
 
 /** Operator isolation: admins see the session's runs, everyone else sees theirs. */
