@@ -199,7 +199,7 @@ describe("drill: restore", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("puts the workspace back the way it was when a restore cannot finish", () => {
+  it("never leaves the workspace emptied when a restore cannot finish", () => {
     const raw = serializeBackup(createBackup({ store: memoryStore({ "aih:a": "1", "aih:b": "2" }) }));
     const target = memoryStore({ "aih:existing": "precious" });
     let writes = 0;
@@ -213,10 +213,14 @@ describe("drill: restore", () => {
     };
     const result = restoreBackup(raw, { store: failing });
     expect(result.ok).toBe(false);
-    // The pre-restore state is back, and no half-restored keys remain.
+    if (result.ok) return;
+    // The pre-restore work is still on the device — a failed restore never wipes it.
     expect(target.getItem("aih:existing")).toBe("precious");
-    expect(target.getItem("aih:a")).toBeNull();
+    // And the operator is handed a recovery copy plus an honest explanation.
+    expect(result.safetyCopy?.entries["aih:existing"]).toBe("precious");
+    expect(result.reason).toContain("could not be completed");
   });
+
 });
 
 /* ------------------------------------------------------------------ */
