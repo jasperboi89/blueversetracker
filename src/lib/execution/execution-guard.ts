@@ -76,6 +76,19 @@ export function authorizeExecution(plan: ExecutionPlan, ctx: GuardContext): Guar
     };
   }
 
+  // Activation 8 — unconditional role floor for anything that changes state.
+  // The per-capability permission check below only runs when a canonical
+  // definition exists; this floor holds even when it does not, so a revoked or
+  // downgraded operator can never apply a change with an older confirmation.
+  if (isExecMutating(contract.operationClass) && (ctx.role === null || ctx.role === "viewer")) {
+    return {
+      allowed: false,
+      failureClass: "authorization_denied",
+      message: "Your access no longer allows applying changes, so nothing was applied.",
+    };
+  }
+
+
   const canonical = getCapability(plan.capabilityId);
   if (canonical) {
     if (canonical.lifecycle === "disabled" || canonical.lifecycle === "deprecated") {
