@@ -36,6 +36,10 @@ export const SERVER_LEDGER_ACTION_TYPES: readonly string[] = [
   "complete_night_plan_item",
   "set_ticket_classification",
   "start_timer",
+  "create_completed_work_entry",
+  "create_knowledge_vault_note",
+  "create_shift_summary_draft",
+  "record_script_fix_finding",
 ];
 
 /** Effect family each audited action type is allowed to touch. */
@@ -44,6 +48,10 @@ const ACTION_TYPE_FAMILY: Record<ExecLedgerActionType, string> = {
   complete_night_plan_item: "night_plan",
   set_ticket_classification: "ticket",
   start_timer: "timer",
+  create_completed_work_entry: "completed_work",
+  create_knowledge_vault_note: "knowledge",
+  create_shift_summary_draft: "shift",
+  record_script_fix_finding: "script",
   fixture_only: "fixture",
 };
 
@@ -52,6 +60,10 @@ function capabilityFamily(capabilityId: string): string {
   if (capabilityId.startsWith("night_plan.")) return "night_plan";
   if (capabilityId.startsWith("freshdesk.ticket.")) return "ticket";
   if (capabilityId.startsWith("work.timer.")) return "timer";
+  if (capabilityId.startsWith("work.completed_entry.")) return "completed_work";
+  if (capabilityId.startsWith("knowledge.note.create")) return "knowledge";
+  if (capabilityId.startsWith("shift.summary_draft.")) return "shift";
+  if (capabilityId.startsWith("script.fix_finding.")) return "script";
   if (capabilityId.startsWith("fixture.")) return "fixture";
   return "unmapped";
 }

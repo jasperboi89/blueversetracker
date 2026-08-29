@@ -9,6 +9,7 @@
 import { executePlan } from "./execution-engine";
 import { executionStore } from "./execution-store";
 import { registerSafeActionProviders } from "./safe-action-providers";
+import { registerInternalActionProviders } from "@/lib/governed/internal-providers";
 import type { ConfirmationProof, ExecutionPlan, ExecutionReceipt } from "./execution-contract";
 import type { LedgerPort } from "@/lib/core/action-executor";
 import type { HubRole } from "@/lib/auth/authorization.functions";
@@ -46,6 +47,7 @@ export async function runGovernedExecution(
   opts: RunGovernedOptions,
 ): Promise<ExecutionReceipt> {
   registerSafeActionProviders();
+  registerInternalActionProviders();
   executionStore.markRunning(plan, opts.confirmation, opts.operatorRef);
   const ledger = opts.ledger ?? (await serverLedgerPort());
   const receipt = await executePlan(plan, {
