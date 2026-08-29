@@ -10,7 +10,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LedgerPort } from "@/lib/core/action-executor";
 import { nightPlanStore } from "@/lib/night-plan-store";
-import { registerActionHandlers } from "@/lib/core/action-handlers";
 import { registerSafeActionProviders } from "./safe-action-providers";
 import { clearProviders, registerProvider } from "./execution-provider";
 import {
@@ -90,7 +89,6 @@ beforeEach(() => {
   resetConfirmations();
   executionStore.clear();
   clearProviders();
-  registerActionHandlers();
   registerSafeActionProviders();
 });
 
