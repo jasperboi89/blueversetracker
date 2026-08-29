@@ -94,6 +94,10 @@ export type ExecLedgerActionType =
   | "complete_night_plan_item"
   | "set_ticket_classification"
   | "start_timer"
+  | "create_completed_work_entry"
+  | "create_knowledge_vault_note"
+  | "create_shift_summary_draft"
+  | "record_script_fix_finding"
   | "fixture_only";
 
 export interface ExecPrecondition {

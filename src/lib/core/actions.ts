@@ -20,7 +20,12 @@ export type ActionType =
   | "reinforce_resolution"
   | "create_resolution"
   | "dismiss_candidate"
-  | "archive_candidate";
+  | "archive_candidate"
+  // Governed Actions — internal-only writes (no external systems)
+  | "create_completed_work_entry"
+  | "create_knowledge_vault_note"
+  | "create_shift_summary_draft"
+  | "record_script_fix_finding";
 
 /** Risk tiers — read-only actions never reach the executor today. */
 export type ActionRisk = "read" | "low_write" | "high_write";
@@ -47,6 +52,32 @@ export interface StartTimerPayload {
   ticketNumber: string;
 }
 
+/* ---------------- Governed Actions — internal-only payloads ---------------- */
+
+export interface CreateCompletedWorkEntryPayload {
+  title: string;
+  accountNumber?: string;
+  accountName?: string;
+  ticketNumber?: string;
+  whatNeedsDone?: string;
+  summary?: string;
+}
+export interface CreateKnowledgeVaultNotePayload {
+  title: string;
+  contentHtml?: string;
+}
+export interface CreateShiftSummaryDraftPayload {
+  shiftKey: string;
+  title: string;
+  body: string;
+}
+export interface RecordScriptFixFindingPayload {
+  accountNumber: string;
+  summary: string;
+  detail?: string;
+  ticketNumber?: string;
+}
+
 import type {
   CandidateDecisionPayload,
   CreateKnowledgeDraftPayload,
@@ -68,6 +99,10 @@ export type ActionPayloadMap = {
   create_resolution: CreateResolutionPayload;
   dismiss_candidate: CandidateDecisionPayload;
   archive_candidate: CandidateDecisionPayload;
+  create_completed_work_entry: CreateCompletedWorkEntryPayload;
+  create_knowledge_vault_note: CreateKnowledgeVaultNotePayload;
+  create_shift_summary_draft: CreateShiftSummaryDraftPayload;
+  record_script_fix_finding: RecordScriptFixFindingPayload;
 };
 
 export interface ActionContext {
