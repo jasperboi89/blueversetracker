@@ -109,6 +109,18 @@ const DURABLE: Partial<Record<AccEventType, DurableRule>> = {
   "intelligence.forecast_resolved": { category: "intelligence", sensitivity: "reference" },
   "intelligence.forecast_expired": { category: "intelligence", sensitivity: "reference" },
   "intelligence.forecast_acknowledged": { category: "intelligence", sensitivity: "reference" },
+
+  // CAUSAL INVESTIGATION (Phase 8) — the reasoning trail is durable so an
+  // operator can later ask "what did we believe, when, and on what basis?".
+  // Rows carry ids, types, strength classes and outcome keys only. Proposal
+  // churn (recomputed strength with no class change) emits nothing.
+  "investigation.opened": { category: "intelligence", sensitivity: "reference" },
+  "investigation.hypothesis_proposed": { category: "intelligence", sensitivity: "reference" },
+  "investigation.hypothesis_rejected": { category: "intelligence", sensitivity: "reference" },
+  "investigation.hypothesis_verified": { category: "intelligence", sensitivity: "reference" },
+  "investigation.test_prepared": { category: "intelligence", sensitivity: "reference" },
+  "investigation.test_result_recorded": { category: "intelligence", sensitivity: "reference" },
+  "investigation.closed": { category: "intelligence", sensitivity: "reference" },
 };
 
 /**
