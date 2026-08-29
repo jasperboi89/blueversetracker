@@ -540,6 +540,36 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmExecutionDialog
+        plan={governedPlan}
+        operatorRef={identity?.userId ?? ""}
+        open={!!governedPlan}
+        onOpenChange={(v) => !v && setGovernedPlan(null)}
+        onConfirmed={(proof) => {
+          const plan = governedPlan;
+          setGovernedPlan(null);
+          if (!plan) return;
+          setGovernedBusy(true);
+          void runGovernedExecution(plan, {
+            operatorRef: identity?.userId ?? "",
+            role: identity?.role ?? null,
+            confirmation: proof,
+          })
+            .then((receipt) => {
+              const { tone, text } = receiptHeadline(receipt);
+              if (tone === "success") {
+                toast.success(text, { duration: 4000 });
+                reset();
+              } else if (tone === "warning") {
+                toast.warning(text, { duration: 6000 });
+              } else {
+                toast.error(text, { duration: 6000 });
+              }
+            })
+            .finally(() => setGovernedBusy(false));
+        }}
+      />
     </>
   );
 }
