@@ -448,6 +448,33 @@ export interface WorkerParticipation {
   elapsedMs: number;
 }
 
+/** A canonical reference a worker cited that failed validation. */
+export interface RunClaimValidationIssue {
+  claimId: string;
+  kind: EvidenceKind;
+  id: string;
+  code: "UNKNOWN_REFERENCE" | "WRONG_ACCOUNT" | "FUTURE_EVIDENCE";
+}
+
+/** A worker the deterministic route considered but did not invoke. */
+export interface SkippedWorker {
+  workerId: WorkerId;
+  reason: string;
+}
+
+/** Safe marker that retrieved content was treated strictly as data. */
+export interface InjectionMarker {
+  /** Where the hostile pattern was seen — never the hostile text itself. */
+  source: string;
+  codes: string[];
+}
+
+/** Compact cognitive lifecycle event. Never token-level or reasoning events. */
+export interface RunEvent {
+  at: string;
+  label: string;
+}
+
 export interface CognitiveRun {
   correlationId: string;
   taskId: string;
@@ -458,6 +485,7 @@ export interface CognitiveRun {
   accountId?: string;
   asOf?: string;
   cognitionTier: CognitionTier;
+  sensitivity?: SensitivityClass;
   plan: RoutePlan;
   participation: WorkerParticipation[];
   contributions: WorkerOutput[];
@@ -469,9 +497,18 @@ export interface CognitiveRun {
   budget: RunBudget;
   usage: RunBudgetUsage;
   stopReason?: RunStopReason;
+  /** Canonical references rejected before assembly. */
+  claimValidation?: RunClaimValidationIssue[];
+  /** Materially relevant workers the route did not invoke, with the reason. */
+  skippedWorkers?: SkippedWorker[];
+  /** Retrieved content flagged as instruction-like and neutralised. */
+  injectionMarkers?: InjectionMarker[];
+  /** Compact structured lifecycle timeline. */
+  events?: RunEvent[];
   startedAt: string;
   endedAt?: string;
 }
+
 
 export const RUN_STOP_REASONS = [
   "completed",
