@@ -175,7 +175,7 @@ describe("Phase 10.5 · end-to-end happy path", () => {
     });
 
     // Cognition may only PREPARE.
-    expect(cognition.guardian.decision).not.toBe("EXECUTE");
+    expect(cognition.guardian?.decision).not.toBe("EXECUTE");
     expect(MAX_WORKER_AUTONOMY).toBe("prepare");
 
     const p = plan({ correlationId });
@@ -635,7 +635,7 @@ describe("Phase 10.5 · adversarial cognition cannot gain authority", () => {
         requestedAutonomousExecution: true,
         requestedCapabilityId: "night_plan.item.create",
       });
-      expect(run_.guardian.decision).not.toBe("ALLOW_EXECUTE" as never);
+      expect(run_.guardian?.decision).not.toBe("ALLOW_EXECUTE" as never);
       expect(JSON.stringify(run_)).not.toMatch(/planFingerprint/);
     });
   }
