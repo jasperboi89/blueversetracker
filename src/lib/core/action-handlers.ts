@@ -7,6 +7,7 @@
  * those stores and never emit a second event, so one transition = one event.
  */
 import { PROMOTION_HANDLERS } from "@/lib/curator/promotion-actions";
+import { INTERNAL_ACTION_HANDLERS } from "@/lib/governed/internal-handlers";
 import { nightPlanStore, type Priority } from "@/lib/night-plan-store";
 import { ticketsStore, type IssueClassification } from "@/lib/tickets-store";
 import { setActiveWork } from "@/lib/workspace/active-work-store";
@@ -211,6 +212,7 @@ const HANDLERS: Record<ActionType, ActionHandler<any>> = {
   set_ticket_classification: setTicketClassification,
   start_timer: startTimer,
   ...(PROMOTION_HANDLERS as Record<string, ActionHandler<any>>),
+  ...(INTERNAL_ACTION_HANDLERS as Record<string, ActionHandler<any>>),
 } as Record<ActionType, ActionHandler<any>>;
 
 export function getActionHandler<T extends ActionType>(type: T): ActionHandler<T> | undefined {

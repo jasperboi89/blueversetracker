@@ -208,6 +208,10 @@ export const ACTION_TYPES: readonly ActionType[] = [
   "create_resolution",
   "dismiss_candidate",
   "archive_candidate",
+  "create_completed_work_entry",
+  "create_knowledge_vault_note",
+  "create_shift_summary_draft",
+  "record_script_fix_finding",
 ];
 
 export function isActionType(v: unknown): v is ActionType {
