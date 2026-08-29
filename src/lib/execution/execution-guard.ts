@@ -22,6 +22,12 @@ import { verifyPlanIntegrity } from "./execution-plan";
 export interface GuardContext {
   operatorRef: string;
   role: HubRole | null;
+  /**
+   * Technical health of the underlying source systems, observed NOW. Health at
+   * planning time proves nothing about health at execution time (Phase 10.5
+   * §27), so it is re-evaluated here rather than carried on the plan.
+   */
+  sourceHealth?: SourceHealthMap;
 }
 
 export type GuardVerdict =
