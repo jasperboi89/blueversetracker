@@ -72,8 +72,12 @@ export function CommandHeader({ name = "Luke" }: { name?: string }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Pill tone={status === "off" ? "muted" : "info"} icon={Clock}>
-            {status === "off" ? "Shift window closed" : `Shift ${pct}% elapsed`}
+          <Pill tone={status === "active" || status === "near-end" ? "info" : "muted"} icon={Clock}>
+            {status === "before"
+              ? "Shift not started"
+              : status === "complete"
+                ? "Shift complete"
+                : `Shift ${pct}% elapsed`}
           </Pill>
           <Pill tone={governedTone} icon={ShieldCheck}>
             {governedText}
