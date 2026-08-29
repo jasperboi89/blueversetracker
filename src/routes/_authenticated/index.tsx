@@ -11,6 +11,7 @@ import { ShiftLedger } from "@/components/home/ShiftLedger";
 import { QuickStart } from "@/components/home/QuickStart";
 import { ShiftSummaryButton } from "@/components/home/ShiftSummaryButton";
 import { BriefingPanel } from "@/components/home/BriefingPanel";
+import { IntelligenceLegend } from "@/components/home/IntelligenceLegend";
 import { RadarBand } from "@/components/intelligence/RadarBand";
 import { NightForecast } from "@/components/quantum-bloom/NightForecast";
 import { useTheme } from "@/lib/settings/theme-store";
@@ -171,6 +172,7 @@ function Home() {
 
           {/* Work intelligence — grounded radar, then what needs attention. */}
           <Band label="Work Intelligence">
+            <IntelligenceLegend />
             <RadarBand />
             <div className="grid gap-4 lg:grid-cols-2">
               <NightPlan />

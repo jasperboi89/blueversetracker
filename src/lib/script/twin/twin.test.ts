@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  weakestEvidence,
-  isTrustworthy,
-  byEvidenceRank,
-  EVIDENCE_STATES,
-} from "./evidence-state";
+import { weakestEvidence, isTrustworthy, byEvidenceRank, EVIDENCE_STATES } from "./evidence-state";
 import { normalizeModel, screenEvidenceStates, type TwinScriptModel } from "./twin-model";
 import {
   createSimState,
@@ -52,8 +47,16 @@ function sampleModel(): TwinScriptModel {
             order: 0,
             provenance: { source: "MANUAL", evidence: "verified" },
             options: [
-              { value: "patient", label: "Patient", provenance: { source: "MANUAL", evidence: "verified" } },
-              { value: "provider", label: "Provider", provenance: { source: "MANUAL", evidence: "verified" } },
+              {
+                value: "patient",
+                label: "Patient",
+                provenance: { source: "MANUAL", evidence: "verified" },
+              },
+              {
+                value: "provider",
+                label: "Provider",
+                provenance: { source: "MANUAL", evidence: "verified" },
+              },
             ],
           },
           {
@@ -79,7 +82,13 @@ function sampleModel(): TwinScriptModel {
           },
         ],
       },
-      { id: "screen:b", title: "Confirm", provenance: { source: "MANUAL", evidence: "observed" }, navigation: [], elements: [] },
+      {
+        id: "screen:b",
+        title: "Confirm",
+        provenance: { source: "MANUAL", evidence: "observed" },
+        navigation: [],
+        elements: [],
+      },
     ],
   });
 }
@@ -170,14 +179,49 @@ describe("Activation 7 — Twin from recognised structure stays honest", () => {
     recognizedLines: 8,
     unknowns: [],
     components: [
-      { id: "section:intro", kind: "section", name: "Intro", key: "intro", line: 1, occurrences: 1 },
-      { id: "prompt:greeting", kind: "prompt", name: "Greeting", key: "greeting", line: 2, occurrences: 1 },
+      {
+        id: "section:intro",
+        kind: "section",
+        name: "Intro",
+        key: "intro",
+        line: 1,
+        occurrences: 1,
+      },
+      {
+        id: "prompt:greeting",
+        kind: "prompt",
+        name: "Greeting",
+        key: "greeting",
+        line: 2,
+        occurrences: 1,
+      },
       { id: "field:name", kind: "field", name: "Name", key: "name", line: 3, occurrences: 1 },
-      { id: "section:dispatch", kind: "section", name: "Dispatch", key: "dispatch", line: 5, occurrences: 1 },
-      { id: "branch:oncall", kind: "branch", name: "OnCall", key: "oncall", line: 6, occurrences: 1 },
+      {
+        id: "section:dispatch",
+        kind: "section",
+        name: "Dispatch",
+        key: "dispatch",
+        line: 5,
+        occurrences: 1,
+      },
+      {
+        id: "branch:oncall",
+        kind: "branch",
+        name: "OnCall",
+        key: "oncall",
+        line: 6,
+        occurrences: 1,
+      },
     ],
     dependencies: [
-      { id: "d1", kind: "branches_to", fromId: "branch:oncall", toKey: "missing", resolution: "unresolved", line: 6 },
+      {
+        id: "d1",
+        kind: "branches_to",
+        fromId: "branch:oncall",
+        toKey: "missing",
+        resolution: "unresolved",
+        line: 6,
+      },
     ],
   };
 

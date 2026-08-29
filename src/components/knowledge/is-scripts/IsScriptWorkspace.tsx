@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { BookMarked, FileUp, FlaskConical, Network, Terminal } from "lucide-react";
+import { BookMarked, Boxes, FileUp, FlaskConical, Network, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IsScriptEntriesPane } from "./IsScriptEntriesPane";
 import { IsManualsPane } from "./IsManualsPane";
 import { DependencyCortexPane } from "./DependencyCortexPane";
 import { SimulatorPane } from "./SimulatorPane";
 import { IifImportPane } from "./IifImportPane";
+import { ScriptTwinWorkspace } from "./twin/ScriptTwinWorkspace";
 
-type Pane = "entries" | "manuals" | "cortex" | "simulator" | "import";
+type Pane = "entries" | "manuals" | "cortex" | "simulator" | "import" | "twin";
 
 export function IsScriptWorkspace() {
   const [pane, setPane] = useState<Pane>("entries");
   const [seed, setSeed] = useState<{ title: string; usageHtml: string } | null>(null);
-
 
   return (
     <div className="space-y-3">
@@ -47,9 +47,17 @@ export function IsScriptWorkspace() {
           label="Script Import"
           onClick={() => setPane("import")}
         />
+        <PaneTab
+          active={pane === "twin"}
+          icon={Boxes}
+          label="Enter Script Twin"
+          onClick={() => setPane("twin")}
+        />
       </div>
 
-      {pane === "import" ? (
+      {pane === "twin" ? (
+        <ScriptTwinWorkspace />
+      ) : pane === "import" ? (
         <IifImportPane />
       ) : pane === "simulator" ? (
         <SimulatorPane />
@@ -68,7 +76,6 @@ export function IsScriptWorkspace() {
     </div>
   );
 }
-
 
 function PaneTab({
   active,

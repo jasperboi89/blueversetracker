@@ -116,12 +116,19 @@ reads:
 | `TwinOverlay`/`ProvenanceBadge`/`DependencyBadge`/`SimulationMarker` | `provenance`, deps, sim state | Enhanced-mode overlays; readable + optional. |
 | `EvidenceBadge` | `EvidenceState` | Renders `EVIDENCE_STATE_META` (icon + label + tone). Portal-wide. |
 
-These are additive files. They are **not** wired yet because (a) TanStack
-file-based routing regenerates `routeTree.gen.ts` through the registry-blocked
-vite plugin, so a new Script Twin route cannot be added safely in this sandbox,
-and (b) TSX cannot be type-checked or rendered here. In a building environment:
-add `src/components/knowledge/is-scripts/twin/*` from this spec, expose an
-`ENTER SCRIPT TWIN` entry inside `IsScriptWorkspace`, and register the route.
+**Update — the React layer is now implemented and wired** (Live UI Completion).
+The components above ship under `src/components/knowledge/is-scripts/twin/`
+(`twin-components.tsx`, `InfinityScreen.tsx`, `ScriptTwinWorkspace.tsx`,
+`twin-pair.ts`, `twin-samples.ts`) and an **ENTER SCRIPT TWIN** tab is added to
+`IsScriptWorkspace` — no new route was needed (the workspace already mounts
+inside the `knowledge-vault` route via `KnowledgeVault`), which avoids the
+registry-blocked `routeTree.gen.ts` regeneration. All new TSX **type-checks
+clean** (react/radix/lucide/tanstack now resolve in this environment; zero new
+non-`vitest` errors) and **lints clean** (`eslint` exit 0). What still cannot run
+here: the `vitest` suite (`vitest` not installed; install 403s on markdown
+deps), the production build (`vite.config.ts` imports the missing
+`@lovable.dev/vite-tanstack-config`), and therefore the **rendered-portal visual
+review**. Those keep the activation at PARTIAL.
 
 ---
 
@@ -162,11 +169,16 @@ never reach Amtelco.
 ## Status
 
 **`ACTIVATION 7 PARTIAL`.** Delivered and verified: the portal-wide evidence
-vocabulary, the Script Twin normalized model, bounded/isolated simulation with
-progressive reveal, the honest structural adapter, 33 passing tests (bun), and a
-rendered design reference for the Command Center + Script Twin. Deferred to a
-building environment (cannot be produced or verified in this sandbox): the React
-component layer and route wiring, the Command Center re-layout on the live home
-surface, motion integration, and the rendered-portal visual review — plus the
-completion gates (full `vitest` suite, full typecheck, production build), which
-require the private registry this sandbox cannot reach.
+vocabulary; the Script Twin normalized model, bounded/isolated simulation with
+progressive reveal, and honest structural adapter (46 assertions passing via
+bun); **the full Script Twin React layer (Classic + Enhanced views, bounded
+simulation, provenance) wired into the Script Intelligence workspace via an
+ENTER SCRIPT TWIN tab**; a live Command Center evidence-key legend; and a
+rendered design reference. All new TSX type-checks clean (zero new non-`vitest`
+errors) and lints clean. **Blocker keeping this PARTIAL:** the sandbox cannot run
+the `vitest` suite (not installed; install 403s), the production build
+(`vite.config.ts` imports the missing `@lovable.dev/vite-tanstack-config`), or
+render the live portal — so the completion gates (full suite, build) and the
+rendered-portal visual review could not be executed. The React code is written,
+typechecked, and linted; it needs a registry-capable environment to build, run
+the suite, and complete the visual review.
