@@ -83,6 +83,19 @@ export function resolveConfirmation(
 /* Executable capability contract                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The Safe Action identifiers the durable Action Ledger will accept. This list
+ * MIRRORS the server-side `z.enum` in `action-ledger.functions.ts`; it does not
+ * replace it. The server remains the authority — this type only stops an
+ * unmapped capability from ever reaching it.
+ */
+export type ExecLedgerActionType =
+  | "add_night_plan_item"
+  | "complete_night_plan_item"
+  | "set_ticket_classification"
+  | "start_timer"
+  | "fixture_only";
+
 export interface ExecPrecondition {
   id: string;
   label: string;
