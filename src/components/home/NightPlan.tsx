@@ -8,6 +8,7 @@ import {
   Pin,
   Plus,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
   Star,
   Trash2,
