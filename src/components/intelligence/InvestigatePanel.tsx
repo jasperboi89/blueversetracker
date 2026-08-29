@@ -34,8 +34,8 @@ function StrengthChip({ h }: { h: Hypothesis }) {
       ? { color: "var(--status-success, var(--intel-accent))", pct: "16%" }
       : h.status === "rejected"
         ? { color: "var(--muted-foreground)", pct: "10%" }
-        : h.strength === "contradicted"
-          ? { color: "var(--status-danger, var(--destructive))", pct: "14%" }
+        : h.strength === "weak" || h.strength === "insufficient"
+          ? { color: "var(--status-warning)", pct: "14%" }
           : { color: "var(--intel-accent)", pct: "12%" };
   return (
     <span
@@ -226,7 +226,7 @@ export function InvestigatePanel({
       ...patterns.slice(0, 3).map((p, i) => ({
         id: `${id}:op${i + 1}`,
         statement: p.title,
-        source: "pattern" as const,
+        source: "pattern_intelligence" as const,
         refs: [],
         recordedAt: now.toISOString(),
       })),
