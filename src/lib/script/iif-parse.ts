@@ -192,7 +192,7 @@ function parseIniSections(lines: string[], ctx: Ctx) {
       // instance; a bare `[Greeting]` names only an instance.
       const label = section[1]!.trim();
       const split = /^([A-Za-z][\w ]{0,40})\s*[:.]\s*(.+)$/.exec(label);
-      const typeToken = split ? split[1]!ature() : label;
+      const typeToken = split ? split[1]!.trim() : label;
       const name = split ? split[2]!.trim() : label;
       current = {
         line: lineNo,
