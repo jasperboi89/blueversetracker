@@ -326,9 +326,65 @@ function recompute(
   const entries = [...pending];
 
   const hypotheses = inv.hypotheses.map((h) => {
-    if (h.status === "verified") return h;
+    if (h.status === "verified") {
+      // Part 35 — a verified conclusion stays challengeable. New contradictory
+      // evidence or a refuted prediction recorded AFTER verification reopens it.
+      // History is preserved: verifiedAt survives, and the reopening is a new
+      // timeline entry rather than an edit of the verification entry.
+      const since = h.verifiedAt ? Date.parse(h.verifiedAt) : 0;
+      const newContradiction = inv.evidence.some(
+        (e) =>
+          e.hypothesisId === h.id &&
+          e.stance === "contradicts" &&
+          (e.strength === "direct" || e.strength === "strong" || e.counterexample === true) &&
+          Date.parse(e.recordedAt) > since,
+      );
+      const newRefutation = h.predictions.some(
+        (p) => p.outcome === "refuted" && p.recordedAt && Date.parse(p.recordedAt) > since,
+      );
+      if (!newContradiction && !newRefutation) return h;
+      const a = assessStrength({ ...h, status: "supported" }, inv.evidence, inv.tests);
+      entries.push(
+        entry(
+          "hypothesis_updated",
+          `${h.title}: verified at ${h.verifiedAt ?? "an earlier time"} — REOPENED by new contradictory evidence. The earlier verification is retained as history and requires review.`,
+          iso,
+          { hypothesisId: h.id },
+        ),
+      );
+      return {
+        ...h,
+        status: a.status,
+        strength: a.strength,
+        confidence: a.confidence,
+        relationClaim: "associated" as const,
+        strengthRationale: [
+          `Verified at ${h.verifiedAt ?? "an earlier time"}; reopened because new contradictory evidence arrived afterwards.`,
+          ...a.rationale,
+        ],
+        verificationReopenedAt: iso,
+        hypothesisVersion: h.hypothesisVersion + 1,
+        updatedAt: iso,
+      };
+    }
     const a = assessStrength(h, inv.evidence, inv.tests);
-    if (a.strength === h.strength && a.status === h.status) {
+    // Parts 15 & 16 — a counterexample directly attacks necessity/sufficiency.
+    // One reliable "symptom without mechanism" or "mechanism without symptom"
+    // case retires the stronger claim back to plain association.
+    const counterexampled = inv.evidence.some(
+      (e) => e.hypothesisId === h.id && e.stance === "contradicts" && e.counterexample === true,
+    );
+    const claimAfterCounterexample =
+      counterexampled &&
+      (h.relationClaim === "necessary_under_tested_conditions" ||
+        h.relationClaim === "sufficient_under_tested_conditions")
+        ? ("associated" as const)
+        : h.relationClaim;
+    if (
+      a.strength === h.strength &&
+      a.status === h.status &&
+      claimAfterCounterexample === h.relationClaim
+    ) {
       return { ...h, strengthRationale: a.rationale, confidence: a.confidence };
     }
     entries.push(
@@ -344,13 +400,23 @@ function recompute(
       strength: a.strength,
       status: a.status,
       confidence: a.confidence,
-      strengthRationale: a.rationale,
+      strengthRationale: counterexampled
+        ? [
+            ...a.rationale,
+            "A counterexample is on file, so no necessity or sufficiency claim is carried — the relationship is stated as association only.",
+          ]
+        : a.rationale,
       relationClaim:
-        a.strength === "strongly_supported" ? ("possibly_contributing" as const) : h.relationClaim,
+        claimAfterCounterexample !== h.relationClaim
+          ? claimAfterCounterexample
+          : a.strength === "strongly_supported"
+            ? ("possibly_contributing" as const)
+            : h.relationClaim,
       hypothesisVersion: h.hypothesisVersion + 1,
       updatedAt: iso,
     };
   });
+
 
   const conclusion = concludeInvestigation({ ...inv, hypotheses }, now);
   if (conclusion.kind !== inv.conclusion.kind) {
