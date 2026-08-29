@@ -1,0 +1,21 @@
+import { describe, it } from "vitest";
+import { structureProposal } from "@/lib/investigation/hypothesis-generation";
+import { createInvestigation, addHypotheses, linkEvidence, prepareTests, recordTestResult, attemptVerification } from "@/lib/investigation/investigation-engine";
+const NOW = new Date("2026-03-01T00:00:00.000Z");
+describe("dbg", () => { it("x", () => {
+ let inv = createInvestigation({id:"inv-gate",accountId:"2002",title:"t",observations:[],now:NOW}).investigation;
+ const mk=(i:number,title:string,p:string[])=>structureProposal({title,statement:title+" statement",mechanism:title+" mechanism described in enough structural detail to be testable",predictions:p},{investigationId:"inv-gate",accountId:"2002",index:i,origin:"operator"},NOW);
+ const a=mk(1,"Field cleared during back navigation",["back navigation clears the field"]);
+ const b=mk(2,"Downstream overwrite of destination",["destination overwritten later"]);
+ inv=addHypotheses(inv,[a,b],NOW).investigation;
+ const L=(h:string,st:any,s:any,id:string)=>({id,hypothesisId:h,stance:st,strength:s,source:"event_ledger" as const,statement:"e",refs:[],recordedAt:NOW.toISOString()});
+ inv=linkEvidence(inv,[L(a.id,"supports","direct","e1"),L(a.id,"supports","strong","e2"),L(b.id,"contradicts","direct","e3")],NOW).investigation;
+ inv=prepareTests(inv,{},NOW).investigation;
+ console.log("types",a.hypothesisType,"tests",inv.tests.map(t=>[t.id,t.hypothesisIds,t.outcomes.map(o=>o.key)]));
+ const t=inv.tests.find(t=>t.outcomes.some(o=>o.strengthens.includes(a.id)))!;
+ const key=t.outcomes.find(o=>o.strengthens.includes(a.id))!.key;
+ inv=recordTestResult(inv,t.id,key,{now:NOW}).investigation;
+ console.log("preds",JSON.stringify(inv.hypotheses.map(h=>[h.id,h.status,h.predictions])));
+ const r=attemptVerification(inv,a.id,{operatorConfirmed:true,now:NOW});
+ console.log("unmet",r.unmet, "coverage", inv.scriptContext);
+});});
