@@ -93,6 +93,17 @@ export function authorizeExecution(plan: ExecutionPlan, ctx: GuardContext): Guar
         message: `Your role does not hold: ${missing.join(", ")}.`,
       };
     }
+
+    // Health is re-derived at execution time, never inherited from the plan.
+    const health = healthMapFor(allCapabilities(), ctx.sourceHealth ?? {})[canonical.id] ?? "healthy";
+    const degradedBlocks = contract.riskClass === "high" || contract.riskClass === "critical";
+    if (health === "unavailable" || health === "disabled" || (health === "degraded" && degradedBlocks)) {
+      return {
+        allowed: false,
+        failureClass: "provider_unavailable",
+        message: `“${canonical.name}” can't be applied right now — the system behind it is ${health}.`,
+      };
+    }
   } else if (!contract.fixtureOnly) {
     // No canonical definition for a non-fixture capability ⇒ fail closed.
     return {
