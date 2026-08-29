@@ -305,10 +305,10 @@ describe("real Night Plan governed execution", () => {
     const r1 = await run(first.plan, port);
     expect(r1.status).toBe("succeeded");
 
-    const second = prepareNightPlanItemCreate({ task: "Only once", operatorRef: OPERATOR });
-    if (!second.ok) throw new Error(second.message);
-    expect(second.plan.idempotencyKey).toBe(first.plan.idempotencyKey);
-    const r2 = await run(second.plan, port);
+    // Re-submitting the SAME plan (the confirmed effect) is suppressed by the
+    // effect-keyed idempotency key rather than adding a second item.
+    const r2 = await run(first.plan, port);
+    expect(r2.status).not.toBe("succeeded");
     expect(r2.failureClass).toBe("duplicate_suppressed");
     expect(nightPlanStore.get().items.filter((i) => i.task === "Only once").length).toBe(1);
   });
@@ -368,7 +368,10 @@ describe("real Night Plan governed execution", () => {
     // Replace only the verify authority; the apply path stays real.
     registerProvider({
       capabilityId: "night_plan.item.create",
-      readState: async () => null,
+      readState: async (plan) =>
+        plan.preState
+          ? { ...plan.preState }
+          : { fingerprint: "live", observedAt: new Date().toISOString(), summary: {} },
       apply: async () => ({ status: "applied", note: "applied" }),
       verify: async () => "failed",
     });
@@ -385,7 +388,10 @@ describe("real Night Plan governed execution", () => {
     const { port } = fakeLedger();
     registerProvider({
       capabilityId: "night_plan.item.create",
-      readState: async () => null,
+      readState: async (plan) =>
+        plan.preState
+          ? { ...plan.preState }
+          : { fingerprint: "live", observedAt: new Date().toISOString(), summary: {} },
       apply: async () => ({ status: "applied", note: "applied" }),
       verify: async () => "unavailable",
     });
@@ -425,7 +431,10 @@ describe("Action Center session record", () => {
   it("keeps an abnormal outcome flagged for the operator", async () => {
     registerProvider({
       capabilityId: "night_plan.item.create",
-      readState: async () => null,
+      readState: async (plan) =>
+        plan.preState
+          ? { ...plan.preState }
+          : { fingerprint: "live", observedAt: new Date().toISOString(), summary: {} },
       apply: async () => ({ status: "unknown", note: "no answer" }),
       verify: async () => "unavailable",
     });
