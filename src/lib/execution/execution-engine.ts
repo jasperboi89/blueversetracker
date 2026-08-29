@@ -20,6 +20,7 @@
 
 import { eventSpine } from "@/lib/core/event-spine";
 import type { HubRole } from "@/lib/auth/authorization.functions";
+import type { SourceHealthMap } from "@/lib/capability/capability-health";
 import { getExecutableCapability } from "./executable-registry";
 import { authorizeExecution } from "./execution-guard";
 import { consumeConfirmation, validateConfirmation } from "./confirmation";
@@ -43,6 +44,8 @@ export interface ExecuteOptions {
   confirmation: ConfirmationProof | null;
   /** Server-authoritative idempotency + audit. Injected for tests. */
   ledger: LedgerPort;
+  /** Source-system health observed now; re-checked by the Guardian gate. */
+  sourceHealth?: SourceHealthMap;
   now?: () => number;
 }
 
@@ -176,7 +179,11 @@ export async function executePlan(
   trace.add("resolve", "ok", `${contract.name} resolved from the executable allowlist.`);
 
   /* ---------------- authorize (re-checked NOW) ---------------- */
-  const verdict = authorizeExecution(plan, { operatorRef: opts.operatorRef, role: opts.role });
+  const verdict = authorizeExecution(plan, {
+    operatorRef: opts.operatorRef,
+    role: opts.role,
+    ...(opts.sourceHealth ? { sourceHealth: opts.sourceHealth } : {}),
+  });
   if (!verdict.allowed) {
     trace.add(verdict.failureClass === "precondition_failed" ? "precondition" : "authorize", "blocked", verdict.message);
     return finish("rejected", verdict.message, { failureClass: verdict.failureClass });
@@ -354,7 +361,14 @@ export async function executePlan(
       );
     }
     if (result === "unavailable") {
-      await safeFinalize(opts.ledger, plan, "success", "");
+      // The effect happened, but the ledger row must not read as a clean
+      // success: the note keeps EXECUTED and VERIFIED distinguishable in audit.
+      await safeFinalize(
+        opts.ledger,
+        plan,
+        "success",
+        "executed; verification unavailable — manual check required",
+      );
       emit(plan, "capability.verification_pending", { verificationStatus: "unknown" });
       return finish(
         "uncertain",
