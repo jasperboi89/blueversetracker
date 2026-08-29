@@ -124,7 +124,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
 
   const run = (): void => {
     if (plan.direct) {
-      stopReason = "direct_response";
+      stopReason = plan.unavailableWorkers?.length ? "all_workers_unavailable" : "direct_response";
       return;
     }
 
