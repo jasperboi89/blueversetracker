@@ -125,3 +125,28 @@ names never reach the ledger.
 - Headerless tab records keep positional values only; naming depends on a
   matching `!TYPE` header row.
 - Conditions and formulas are not parsed into expressions.
+
+---
+
+## Activation 5 update — validated against a genuine export (2026-08)
+
+A **genuine Amtelco `.iif` export** was analysed against this pipeline. Finding:
+the real export is a **proprietary binary serialization** (~52% high bytes, all
+128 high-byte values present, `0x14`+`SCRIPT_` marker, CRLF, ~102 KB), **not**
+the text export (tab/INI/XML) this ingestion assumes.
+
+The importer **correctly refuses** the genuine file — `unreadable_encoding` as
+the UI reads it (`file.text()`, UTF-8), `binary_content` byte-preserving. This
+is the intended conservative behavior, not a bug: the text-first pipeline
+declines to guess a binary grammar.
+
+Consequences:
+- The tab/INI/XML dialects remain **SYNTHETIC VERIFIED** only.
+- `validatedAgainstRealExport` **stays `false`** — no real *text* export has
+  exercised the parser.
+- No binary grammar was invented; no parser/detector/contract code changed.
+
+See `docs/ACTIVATION_5_REAL_IIF_VALIDATION.md` for the full evidence, the added
+regression test (`src/lib/script/activation5-real-iif-import.test.ts`), and the
+recommended next step (obtain a text export, or a documented binary spec for a
+separate bounded decoder).
