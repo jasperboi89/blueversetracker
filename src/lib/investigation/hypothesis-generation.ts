@@ -97,9 +97,9 @@ function similar(a: string, b: string): boolean {
 export function dedupeHypotheses<T extends { title: string; mechanism: string }>(items: T[]): T[] {
   const kept: T[] = [];
   for (const item of items) {
-    const dup = kept.some(
-      (k) => similar(k.mechanism, item.mechanism) && similar(k.title, item.title),
-    );
+    // Mechanism is identity here: two cards with different labels that name the
+    // same mechanism are one explanation, not two competitors.
+    const dup = kept.some((k) => similar(k.mechanism, item.mechanism));
     if (!dup) kept.push(item);
   }
   return kept;
