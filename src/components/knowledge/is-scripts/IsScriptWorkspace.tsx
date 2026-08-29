@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { BookMarked, FlaskConical, Network, Terminal } from "lucide-react";
+import { BookMarked, FileUp, FlaskConical, Network, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IsScriptEntriesPane } from "./IsScriptEntriesPane";
 import { IsManualsPane } from "./IsManualsPane";
 import { DependencyCortexPane } from "./DependencyCortexPane";
 import { SimulatorPane } from "./SimulatorPane";
+import { IifImportPane } from "./IifImportPane";
 
-type Pane = "entries" | "manuals" | "cortex" | "simulator";
+type Pane = "entries" | "manuals" | "cortex" | "simulator" | "import";
 
 export function IsScriptWorkspace() {
   const [pane, setPane] = useState<Pane>("entries");
   const [seed, setSeed] = useState<{ title: string; usageHtml: string } | null>(null);
+
 
   return (
     <div className="space-y-3">
