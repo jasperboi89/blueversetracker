@@ -141,20 +141,9 @@ export function ShiftCard() {
             </span>
             <span className="text-muted-foreground/70">{message}</span>
           </div>
-          <div
-            className="relative h-2 overflow-hidden rounded-full"
-            style={{ background: "oklch(0.7 0.12 235 / 0.12)" }}
-          >
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${pct}%`,
-                background: `linear-gradient(90deg, ${accent2}, ${accent})`,
-                boxShadow: `0 0 12px ${accent}`,
-              }}
-            />
-          </div>
+          <ShiftTimeline now={now} progress={progress} />
         </div>
+
       </div>
 
       {phase === "finalizing" && status === "complete" && (
