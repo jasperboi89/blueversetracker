@@ -48,7 +48,7 @@ function fakeLedger(now: () => number = Date.now) {
         rows.set(input.idempotencyKey, { status: "executing", leaseAt: now() });
         return { outcome: "reserved", priorStatus: null };
       }
-      if (prior.status === "success") return { outcome: "duplicate_success", priorStatus: "success" };
+      if (prior.status === "success" || prior.status === "succeeded") return { outcome: "duplicate_success", priorStatus: "success" };
       if (prior.status === "failed") {
         rows.set(input.idempotencyKey, { status: "executing", leaseAt: now() });
         return { outcome: "retry", priorStatus: "failed" };
