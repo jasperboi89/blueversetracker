@@ -70,6 +70,9 @@ export function buildExecutionPlan(req: PlanRequest): PlanResult {
     input: req.input,
     operationClass: capability.operationClass,
     riskClass: capability.riskClass,
+    // Covered so a client cannot downgrade the confirmation floor on a
+    // confirmed plan and have it still verify.
+    confirmation: capability.confirmation,
     preState: req.preState?.fingerprint ?? null,
   };
   const fp = fingerprint(effect);
@@ -107,6 +110,7 @@ export function verifyPlanIntegrity(plan: ExecutionPlan): boolean {
     input: { ...plan.input },
     operationClass: plan.operationClass,
     riskClass: plan.riskClass,
+    confirmation: plan.confirmation,
     preState: plan.preState?.fingerprint ?? null,
   });
   return recomputed === plan.fingerprint;
