@@ -10,8 +10,9 @@
  * denied.
  */
 
-import { getCapability } from "@/lib/capability/capability-registry";
+import { allCapabilities, getCapability } from "@/lib/capability/capability-registry";
 import { missingPermissions } from "@/lib/capability/capability-permissions";
+import { healthMapFor, type SourceHealthMap } from "@/lib/capability/capability-health";
 import type { HubRole } from "@/lib/auth/authorization.functions";
 import { getExecutableCapability, isExecutable } from "./executable-registry";
 import { checkExecutionControl } from "./kill-switch";
@@ -21,6 +22,12 @@ import { verifyPlanIntegrity } from "./execution-plan";
 export interface GuardContext {
   operatorRef: string;
   role: HubRole | null;
+  /**
+   * Technical health of the underlying source systems, observed NOW. Health at
+   * planning time proves nothing about health at execution time (Phase 10.5
+   * §27), so it is re-evaluated here rather than carried on the plan.
+   */
+  sourceHealth?: SourceHealthMap;
 }
 
 export type GuardVerdict =
@@ -84,6 +91,17 @@ export function authorizeExecution(plan: ExecutionPlan, ctx: GuardContext): Guar
         allowed: false,
         failureClass: "authorization_denied",
         message: `Your role does not hold: ${missing.join(", ")}.`,
+      };
+    }
+
+    // Health is re-derived at execution time, never inherited from the plan.
+    const health = healthMapFor(allCapabilities(), ctx.sourceHealth ?? {})[canonical.id] ?? "healthy";
+    const degradedBlocks = contract.riskClass === "high" || contract.riskClass === "critical";
+    if (health === "unavailable" || health === "disabled" || (health === "degraded" && degradedBlocks)) {
+      return {
+        allowed: false,
+        failureClass: "provider_unavailable",
+        message: `“${canonical.name}” can't be applied right now — the system behind it is ${health}.`,
       };
     }
   } else if (!contract.fixtureOnly) {
