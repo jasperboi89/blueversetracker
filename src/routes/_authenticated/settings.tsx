@@ -62,8 +62,10 @@ const SECTIONS = [
   { id: "dropdowns",  title: "Dropdown Management",   icon: ListChecks },
   { id: "shift",      title: "Shift Settings",        icon: Clock },
   { id: "display",    title: "Display Preferences",   icon: Eye },
+  { id: "resilience", title: "Backup & Recovery",     icon: LifeBuoy },
   { id: "data",       title: "Data / Cleanup",        icon: Database },
 ] as const;
+
 
 function SettingsPage() {
   return (
