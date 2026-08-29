@@ -110,39 +110,19 @@ const HOME_PANES: Array<{
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Command Center — Account Intel Hub" },
+      { title: "Command Center — Account Command Center" },
       { name: "description", content: "BlueVerse command center for AnSer Ops night shift." },
-      { property: "og:title", content: "Account Intel Hub" },
+      { property: "og:title", content: "Account Command Center" },
       {
         property: "og:description",
         content: "BlueVerse command center for AnSer Ops night shift.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Home,
 });
-
-/** Section band with an operational eyebrow — the backbone of the new hierarchy. */
-function Band({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <h2 className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-          {label}
-        </h2>
-        <span
-          aria-hidden
-          className="h-px flex-1"
-          style={{
-            background:
-              "linear-gradient(90deg, color-mix(in oklab, var(--cyan-glow) 30%, transparent), transparent)",
-          }}
-        />
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function Home() {
   const theme = useTheme();
