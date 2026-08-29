@@ -534,6 +534,6 @@ describe("no activation creep", () => {
     expect(plan.requestedBy).toBe("operator");
     const { port } = fakeLedger();
     const receipt = await run(plan, port);
-    expect(receipt.plan.requestedBy).toBe("operator");
+    expect(receipt.planId).toBe(plan.id);
   });
 });
