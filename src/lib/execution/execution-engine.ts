@@ -177,8 +177,6 @@ export async function executePlan(
       failureClass: "authorization_denied",
     });
   }
-  trace.add("resolve", "ok", `${contract.name} resolved from the executable allowlist.`);
-
   // Preflight: the capability must map to an action type the durable ledger
   // accepts. Fails CLOSED, before any confirmation proof is consumed.
   const mapping = resolveLedgerActionType(plan.capabilityId);
@@ -186,7 +184,11 @@ export async function executePlan(
     trace.add("resolve", "blocked", mapping.message);
     return finish("rejected", mapping.message, { failureClass: "authorization_denied" });
   }
-  trace.add("resolve", "ok", `Audited as “${mapping.actionType}”.`);
+  trace.add(
+    "resolve",
+    "ok",
+    `${contract.name} resolved from the executable allowlist; audited as “${mapping.actionType}”.`,
+  );
 
   /* ---------------- authorize (re-checked NOW) ---------------- */
   const verdict = authorizeExecution(plan, {

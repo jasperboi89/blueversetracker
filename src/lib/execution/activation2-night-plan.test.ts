@@ -267,7 +267,6 @@ describe("real Night Plan governed execution", () => {
     const phases = receipt.events.map((e) => e.phase);
     expect(phases).toEqual([
       "resolve",
-      "resolve",
       "authorize",
       "confirm",
       "reserve",
