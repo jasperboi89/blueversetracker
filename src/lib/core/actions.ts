@@ -32,6 +32,12 @@ export interface AddNightPlanItemPayload {
 }
 export interface CompleteNightPlanItemPayload {
   task: string;
+  /**
+   * Activation 3 — exact target binding. When present the handler completes
+   * THAT item and nothing else; the fuzzy task match is only used by
+   * conversational callers that have no id.
+   */
+  itemId?: string;
 }
 export interface SetTicketClassificationPayload {
   ticketNumber: string;
