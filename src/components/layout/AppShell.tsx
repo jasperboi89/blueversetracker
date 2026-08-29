@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <div className="flex min-w-0 items-baseline gap-2 leading-none">
               <span className="truncate font-display text-sm font-semibold tracking-wide text-foreground">
-                Account Intel Hub
+                Account Command Center
               </span>
               <span className="hidden text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:inline">
                 2036 Night Ops

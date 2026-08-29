@@ -165,7 +165,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="leading-tight">
               <div className="text-sm font-semibold tracking-wide text-foreground">
-                Account Intel Hub
+                Account Command Center
               </div>
               <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                 AnSer Ops

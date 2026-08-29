@@ -175,10 +175,7 @@ function Home() {
 
           {/* CAPABILITIES — Script Intelligence as a first-class surface. */}
           <Zone tone="radar" label="Capabilities">
-            <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
-              <ScriptTwinTile />
-              <GreetingPanel />
-            </div>
+            <ScriptTwinTile />
           </Zone>
 
           {/* OPERATIONS — reference surfaces, lookups, and shift history. */}
