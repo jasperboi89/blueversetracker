@@ -53,14 +53,31 @@ const nightPlanCreate: ExecutionProvider = {
 
 /* ---------------- night_plan.item.complete ---------------- */
 
+/**
+ * Identity is the item id whenever the plan carries one (Activation 3), so a
+ * rename or a duplicate title can't redirect the effect. Legacy plans that
+ * only carry a task fall back to task resolution — the same rule the Safe
+ * Action handler uses — so they stay verifiable rather than silently
+ * "unavailable".
+ */
+function targetItemId(plan: { input: Readonly<Record<string, unknown>> }): string {
+  const explicit = String(plan.input["itemId"] ?? "");
+  if (explicit) return explicit;
+  const task = String(plan.input["task"] ?? "").trim().toLowerCase();
+  if (!task) return "";
+  const items = nightPlanStore.get().items;
+  const match =
+    items.find((i) => i.task.toLowerCase() === task) ??
+    items.find((i) => i.task.toLowerCase().includes(task));
+  return match?.id ?? "";
+}
+
 const nightPlanComplete: ExecutionProvider = {
   capabilityId: "night_plan.item.complete",
-  // Activation 3: identity is the item id, never the task text, so a rename or
-  // a duplicate title can't redirect the effect.
-  readState: async (plan) => nightPlanItemState(String(plan.input["itemId"] ?? "")),
+  readState: async (plan) => nightPlanItemState(targetItemId(plan)),
   apply: (plan) => runHandler("complete_night_plan_item", plan.input),
   verify: async (plan) => {
-    const summary = nightPlanItemSummary(String(plan.input["itemId"] ?? ""));
+    const summary = nightPlanItemSummary(targetItemId(plan));
     if (!summary) return "unavailable";
     return summary.completed ? "verified" : "failed";
   },
