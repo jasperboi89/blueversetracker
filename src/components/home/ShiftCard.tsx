@@ -10,6 +10,8 @@ import {
 } from "@/lib/shift";
 import { useNow } from "@/hooks/use-now";
 import { CelebrationOverlay } from "./CelebrationOverlay";
+import { ShiftTimeline } from "./ShiftTimeline";
+
 import { useTheme } from "@/lib/settings/theme-store";
 import { triggerCelebration } from "@/lib/quantum-bloom/celebration-bus";
 
