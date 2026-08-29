@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { GreetingPanel } from "@/components/home/GreetingPanel";
+import { CommandHeader } from "@/components/home/CommandHeader";
+import { Zone } from "@/components/home/Zone";
+import { ScriptTwinTile } from "@/components/home/ScriptTwinTile";
+import { GovernedActionsBand } from "@/components/home/GovernedActionsBand";
 import { ShiftCard } from "@/components/home/ShiftCard";
 import { AlertCenter } from "@/components/home/AlertCenter";
 import { NextBestActionStrip } from "@/components/home/NextBestActionStrip";
