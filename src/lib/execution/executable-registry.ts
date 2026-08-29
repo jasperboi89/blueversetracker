@@ -24,6 +24,7 @@ import {
 const CONTRACTS: ExecutableCapability[] = [
   {
     capabilityId: "night_plan.item.create",
+    ledgerActionType: "add_night_plan_item",
     version: 1,
     name: "Create night plan item",
     operationClass: "reversible_write",
@@ -41,6 +42,7 @@ const CONTRACTS: ExecutableCapability[] = [
   },
   {
     capabilityId: "night_plan.item.complete",
+    ledgerActionType: "complete_night_plan_item",
     version: 1,
     name: "Complete night plan item",
     operationClass: "reversible_write",
@@ -59,6 +61,7 @@ const CONTRACTS: ExecutableCapability[] = [
   },
   {
     capabilityId: "freshdesk.ticket.classify",
+    ledgerActionType: "set_ticket_classification",
     version: 1,
     name: "Set ticket classification",
     operationClass: "reversible_write",
@@ -77,6 +80,7 @@ const CONTRACTS: ExecutableCapability[] = [
   },
   {
     capabilityId: "work.timer.start",
+    ledgerActionType: "start_timer",
     version: 1,
     name: "Start work timer",
     operationClass: "reversible_write",
@@ -94,6 +98,7 @@ const CONTRACTS: ExecutableCapability[] = [
   },
   {
     capabilityId: "knowledge.draft.create",
+    ledgerActionType: null,
     version: 1,
     name: "Create knowledge draft",
     operationClass: "irreversible_write",
@@ -117,6 +122,7 @@ const CONTRACTS: ExecutableCapability[] = [
 const FIXTURE_CONTRACTS: ExecutableCapability[] = [
   {
     capabilityId: "fixture.reversible.write",
+    ledgerActionType: "fixture_only",
     version: 1,
     name: "Fixture reversible write",
     operationClass: "reversible_write",
@@ -132,6 +138,7 @@ const FIXTURE_CONTRACTS: ExecutableCapability[] = [
   },
   {
     capabilityId: "fixture.external.side_effect",
+    ledgerActionType: "fixture_only",
     version: 1,
     name: "Fixture external side effect",
     operationClass: "external_side_effect",
@@ -148,6 +155,7 @@ const FIXTURE_CONTRACTS: ExecutableCapability[] = [
   },
   {
     capabilityId: "fixture.blocked.capability",
+    ledgerActionType: "fixture_only",
     version: 1,
     name: "Fixture blocked capability",
     operationClass: "irreversible_write",

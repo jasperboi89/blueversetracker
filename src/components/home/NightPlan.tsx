@@ -24,6 +24,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ConfirmExecutionDialog } from "@/components/execution/ConfirmExecutionDialog";
+import { prepareNightPlanItemCreate } from "@/lib/execution/night-plan-producer";
+import { executionStore } from "@/lib/execution/execution-store";
+import { runGovernedExecution, receiptHeadline } from "@/lib/execution/run-execution";
+import { useHubIdentityOptional } from "@/lib/auth/role-context";
+import type { ExecutionPlan } from "@/lib/execution/execution-contract";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Sheet,
@@ -358,6 +364,9 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
   const [priority, setPriority] = useState<Priority>("normal");
   const [confirmDiscard, setConfirmDiscard] = useState<null | (() => void)>(null);
   const taskRef = useRef<HTMLInputElement>(null);
+  const identity = useHubIdentityOptional();
+  const [governedPlan, setGovernedPlan] = useState<ExecutionPlan | null>(null);
+  const [governedBusy, setGovernedBusy] = useState(false);
 
   const reset = () => {
     setTask("");
@@ -372,6 +381,26 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
     nightPlanStore.add(task.trim(), notes.trim(), priority);
     toast.success("Added to Night Plan.", { duration: 2000 });
     reset();
+  };
+
+  /**
+   * Activation 2 — governed path. Prepares an immutable execution plan and hands
+   * it to the canonical confirmation dialog. Nothing is written here.
+   */
+  const handleGovernedAdd = () => {
+    if (!task.trim() || governedBusy) return;
+    const result = prepareNightPlanItemCreate({
+      task,
+      notes,
+      priority,
+      operatorRef: identity?.userId ?? "",
+    });
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
+    executionStore.propose(result.plan, identity?.userId ?? "");
+    setGovernedPlan(result.plan);
   };
 
   const tryClose = (after: () => void) => {
@@ -466,6 +495,14 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
             <Button variant="ghost" onClick={() => tryClose(() => onOpenChange(false))}>
               Done Adding
             </Button>
+            <Button
+              variant="outline"
+              disabled={!task.trim() || governedBusy}
+              onClick={handleGovernedAdd}
+              title="Prepare this as a governed change: review, confirm, apply, then verify."
+            >
+              {governedBusy ? "Applying…" : "Add with review"}
+            </Button>
             <BlueverseButton onClick={handleAdd}>Add Item</BlueverseButton>
           </DialogFooter>
         </DialogContent>
@@ -503,6 +540,36 @@ function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmExecutionDialog
+        plan={governedPlan}
+        operatorRef={identity?.userId ?? ""}
+        open={!!governedPlan}
+        onOpenChange={(v) => !v && setGovernedPlan(null)}
+        onConfirmed={(proof) => {
+          const plan = governedPlan;
+          setGovernedPlan(null);
+          if (!plan) return;
+          setGovernedBusy(true);
+          void runGovernedExecution(plan, {
+            operatorRef: identity?.userId ?? "",
+            role: identity?.role ?? null,
+            confirmation: proof,
+          })
+            .then((receipt) => {
+              const { tone, text } = receiptHeadline(receipt);
+              if (tone === "success") {
+                toast.success(text, { duration: 4000 });
+                reset();
+              } else if (tone === "warning") {
+                toast.warning(text, { duration: 6000 });
+              } else {
+                toast.error(text, { duration: 6000 });
+              }
+            })
+            .finally(() => setGovernedBusy(false));
+        }}
+      />
     </>
   );
 }

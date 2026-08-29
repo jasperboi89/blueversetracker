@@ -22,6 +22,7 @@ import { eventSpine } from "@/lib/core/event-spine";
 import type { HubRole } from "@/lib/auth/authorization.functions";
 import type { SourceHealthMap } from "@/lib/capability/capability-health";
 import { getExecutableCapability } from "./executable-registry";
+import { resolveLedgerActionType } from "./ledger-action-map";
 import { authorizeExecution } from "./execution-guard";
 import { consumeConfirmation, validateConfirmation } from "./confirmation";
 import { getProvider } from "./execution-provider";
@@ -176,7 +177,18 @@ export async function executePlan(
       failureClass: "authorization_denied",
     });
   }
-  trace.add("resolve", "ok", `${contract.name} resolved from the executable allowlist.`);
+  // Preflight: the capability must map to an action type the durable ledger
+  // accepts. Fails CLOSED, before any confirmation proof is consumed.
+  const mapping = resolveLedgerActionType(plan.capabilityId);
+  if (!mapping.ok) {
+    trace.add("resolve", "blocked", mapping.message);
+    return finish("rejected", mapping.message, { failureClass: "authorization_denied" });
+  }
+  trace.add(
+    "resolve",
+    "ok",
+    `${contract.name} resolved from the executable allowlist; audited as “${mapping.actionType}”.`,
+  );
 
   /* ---------------- authorize (re-checked NOW) ---------------- */
   const verdict = authorizeExecution(plan, {
@@ -213,7 +225,7 @@ export async function executePlan(
     claim = await opts.ledger.reserve({
       actionId: plan.id,
       idempotencyKey: plan.idempotencyKey,
-      actionType: plan.capabilityId,
+      actionType: mapping.actionType,
       origin: plan.requestedBy,
       entityType: plan.target.type,
       entityId: plan.target.id,

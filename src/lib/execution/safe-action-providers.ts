@@ -11,7 +11,7 @@ import { getActionHandler } from "@/lib/core/action-handlers";
 import { nightPlanStore } from "@/lib/night-plan-store";
 import { ticketsStore, type Ticket } from "@/lib/tickets-store";
 import { fingerprint } from "./fingerprint";
-import { registerProvider, type ExecutionProvider, type ProviderApplyOutcome } from "./execution-provider";
+import { getProvider, registerProvider, type ExecutionProvider, type ProviderApplyOutcome } from "./execution-provider";
 import type { ActionType } from "@/lib/core/actions";
 import type { ExecTargetState, ExecutionPlan } from "./execution-contract";
 
@@ -98,12 +98,13 @@ const timerStart: ExecutionProvider = {
   verify: async () => "unavailable",
 };
 
-let registered = false;
-
-/** Idempotent registration — safe to call from app bootstrap or tests. */
+/**
+ * Idempotent registration — safe to call from app bootstrap or tests.
+ * Presence is checked against the registry itself (not a module flag) so a
+ * test that clears providers can restore the real ones.
+ */
 export function registerSafeActionProviders(): void {
-  if (registered) return;
-  registered = true;
+  if (getProvider(nightPlanCreate.capabilityId)) return;
   for (const p of [nightPlanCreate, nightPlanComplete, ticketClassify, timerStart]) {
     registerProvider(p);
   }

@@ -3,13 +3,11 @@ import { AlertTriangle, CheckCircle2, HelpCircle, Power, ShieldCheck, XCircle } 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmExecutionDialog } from "./ConfirmExecutionDialog";
-import { executePlan } from "@/lib/execution/execution-engine";
-import { executionStore, needsAttention, useExecutions, visibleExecutions } from "@/lib/execution/execution-store";
+import { runGovernedExecution } from "@/lib/execution/run-execution";
+import { needsAttention, useExecutions, visibleExecutions } from "@/lib/execution/execution-store";
 import { executionControl } from "@/lib/execution/kill-switch";
-import { registerSafeActionProviders } from "@/lib/execution/safe-action-providers";
 import { useIsAdmin } from "@/lib/auth/role-context";
-import type { ExecutionPlan, ExecutionReceipt } from "@/lib/execution/execution-contract";
-import type { LedgerPort } from "@/lib/core/action-executor";
+import type { ConfirmationProof, ExecutionPlan } from "@/lib/execution/execution-contract";
 
 /**
  * Phase 10 — the Action Center.
@@ -28,25 +26,6 @@ const STATUS_ICON: Record<string, ReactElement> = {
   compensation_available: <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />,
 };
 
-async function serverLedger(): Promise<LedgerPort> {
-  const fns = await import("@/lib/core/action-ledger.functions");
-  return {
-    reserve: (input) => fns.reserveAction({ data: input }) as never,
-    finalize: (input) =>
-      fns.finalizeAction({
-        data: {
-          idempotencyKey: input.idempotencyKey,
-          status: input.status,
-          before: null,
-          after: null,
-          ...(input.entityType ? { entityType: input.entityType } : {}),
-          ...(input.entityId ? { entityId: input.entityId } : {}),
-          ...(input.error ? { error: input.error } : {}),
-        },
-      }) as never,
-  };
-}
-
 export function ActionCenter({ operatorRef, role }: { operatorRef: string; role: "admin" | "programmer" | "viewer" | null }) {
   const isAdmin = useIsAdmin();
   const all = useExecutions();
@@ -56,18 +35,10 @@ export function ActionCenter({ operatorRef, role }: { operatorRef: string; role:
   const [busy, setBusy] = useState(false);
   const control = executionControl.get();
 
-  const run = async (plan: ExecutionPlan, proof: Parameters<typeof executePlan>[1]["confirmation"]) => {
-    registerSafeActionProviders();
+  const run = async (plan: ExecutionPlan, proof: ConfirmationProof) => {
     setBusy(true);
     try {
-      executionStore.markRunning(plan, proof!, operatorRef);
-      const receipt: ExecutionReceipt = await executePlan(plan, {
-        operatorRef,
-        role,
-        confirmation: proof,
-        ledger: await serverLedger(),
-      });
-      executionStore.complete(plan, receipt, operatorRef);
+      await runGovernedExecution(plan, { operatorRef, role, confirmation: proof });
     } finally {
       setBusy(false);
     }

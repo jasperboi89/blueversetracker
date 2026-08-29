@@ -83,6 +83,19 @@ export function resolveConfirmation(
 /* Executable capability contract                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The Safe Action identifiers the durable Action Ledger will accept. This list
+ * MIRRORS the server-side `z.enum` in `action-ledger.functions.ts`; it does not
+ * replace it. The server remains the authority — this type only stops an
+ * unmapped capability from ever reaching it.
+ */
+export type ExecLedgerActionType =
+  | "add_night_plan_item"
+  | "complete_night_plan_item"
+  | "set_ticket_classification"
+  | "start_timer"
+  | "fixture_only";
+
 export interface ExecPrecondition {
   id: string;
   label: string;
@@ -123,6 +136,19 @@ export interface ExecutableCapability {
   maxAttempts: number;
   /** Test-only capability: hidden from operator surfaces. */
   fixtureOnly?: boolean;
+  /**
+   * The canonical Safe Action identifier this capability reserves under in the
+   * durable Action Ledger. The external capability id (`night_plan.item.create`)
+   * and the audited action type (`add_night_plan_item`) are deliberately
+   * different vocabularies: the ledger predates the execution layer and its
+   * server-side `z.enum` is the authority for what may be audited.
+   *
+   * `null` = this capability has NO audited action type and therefore cannot be
+   * executed at all (fails closed at preflight).
+   * `"fixture_only"` = deterministic test contract; the real server enum rejects
+   * it, so it can never reserve against production audit.
+   */
+  ledgerActionType: ExecLedgerActionType | null;
 }
 
 /* ------------------------------------------------------------------ */
