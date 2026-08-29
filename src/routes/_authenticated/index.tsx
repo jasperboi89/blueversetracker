@@ -158,37 +158,54 @@ function Home() {
         </PaneCanvas>
       ) : (
         <>
-          {/* Orientation — who, when, and the state of the shift. */}
-          <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-            <GreetingPanel />
+          {/* Command header — live operator presence, clock and system state. */}
+          <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+            <CommandHeader />
             <ShiftCard />
           </div>
 
-          {/* Priority intelligence — what to do next and the AI read on it. */}
-          <Band label="Priority">
+          {/* NOW — what matters this minute. */}
+          <Zone tone="now" label="Now" hint="what needs you this minute">
             <NextBestActionStrip />
-            <BriefingPanel />
-          </Band>
-
-          {/* Work intelligence — grounded radar, then what needs attention. */}
-          <Band label="Work Intelligence">
-            <IntelligenceLegend />
-            <RadarBand />
             <div className="grid gap-4 lg:grid-cols-2">
               <NightPlan />
               <AlertCenter />
             </div>
-          </Band>
+          </Zone>
 
-          {/* Operations — reference surfaces, lookups, and shift history. */}
-          <Band label="Operations">
+          {/* OUTLOOK — what may matter next, honestly labelled. */}
+          <Zone tone="outlook" label="Outlook" hint="what may matter next">
+            <BriefingPanel />
+          </Zone>
+
+          {/* OPERATIONAL RADAR — what changed and what to inspect next. */}
+          <Zone tone="radar" label="Operational Radar" hint="what changed · why it matters">
+            <IntelligenceLegend />
+            <RadarBand />
+          </Zone>
+
+          {/* GOVERNED ACTIONS — the lifecycle, never implying completion. */}
+          <Zone tone="governed" label="Governed Actions" hint="proposed → confirmed → executed → verified">
+            <GovernedActionsBand />
+          </Zone>
+
+          {/* CAPABILITIES — Script Intelligence as a first-class surface. */}
+          <Zone tone="radar" label="Capabilities">
+            <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+              <ScriptTwinTile />
+              <GreetingPanel />
+            </div>
+          </Zone>
+
+          {/* OPERATIONS — reference surfaces, lookups, and shift history. */}
+          <Zone tone="ops" label="Operations">
             <QuickStart />
             <div className="grid gap-4 lg:grid-cols-2">
               <LookupCards />
               <OverviewCards />
             </div>
             <ShiftLedger />
-          </Band>
+          </Zone>
         </>
       )}
       <ShiftSummaryButton />
