@@ -10,6 +10,7 @@
 import {
   DEFAULT_RUN_BUDGET,
   emptyOutput,
+  isSpecialist,
   emptyScratch,
   type CognitiveRun,
   type CriticResult,
