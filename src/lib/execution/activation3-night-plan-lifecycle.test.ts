@@ -183,7 +183,7 @@ describe("completion preconditions", () => {
     const { port } = fakeLedger();
     const receipt = await run(res.plan, port);
     expect(receipt.status).toBe("rejected");
-    expect(receipt.trace.some((e) => e.phase === "precondition" && e.outcome === "blocked")).toBe(true);
+    expect(receipt.events.some((e) => e.phase === "precondition" && e.outcome === "blocked")).toBe(true);
   });
 
   it("flags a missing operator", () => {
@@ -242,7 +242,7 @@ describe("TOCTOU protection", () => {
     const { port } = fakeLedger();
     const receipt = await run(plan, port);
     expect(receipt.status).toBe("rejected");
-    expect(receipt.trace.some((e) => e.phase === "apply" && e.outcome === "ok")).toBe(false);
+    expect(receipt.events.some((e) => e.phase === "apply" && e.outcome === "ok")).toBe(false);
     expect(nightPlanStore.get().items.find((i) => i.id === id)?.status).toBe("carried");
   });
 });
@@ -276,7 +276,7 @@ describe("confirmation binding and capability mapping", () => {
     const { port } = fakeLedger();
     const receipt = await run(a, port, confirm(b));
     expect(receipt.status).toBe("rejected");
-    expect(receipt.trace.some((e) => e.phase === "confirm" && e.outcome !== "ok")).toBe(true);
+    expect(receipt.events.some((e) => e.phase === "confirm" && e.outcome !== "ok")).toBe(true);
   });
 
   it("rejects a confirmation minted by a different operator", async () => {
@@ -506,13 +506,13 @@ describe("observability", () => {
     const plan = planFor(id);
     const { port } = fakeLedger();
     const receipt = await run(plan, port);
-    const phases = receipt.trace.map((e) => e.phase);
+    const phases = receipt.events.map((e) => e.phase);
     for (const phase of ["resolve", "precondition", "authorize", "confirm", "reserve", "conflict_check", "apply", "verify", "audit"]) {
       expect(phases).toContain(phase);
     }
-    expect(receipt.trace.map((e) => e.note).join(" ")).toContain("complete_night_plan_item");
-    expect(receipt.plan.correlationId).toBe(plan.correlationId);
-    expect(receipt.plan.capabilityId).toBe("night_plan.item.complete");
+    expect(receipt.events.map((e) => e.note).join(" ")).toContain("complete_night_plan_item");
+    expect(receipt.correlationId).toBe(plan.correlationId);
+    expect(receipt.capabilityId).toBe("night_plan.item.complete");
   });
 });
 
