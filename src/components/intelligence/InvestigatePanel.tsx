@@ -94,6 +94,22 @@ function HypothesisCard({
         )}
       </div>
 
+      {/* A verified reading that later evidence challenged stays visible as
+          history — the earlier verification is never erased, and the card says
+          plainly that it now requires review. */}
+      {h.verificationReopenedAt && (
+        <p
+          className="mt-2 rounded-md px-2 py-1 text-[11px]"
+          style={{
+            color: "var(--status-warning)",
+            background: "color-mix(in oklab, var(--status-warning) 12%, transparent)",
+          }}
+        >
+          Verified earlier{h.verifiedAt ? ` (${new Date(h.verifiedAt).toLocaleDateString()})` : ""}, then reopened by new
+          contradictory evidence. Requires review — it is no longer treated as established.
+        </p>
+      )}
+
       {/* CONTRADICTIONS FIRST — never buried under supporting evidence. */}
       {against.length > 0 && (
         <div className="mt-2">

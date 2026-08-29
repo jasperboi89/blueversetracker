@@ -298,6 +298,10 @@ export async function runCopilotTool(
               status: str(h["status"]),
               strength: str(h["strength"]),
               relationClaim: str(h["relationClaim"]),
+              verifiedAt: str(h["verifiedAt"]),
+              // Set when a previously verified reading was reopened by later
+              // contradictory evidence. Never report such a hypothesis as settled.
+              verificationReopenedAt: str(h["verificationReopenedAt"]),
               // Contradicting evidence is listed first, deliberately.
               contradictedBy: evidence
                 .filter((e) => str(e["hypothesisId"]) === str(h["id"]) && str(e["stance"]) === "contradicts")
@@ -320,6 +324,7 @@ export async function runCopilotTool(
           "These are candidate explanations under investigation, not established causes. Present contradicting evidence before supporting evidence. " +
           "Never use causal language for a hypothesis that is not status 'verified'; use 'associated with' or 'one explanation consistent with the evidence'. " +
           "insufficient_evidence and multiple_plausible_explanations are honest answers — report them and name the next discriminating test. " +
+          "A hypothesis carrying verificationReopenedAt was verified earlier and has since been challenged by new contradictory evidence: report it as 'verified at that time, now reopened for review', never as a settled cause. " +
           "Autonomy is capped at prepare: you may explain and recommend a test, never run one or change a script.",
       };
     }
