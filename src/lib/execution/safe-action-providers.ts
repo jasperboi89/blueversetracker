@@ -11,6 +11,7 @@ import { getActionHandler } from "@/lib/core/action-handlers";
 import { nightPlanStore } from "@/lib/night-plan-store";
 import { ticketsStore, type Ticket } from "@/lib/tickets-store";
 import { fingerprint } from "./fingerprint";
+import { nightPlanItemState, nightPlanItemSummary } from "./night-plan-item-state";
 import { getProvider, registerProvider, type ExecutionProvider, type ProviderApplyOutcome } from "./execution-provider";
 import type { ActionType } from "@/lib/core/actions";
 import type { ExecTargetState, ExecutionPlan } from "./execution-contract";
@@ -52,19 +53,33 @@ const nightPlanCreate: ExecutionProvider = {
 
 /* ---------------- night_plan.item.complete ---------------- */
 
+/**
+ * Identity is the item id whenever the plan carries one (Activation 3), so a
+ * rename or a duplicate title can't redirect the effect. Legacy plans that
+ * only carry a task fall back to task resolution — the same rule the Safe
+ * Action handler uses — so they stay verifiable rather than silently
+ * "unavailable".
+ */
+function targetItemId(plan: { input: Readonly<Record<string, unknown>> }): string {
+  const explicit = String(plan.input["itemId"] ?? "");
+  if (explicit) return explicit;
+  const task = String(plan.input["task"] ?? "").trim().toLowerCase();
+  if (!task) return "";
+  const items = nightPlanStore.get().items;
+  const match =
+    items.find((i) => i.task.toLowerCase() === task) ??
+    items.find((i) => i.task.toLowerCase().includes(task));
+  return match?.id ?? "";
+}
+
 const nightPlanComplete: ExecutionProvider = {
   capabilityId: "night_plan.item.complete",
-  readState: async (plan) => {
-    const task = String(plan.input["task"] ?? "");
-    const item = nightPlanStore.get().items.find((i) => i.task === task);
-    return item ? state({ status: item.status }) : null;
-  },
+  readState: async (plan) => nightPlanItemState(targetItemId(plan)),
   apply: (plan) => runHandler("complete_night_plan_item", plan.input),
   verify: async (plan) => {
-    const task = String(plan.input["task"] ?? "");
-    const item = nightPlanStore.get().items.find((i) => i.task === task);
-    if (!item) return "unavailable";
-    return item.status === "done" ? "verified" : "failed";
+    const summary = nightPlanItemSummary(targetItemId(plan));
+    if (!summary) return "unavailable";
+    return summary.completed ? "verified" : "failed";
   },
 };
 

@@ -90,17 +90,36 @@ const completeNightPlanItem: ActionHandler<"complete_night_plan_item"> = {
     if (!o) return { ok: false, message: "Invalid payload." };
     const task = str(o["task"]);
     if (!task) return { ok: false, message: "No night plan item named." };
-    return { ok: true, payload: { task } };
+    const itemId = str(o["itemId"]);
+    return { ok: true, payload: { task, ...(itemId ? { itemId } : {}) } };
   },
   execute: (p) => {
+    const items = nightPlanStore.get().items;
+    // Exact id binding wins. Governed execution always supplies it, so the
+    // effect cannot drift onto a different item that happens to share a name.
+    if (p.itemId) {
+      const target = items.find((i) => i.id === p.itemId);
+      if (!target) return { ok: false, message: "That night plan item no longer exists." };
+      if (target.status === "done") {
+        return { ok: false, message: "That night plan item is already complete." };
+      }
+      const prev = target.status;
+      nightPlanStore.setStatus(target.id, "done");
+      return {
+        ok: true,
+        message: "Night plan item completed.",
+        before: sanitizeSnapshot({ itemId: target.id, status: prev }),
+        after: sanitizeSnapshot({ itemId: target.id, status: "done" }),
+        entityType: "night_plan_item",
+        entityId: target.id,
+      };
+    }
     const needle = p.task.toLowerCase();
-    const item = nightPlanStore
-      .get()
-      .items.find(
-        (i) =>
-          i.status !== "done" &&
-          (i.task.toLowerCase() === needle || i.task.toLowerCase().includes(needle)),
-      );
+    const item = items.find(
+      (i) =>
+        i.status !== "done" &&
+        (i.task.toLowerCase() === needle || i.task.toLowerCase().includes(needle)),
+    );
     if (!item) return { ok: false, message: "No matching night plan item." };
     nightPlanStore.setStatus(item.id, "done");
     return {

@@ -8,6 +8,7 @@ import {
   Pin,
   Plus,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
   Star,
   Trash2,
@@ -25,7 +26,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ConfirmExecutionDialog } from "@/components/execution/ConfirmExecutionDialog";
-import { prepareNightPlanItemCreate } from "@/lib/execution/night-plan-producer";
+import {
+  prepareNightPlanItemCreate,
+  prepareNightPlanItemComplete,
+} from "@/lib/execution/night-plan-producer";
 import { executionStore } from "@/lib/execution/execution-store";
 import { runGovernedExecution, receiptHeadline } from "@/lib/execution/run-execution";
 import { useHubIdentityOptional } from "@/lib/auth/role-context";
@@ -717,6 +721,9 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
   const [priority, setPriority] = useState<Priority>(item.priority);
   const [deciding, setDeciding] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const identity = useHubIdentityOptional();
+  const [governedPlan, setGovernedPlan] = useState<ExecutionPlan | null>(null);
+  const [governedBusy, setGovernedBusy] = useState(false);
 
   useEffect(() => {
     setTask(item.task);
@@ -741,10 +748,35 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
     onClose();
   };
 
+  /**
+   * Activation 3 — governed completion. Manual "Completed" is preserved as the
+   * fast path; this option prepares an immutable, fingerprinted plan bound to
+   * this item's current state and routes it through the canonical confirmation
+   * dialog. Nothing is written here.
+   */
+  const completeWithReview = () => {
+    if (governedBusy) return;
+    const result = prepareNightPlanItemComplete({
+      itemId: item.id,
+      operatorRef: identity?.userId ?? "",
+    });
+    if (!result.ok) {
+      if (result.reason === "already_complete") toast.info(result.message);
+      else toast.error(result.message);
+      return;
+    }
+    executionStore.propose(result.plan, identity?.userId ?? "");
+    setGovernedPlan(result.plan);
+  };
+
+
   return (
     <>
       {/* Suspended (not unmounted) while Convert runs so only one overlay is live. */}
-      <Dialog open={!convertOpen} onOpenChange={(v) => !v && !convertOpen && onClose()}>
+      <Dialog
+        open={!convertOpen && !governedPlan}
+        onOpenChange={(v) => !v && !convertOpen && !governedPlan && onClose()}
+      >
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -774,6 +806,15 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
                   detail="I finished this task during this shift."
                   onClick={() => decide("done", "Marked completed.")}
                 />
+                {isActive(item.status) && (
+                  <DecisionOption
+                    icon={ShieldCheck}
+                    color="var(--electric)"
+                    title="Complete with review"
+                    detail="Confirm, apply, then verify the completion actually saved."
+                    onClick={completeWithReview}
+                  />
+                )}
                 {isActive(item.status) && (
                   <DecisionOption
                     icon={RotateCcw}
@@ -860,6 +901,37 @@ export function ItemDetailDialog({ item, onClose }: { item: NightPlanItem; onClo
         open={convertOpen}
         onOpenChange={setConvertOpen}
         onConverted={onClose}
+      />
+
+      <ConfirmExecutionDialog
+        plan={governedPlan}
+        operatorRef={identity?.userId ?? ""}
+        open={!!governedPlan}
+        onOpenChange={(v) => !v && setGovernedPlan(null)}
+        onConfirmed={(proof) => {
+          const plan = governedPlan;
+          setGovernedPlan(null);
+          if (!plan) return;
+          setGovernedBusy(true);
+          void runGovernedExecution(plan, {
+            operatorRef: identity?.userId ?? "",
+            role: identity?.role ?? null,
+            confirmation: proof,
+          })
+            .then((receipt) => {
+              const { tone, text } = receiptHeadline(receipt);
+              if (tone === "success") {
+                toast.success(text, { duration: 4000 });
+                setDeciding(false);
+                onClose();
+              } else if (tone === "warning") {
+                toast.warning(text, { duration: 6000 });
+              } else {
+                toast.error(text, { duration: 6000 });
+              }
+            })
+            .finally(() => setGovernedBusy(false));
+        }}
       />
     </>
   );
