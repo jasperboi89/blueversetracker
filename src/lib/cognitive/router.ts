@@ -78,8 +78,13 @@ export function planRoute(ctx: RouteContext): RoutePlan {
 
   const intentClass = classifyIntent(ctx.intent);
   const steps: RouteStep[] = [];
+  /** Workers this route wanted but could not use because they are unavailable (§41). */
+  const unavailableWorkers: WorkerId[] = [];
   const push = (workerId: WorkerId, taskKind: WorkerTaskKind, reason: string, wave: number) => {
-    if (!isWorkerAvailable(workerId)) return;
+    if (!isWorkerAvailable(workerId)) {
+      if (!unavailableWorkers.includes(workerId)) unavailableWorkers.push(workerId);
+      return;
+    }
     if (steps.some((s) => s.workerId === workerId)) return;
     steps.push({ workerId, taskKind, reason, wave });
   };
