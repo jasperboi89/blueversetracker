@@ -25,7 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ConfirmExecutionDialog } from "@/components/execution/ConfirmExecutionDialog";
-import { prepareNightPlanItemCreate } from "@/lib/execution/night-plan-producer";
+import {
+  prepareNightPlanItemCreate,
+  prepareNightPlanItemComplete,
+} from "@/lib/execution/night-plan-producer";
 import { executionStore } from "@/lib/execution/execution-store";
 import { runGovernedExecution, receiptHeadline } from "@/lib/execution/run-execution";
 import { useHubIdentityOptional } from "@/lib/auth/role-context";
