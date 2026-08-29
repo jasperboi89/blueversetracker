@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Brain } from "lucide-react";
 import { AgentRunInspector } from "@/components/cognitive/AgentRunInspector";
+import { ActionCenter } from "@/components/execution/ActionCenter";
+
 import { RunBadge, fmtDuration, fmtWhen, guardianTone, statusTone } from "@/components/cognitive/run-ui";
 import {
   filterRuns,
