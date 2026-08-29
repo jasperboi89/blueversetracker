@@ -14,6 +14,7 @@ import {
   Inbox,
   LibraryBig,
   Trophy,
+  TerminalSquare,
 } from "lucide-react";
 import {
   Sidebar,
