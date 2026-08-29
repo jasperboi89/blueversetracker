@@ -211,8 +211,15 @@ export function buildRadar(input: RadarInput): RadarItem[] {
  */
 export function rankRadar(items: RadarItem[], acknowledged?: ReadonlySet<string>): RadarItem[] {
   const ack = acknowledged ?? new Set<string>();
+  // Feedback is recorded against the underlying claim id (observation / anomaly /
+  // forecast), while radar item ids are namespaced (`radar:<claimId>`). Match on
+  // both so a dismissal on an account page suppresses the home band item too.
+  const isAcked = (i: RadarItem) =>
+    ack.has(i.id) ||
+    (i.observationId ? ack.has(i.observationId) : false) ||
+    (i.id.startsWith("radar:") ? ack.has(i.id.slice("radar:".length)) : false);
   return items
-    .filter((i) => !ack.has(i.id))
+    .filter((i) => !isAcked(i))
     .sort(
       (a, b) =>
         SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
