@@ -42,6 +42,26 @@ export function attachCloudSync<TState>(opts: CloudSyncOptions<TState>): void {
 
   const push = async () => {
     if (!activeUserId) return;
+    // Re-validate the session before writing. An expired/failed refresh does not
+    // always emit SIGNED_OUT, so a stale activeUserId would keep pushing with a
+    // dead JWT and get rejected by RLS forever.
+    let sessionUserId: string | null = null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      sessionUserId = data.session?.user?.id ?? null;
+    } catch {
+      sessionUserId = null;
+    }
+    if (!sessionUserId) {
+      // Session is gone — stop the retry loop instead of failing silently.
+      console.warn(`[cloud-sync:${opts.storeKey}] session expired; pausing sync until sign-in`);
+      stopSyncing();
+      return;
+    }
+    if (sessionUserId !== activeUserId) {
+      void hydrateForUser(sessionUserId);
+      return;
+    }
     let snap: TState;
     try { snap = opts.getSnapshot(); } catch { return; }
     let json: string;
