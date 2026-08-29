@@ -341,6 +341,18 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
     refusedDirectives: plan.refusedDirectives,
   });
 
+  if (criticUnavailable) {
+    // Required critique is not optional: the run degrades rather than
+    // presenting unchallenged findings as a complete answer (§42).
+    response.uncertainties = Array.from(
+      new Set([
+        ...response.uncertainties,
+        "A required independent critique did not run, so these findings were not challenged.",
+      ]),
+    );
+    if (response.status === "answered") response.status = "partial";
+  }
+
   note("Assembler completed");
   usage.elapsedMs = clock() - startedAtMs;
 
@@ -376,6 +388,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
     sensitivity,
     claimValidation,
     skippedWorkers: skippedWorkers(plan, directives, snapshot),
+    specialistRequests,
     injectionMarkers,
     events,
     startedAt: new Date(startedAtMs).toISOString(),

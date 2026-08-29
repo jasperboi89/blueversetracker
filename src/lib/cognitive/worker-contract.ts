@@ -501,6 +501,8 @@ export interface CognitiveRun {
   claimValidation?: RunClaimValidationIssue[];
   /** Materially relevant workers the route did not invoke, with the reason. */
   skippedWorkers?: SkippedWorker[];
+  /** Specialist requests a worker raised, and what the orchestrator decided. */
+  specialistRequests?: SpecialistRequest[];
   /** Retrieved content flagged as instruction-like and neutralised. */
   injectionMarkers?: InjectionMarker[];
   /** Compact structured lifecycle timeline. */
@@ -509,6 +511,13 @@ export interface CognitiveRun {
   endedAt?: string;
 }
 
+
+export interface SpecialistRequest {
+  from: WorkerId;
+  to: WorkerId;
+  granted: boolean;
+  reason: string;
+}
 
 export const RUN_STOP_REASONS = [
   "completed",
