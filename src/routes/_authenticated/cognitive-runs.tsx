@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Brain } from "lucide-react";
 import { AgentRunInspector } from "@/components/cognitive/AgentRunInspector";
+import { ActionCenter } from "@/components/execution/ActionCenter";
+
 import { RunBadge, fmtDuration, fmtWhen, guardianTone, statusTone } from "@/components/cognitive/run-ui";
 import {
   filterRuns,
@@ -87,7 +89,10 @@ function CognitiveRunsPage() {
         </div>
       </header>
 
+      <ActionCenter operatorRef={identity.userId} role={identity.role} />
+
       <Filters options={options} filters={filters} onChange={setFilters} />
+
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <section aria-label="Cognitive run list" className="space-y-2">
