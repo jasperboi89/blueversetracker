@@ -14,8 +14,12 @@ import {
   type CognitiveRun,
   type CriticResult,
   type RunBudget,
+  type InjectionMarker,
   type RunBudgetUsage,
+  type RunClaimValidationIssue,
+  type RunEvent,
   type RunStopReason,
+  type SkippedWorker,
   type SensitivityClass,
   type WorkerId,
   type WorkerInput,
@@ -27,6 +31,7 @@ import { getWorker, isWorkerAvailable } from "./worker-registry";
 import { parseDirectives, planRoute, type OperatorDirectives } from "./router";
 import { scopeSnapshot, selectEvidence, refFor, type CanonicalSnapshot } from "./canonical-sources";
 import { validateClaims } from "./claim-validation";
+import { sanitizeRetrievedText } from "./sanitize";
 import { reviseContribution, runCritic } from "./critic";
 import { runGuardian } from "./guardian";
 import { assembleResponse } from "./assembler";
@@ -84,8 +89,28 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
   const participation: WorkerParticipation[] = [];
   const contributions: WorkerOutput[] = [];
   const critiques: CriticResult[] = [];
+  const claimValidation: RunClaimValidationIssue[] = [];
+  const injectionMarkers: InjectionMarker[] = [];
+  const events: RunEvent[] = [];
   const fingerprints = new Set<string>();
   let stopReason: RunStopReason | undefined;
+
+  const note = (label: string): void => {
+    events.push({ at: new Date(clock()).toISOString(), label });
+  };
+
+  note("Run started");
+  const intentScan = sanitizeRetrievedText(req.intent);
+  if (intentScan.flagged) {
+    injectionMarkers.push({ source: "operator intent", codes: intentScan.codes });
+    note("Instruction-like content in the request treated as data");
+  }
+  note(
+    plan.direct
+      ? "Routed → direct response (no specialist required)"
+      : `Routed → ${plan.steps.map((s) => s.workerId).join(", ") || "governance only"}`,
+  );
+
 
   const run = (): void => {
     if (plan.direct) {
@@ -143,6 +168,24 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
           ...(req.asOf ? { asOf: req.asOf } : {}),
         });
         output = validated.output;
+        for (const issue of validated.issues) {
+          claimValidation.push({
+            claimId: issue.claimId,
+            kind: issue.ref.kind,
+            id: issue.ref.id,
+            code: issue.code,
+          });
+        }
+        if (validated.issues.length) {
+          note(`${validated.issues.length} unverifiable canonical reference(s) rejected`);
+        }
+        for (const ref of output.evidence) {
+          if (!ref.label) continue;
+          const scan = sanitizeRetrievedText(ref.label);
+          if (scan.flagged) {
+            injectionMarkers.push({ source: `${ref.kind}:${ref.id}`, codes: scan.codes });
+          }
+        }
 
         const fp = fingerprint(output);
         if (fingerprints.has(fp)) {
@@ -165,10 +208,17 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
               },
             );
             critiques.push(critique);
+            const material = critique.issues.filter((i) => i.material).map((i) => i.code);
+            note(
+              material.length
+                ? `Critic reviewed ${output.workerId}: ${material.join(", ")}`
+                : `Critic reviewed ${output.workerId}: no material issue`,
+            );
             if (critique.revisionRequested && usage.revisions < budget.maxRevisions) {
               usage.revisions += 1;
               revision = 1;
               output = reviseContribution(output, critique);
+              note(`Revision completed for ${output.workerId} (1 / ${budget.maxRevisions})`);
             }
           }
         }
@@ -183,6 +233,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
           revision,
           elapsedMs: output.elapsedMs,
         });
+        note(`${output.workerId} ${output.status}`);
       }
     }
 
@@ -211,6 +262,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
       })
     : undefined;
 
+  if (guardian) note(`Guardian ${guardian.decision}`);
   if (guardian && !guardian.available) stopReason = "guardian_unavailable";
   else if (guardian && (guardian.decision === "BLOCK" || guardian.decision === "INSUFFICIENT_AUTHORITY")) {
     stopReason = "guardian_blocked";
@@ -230,6 +282,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
     refusedDirectives: plan.refusedDirectives,
   });
 
+  note("Assembler completed");
   usage.elapsedMs = clock() - startedAtMs;
 
   const state: CognitiveRun["state"] =
@@ -261,9 +314,45 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
     budget,
     usage,
     stopReason: stopReason ?? "completed",
+    sensitivity,
+    claimValidation,
+    skippedWorkers: skippedWorkers(plan, directives, snapshot),
+    injectionMarkers,
+    events,
     startedAt: new Date(startedAtMs).toISOString(),
     endedAt: new Date(clock()).toISOString(),
   };
+}
+
+/**
+ * Materially relevant specialists the deterministic route chose NOT to invoke.
+ * Only reasons that prove minimal sufficient cognition — never a full roster.
+ */
+function skippedWorkers(
+  plan: CognitiveRun["plan"],
+  directives: OperatorDirectives,
+  snapshot: CanonicalSnapshot,
+): SkippedWorker[] {
+  const invoked = new Set(plan.steps.map((s) => s.workerId));
+  const out: SkippedWorker[] = [];
+  const add = (workerId: SkippedWorker["workerId"], reason: string) => {
+    if (!invoked.has(workerId)) out.push({ workerId, reason });
+  };
+  if (plan.direct) return out;
+  if (directives.noForecast) add("forecaster", "Forecasting excluded at your request.");
+  else add("forecaster", "No future-state question was detected in the request.");
+  if (!snapshot.scriptStructures.length) {
+    add("simulator", "No canonical script structure is available to simulate against.");
+  } else {
+    add("simulator", "No structural what-if was requested.");
+  }
+  if (directives.noHistoricalResolutions) {
+    add("researcher", "Historical resolutions excluded at your request.");
+  } else {
+    add("researcher", "No historical retrieval was required for this intent.");
+  }
+  add("investigator", "No causal question was detected in the request.");
+  return out;
 }
 
 function buildInput(

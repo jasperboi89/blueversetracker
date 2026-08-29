@@ -24,6 +24,7 @@ import { Route as AuthenticatedFreshdeskIntelligenceRouteImport } from './routes
 import { Route as AuthenticatedContactDispatchRouteImport } from './routes/_authenticated/contact-dispatch'
 import { Route as AuthenticatedConstellationsRouteImport } from './routes/_authenticated/constellations'
 import { Route as AuthenticatedCompletedWorkRouteImport } from './routes/_authenticated/completed-work'
+import { Route as AuthenticatedCognitiveRunsRouteImport } from './routes/_authenticated/cognitive-runs'
 import { Route as AuthenticatedAuditLogRouteImport } from './routes/_authenticated/audit-log'
 import { Route as AuthenticatedAssignedToMeRouteImport } from './routes/_authenticated/assigned-to-me'
 import { Route as AuthenticatedAdditionalWorkRouteImport } from './routes/_authenticated/additional-work'
@@ -118,6 +119,12 @@ const AuthenticatedCompletedWorkRoute =
   AuthenticatedCompletedWorkRouteImport.update({
     id: '/completed-work',
     path: '/completed-work',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCognitiveRunsRoute =
+  AuthenticatedCognitiveRunsRouteImport.update({
+    id: '/cognitive-runs',
+    path: '/cognitive-runs',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAuditLogRoute = AuthenticatedAuditLogRouteImport.update({
@@ -221,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
   '/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
+  '/cognitive-runs': typeof AuthenticatedCognitiveRunsRoute
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
   '/achievements': typeof AuthenticatedAchievementsRoute
   '/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/audit-log': typeof AuthenticatedAuditLogRoute
+  '/cognitive-runs': typeof AuthenticatedCognitiveRunsRoute
   '/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/constellations': typeof AuthenticatedConstellationsRoute
   '/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
@@ -283,6 +292,7 @@ export interface FileRoutesById {
   '/_authenticated/additional-work': typeof AuthenticatedAdditionalWorkRouteWithChildren
   '/_authenticated/assigned-to-me': typeof AuthenticatedAssignedToMeRoute
   '/_authenticated/audit-log': typeof AuthenticatedAuditLogRoute
+  '/_authenticated/cognitive-runs': typeof AuthenticatedCognitiveRunsRoute
   '/_authenticated/completed-work': typeof AuthenticatedCompletedWorkRoute
   '/_authenticated/constellations': typeof AuthenticatedConstellationsRoute
   '/_authenticated/contact-dispatch': typeof AuthenticatedContactDispatchRouteWithChildren
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
     | '/additional-work'
     | '/assigned-to-me'
     | '/audit-log'
+    | '/cognitive-runs'
     | '/completed-work'
     | '/constellations'
     | '/contact-dispatch'
@@ -346,6 +357,7 @@ export interface FileRouteTypes {
     | '/achievements'
     | '/assigned-to-me'
     | '/audit-log'
+    | '/cognitive-runs'
     | '/completed-work'
     | '/constellations'
     | '/contact-dispatch'
@@ -378,6 +390,7 @@ export interface FileRouteTypes {
     | '/_authenticated/additional-work'
     | '/_authenticated/assigned-to-me'
     | '/_authenticated/audit-log'
+    | '/_authenticated/cognitive-runs'
     | '/_authenticated/completed-work'
     | '/_authenticated/constellations'
     | '/_authenticated/contact-dispatch'
@@ -516,6 +529,13 @@ declare module '@tanstack/react-router' {
       path: '/completed-work'
       fullPath: '/completed-work'
       preLoaderRoute: typeof AuthenticatedCompletedWorkRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cognitive-runs': {
+      id: '/_authenticated/cognitive-runs'
+      path: '/cognitive-runs'
+      fullPath: '/cognitive-runs'
+      preLoaderRoute: typeof AuthenticatedCognitiveRunsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/audit-log': {
@@ -697,6 +717,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdditionalWorkRoute: typeof AuthenticatedAdditionalWorkRouteWithChildren
   AuthenticatedAssignedToMeRoute: typeof AuthenticatedAssignedToMeRoute
   AuthenticatedAuditLogRoute: typeof AuthenticatedAuditLogRoute
+  AuthenticatedCognitiveRunsRoute: typeof AuthenticatedCognitiveRunsRoute
   AuthenticatedCompletedWorkRoute: typeof AuthenticatedCompletedWorkRoute
   AuthenticatedConstellationsRoute: typeof AuthenticatedConstellationsRoute
   AuthenticatedContactDispatchRoute: typeof AuthenticatedContactDispatchRouteWithChildren
@@ -715,6 +736,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedAdditionalWorkRouteWithChildren,
   AuthenticatedAssignedToMeRoute: AuthenticatedAssignedToMeRoute,
   AuthenticatedAuditLogRoute: AuthenticatedAuditLogRoute,
+  AuthenticatedCognitiveRunsRoute: AuthenticatedCognitiveRunsRoute,
   AuthenticatedCompletedWorkRoute: AuthenticatedCompletedWorkRoute,
   AuthenticatedConstellationsRoute: AuthenticatedConstellationsRoute,
   AuthenticatedContactDispatchRoute:

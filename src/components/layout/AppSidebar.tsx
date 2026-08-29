@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Building2,
   FileBarChart,
+  Brain,
   ScrollText,
   Settings,
   Sparkles,
@@ -91,6 +92,7 @@ const systemItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
+  { title: "Cognitive Runs", url: "/cognitive-runs", icon: Brain, accent: "oklch(0.72 0.14 250)" },
   { title: "Audit Log", url: "/audit-log", icon: ScrollText, accent: "oklch(0.65 0.12 295)" },
   { title: "Settings", url: "/settings", icon: Settings, accent: "oklch(0.75 0.09 210)" },
 ];
