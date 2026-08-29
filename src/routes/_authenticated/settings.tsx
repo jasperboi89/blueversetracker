@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Plug, Sparkles, PhoneOutgoing, ListChecks, Clock, Eye, Database,
-  TestTube2, Trash2, ShieldCheck, AlertCircle, Plus, Archive, RotateCcw, MoveUp, MoveDown, Lock,
+  TestTube2, Trash2, ShieldCheck, AlertCircle, Plus, Archive, RotateCcw, MoveUp, MoveDown, Lock, LifeBuoy,
 } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { freshdeskTestConnection } from "@/lib/api/freshdesk.functions";
@@ -47,6 +47,7 @@ import { INACTIVITY_LOGOUT_MS } from "@/lib/auth/inactivity-config";
 import { ThemesSection } from "@/components/settings/ThemesSection";
 import { OperationalMemoryPanel } from "@/components/memory/OperationalMemoryPanel";
 import { PromotionReviewPanel } from "@/components/memory/PromotionReviewPanel";
+import { ResilienceSection } from "@/components/settings/ResilienceSection";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Account Intel Hub" }] }),
@@ -62,8 +63,10 @@ const SECTIONS = [
   { id: "dropdowns",  title: "Dropdown Management",   icon: ListChecks },
   { id: "shift",      title: "Shift Settings",        icon: Clock },
   { id: "display",    title: "Display Preferences",   icon: Eye },
+  { id: "resilience", title: "Backup & Recovery",     icon: LifeBuoy },
   { id: "data",       title: "Data / Cleanup",        icon: Database },
 ] as const;
+
 
 function SettingsPage() {
   return (
@@ -100,6 +103,7 @@ function SettingsPage() {
             <DropdownsSection />
             <ShiftSection />
             <DisplaySection />
+            <ResilienceSection />
             <DataSection />
           </div>
         </div>
