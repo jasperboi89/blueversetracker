@@ -10,6 +10,7 @@
 import {
   DEFAULT_RUN_BUDGET,
   emptyOutput,
+  isSpecialist,
   emptyScratch,
   type CognitiveRun,
   type CriticResult,
@@ -17,6 +18,7 @@ import {
   type InjectionMarker,
   type RunBudgetUsage,
   type RunClaimValidationIssue,
+  type RouteStep,
   type RunEvent,
   type RunStopReason,
   type SkippedWorker,
@@ -112,15 +114,26 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
   );
 
 
+  // Claims/evidence seen so far — powers no-progress detection (§8), which is
+  // deliberately distinct from the identical-output loop fingerprint (§7).
+  const seenFacts = new Set<string>();
+  let noProgressStreak = 0;
+  let criticUnavailable = false;
+  /** Specialist requests a worker raised; the ORCHESTRATOR decides (§9). */
+  const specialistRequests: Array<{ from: WorkerId; to: WorkerId; granted: boolean; reason: string }> = [];
+
   const run = (): void => {
     if (plan.direct) {
-      stopReason = "direct_response";
+      stopReason = plan.unavailableWorkers?.length ? "all_workers_unavailable" : "direct_response";
       return;
     }
 
-    const waves = Array.from(new Set(plan.steps.map((s) => s.wave))).sort((a, b) => a - b);
+    const queue: RouteStep[] = plan.steps.slice();
+    const waves = () => Array.from(new Set(queue.map((s) => s.wave))).sort((a, b) => a - b);
+    const done = new Set<WorkerId>();
 
-    for (const wave of waves) {
+    for (let w = 0; w < waves().length; w += 1) {
+      const wave = waves()[w];
       if (stopReason) return;
       if (usage.depth >= budget.maxOrchestrationDepth) {
         stopReason = "depth_exceeded";
@@ -128,8 +141,9 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
       }
       usage.depth += 1;
 
-      for (const step of plan.steps.filter((s) => s.wave === wave)) {
+      for (const step of queue.filter((s) => s.wave === wave)) {
         if (stopReason) return;
+        if (done.has(step.workerId)) continue;
         if (clock() - startedAtMs > budget.maxElapsedMs) {
           stopReason = "wall_clock_exceeded";
           return;
@@ -149,6 +163,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
 
         usage.workers += 1;
         usage.invocations += 1;
+        done.add(step.workerId);
 
         let output: WorkerOutput;
         if (!runner || !isWorkerAvailable(step.workerId)) {
@@ -190,6 +205,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
         const fp = fingerprint(output);
         if (fingerprints.has(fp)) {
           stopReason = "duplicate_task";
+          note("Loop detected: an identical contribution was produced again");
           return;
         }
         fingerprints.add(fp);
@@ -208,6 +224,10 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
               },
             );
             critiques.push(critique);
+            if (critique.status === "unavailable") {
+              criticUnavailable = true;
+              note("Critic unavailable for a review that policy requires");
+            }
             const material = critique.issues.filter((i) => i.material).map((i) => i.code);
             note(
               material.length
@@ -220,6 +240,9 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
               output = reviseContribution(output, critique);
               note(`Revision completed for ${output.workerId} (1 / ${budget.maxRevisions})`);
             }
+          } else {
+            criticUnavailable = true;
+            note("Required critique could not run within the invocation budget");
           }
         }
 
@@ -234,8 +257,44 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
           elapsedMs: output.elapsedMs,
         });
         note(`${output.workerId} ${output.status}`);
+
+        // No-progress: a contribution that adds no new validated claim and no
+        // new evidence reference. Two in a row and the run stops rather than
+        // spending the remaining budget on identical cognition.
+        const before = seenFacts.size;
+        for (const c of output.claims) seenFacts.add(`claim:${c.statement}`);
+        for (const e of output.evidence) seenFacts.add(`ev:${e.kind}:${e.id}`);
+        if (seenFacts.size === before && output.status === "contributed") {
+          noProgressStreak += 1;
+          if (noProgressStreak >= 2) {
+            stopReason = "no_progress";
+            note("Stopped: repeated cognition produced no new validated claims or evidence");
+            return;
+          }
+        } else if (seenFacts.size > before) {
+          noProgressStreak = 0;
+        }
+
+        // A worker may REQUEST another specialist; it may never invoke one.
+        if (output.needsSpecialist) {
+          const to = output.needsSpecialist;
+          const decision = grantSpecialist(to, done, queue, snapshot, usage, budget);
+          specialistRequests.push({ from: output.workerId, to, granted: decision.granted, reason: decision.reason });
+          note(
+            `${output.workerId} requested ${to}: orchestrator ${decision.granted ? "granted" : "declined"} — ${decision.reason}`,
+          );
+          if (decision.granted) {
+            queue.push({
+              workerId: to,
+              taskKind: getWorker(to).supportedTasks[0],
+              reason: `Requested by the ${getWorker(output.workerId).role}; granted by the orchestrator.`,
+              wave: wave + 1,
+            });
+          }
+        }
       }
     }
+
 
     if (!contributions.length) {
       stopReason = "all_workers_unavailable";
@@ -282,6 +341,18 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
     refusedDirectives: plan.refusedDirectives,
   });
 
+  if (criticUnavailable) {
+    // Required critique is not optional: the run degrades rather than
+    // presenting unchallenged findings as a complete answer (§42).
+    response.uncertainties = Array.from(
+      new Set([
+        ...response.uncertainties,
+        "A required independent critique did not run, so these findings were not challenged.",
+      ]),
+    );
+    if (response.status === "answered") response.status = "partial";
+  }
+
   note("Assembler completed");
   usage.elapsedMs = clock() - startedAtMs;
 
@@ -317,6 +388,7 @@ export function orchestrate(req: OrchestrateRequest): CognitiveRun {
     sensitivity,
     claimValidation,
     skippedWorkers: skippedWorkers(plan, directives, snapshot),
+    specialistRequests,
     injectionMarkers,
     events,
     startedAt: new Date(startedAtMs).toISOString(),
@@ -439,4 +511,33 @@ export function fingerprint(output: WorkerOutput): string {
     hash = (hash * 31 + s.charCodeAt(i)) | 0;
   }
   return `${output.workerId}-${(hash >>> 0).toString(36)}`;
+}
+
+/**
+ * Deterministic policy for a worker-raised specialist request (§9). The worker
+ * never invokes anything itself; this decides, once, with a stated reason.
+ */
+function grantSpecialist(
+  to: WorkerId,
+  done: Set<WorkerId>,
+  queue: RouteStep[],
+  snapshot: CanonicalSnapshot,
+  usage: RunBudgetUsage,
+  budget: RunBudget,
+): { granted: boolean; reason: string } {
+  if (!isSpecialist(to)) return { granted: false, reason: "only specialists may be requested." };
+  if (done.has(to) || queue.some((s) => s.workerId === to)) {
+    return { granted: false, reason: "that specialist is already part of this run." };
+  }
+  if (!isWorkerAvailable(to)) return { granted: false, reason: "that specialist is unavailable." };
+  if (usage.workers >= budget.maxWorkers || usage.invocations >= budget.maxWorkerInvocations) {
+    return { granted: false, reason: "the run budget does not allow another specialist." };
+  }
+  if (to === "simulator" && !snapshot.scriptStructures.length) {
+    return { granted: false, reason: "no canonical script structure is available to simulate against." };
+  }
+  if (to === "forecaster" && !snapshot.forecasts.length) {
+    return { granted: false, reason: "no canonical forecast exists to read." };
+  }
+  return { granted: true, reason: "the request is within budget and canonically supported." };
 }

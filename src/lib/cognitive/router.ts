@@ -78,8 +78,13 @@ export function planRoute(ctx: RouteContext): RoutePlan {
 
   const intentClass = classifyIntent(ctx.intent);
   const steps: RouteStep[] = [];
+  /** Workers this route wanted but could not use because they are unavailable (§41). */
+  const unavailableWorkers: WorkerId[] = [];
   const push = (workerId: WorkerId, taskKind: WorkerTaskKind, reason: string, wave: number) => {
-    if (!isWorkerAvailable(workerId)) return;
+    if (!isWorkerAvailable(workerId)) {
+      if (!unavailableWorkers.includes(workerId)) unavailableWorkers.push(workerId);
+      return;
+    }
     if (steps.some((s) => s.workerId === workerId)) return;
     steps.push({ workerId, taskKind, reason, wave });
   };
@@ -168,8 +173,13 @@ export function planRoute(ctx: RouteContext): RoutePlan {
   return {
     direct,
     ...(direct
-      ? { directReason: "This is answered from deterministic portal state; no specialist cognition adds value." }
+      ? {
+          directReason: unavailableWorkers.length
+            ? "Every worker this question needs is unavailable, so no cognition could run."
+            : "This is answered from deterministic portal state; no specialist cognition adds value.",
+        }
       : {}),
+    unavailableWorkers,
     intentClass,
     steps,
     criticRequired: criticRequired && steps.length > 0,

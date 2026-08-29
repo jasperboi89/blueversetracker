@@ -175,6 +175,22 @@ function Routing({ run }: { run: CognitiveRun }) {
         </div>
       )}
 
+      {run.specialistRequests?.length ? (
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Specialist requests</p>
+          <ul className="space-y-1">
+            {run.specialistRequests.map((r, i) => (
+              <li key={`${r.from}-${r.to}-${i}`} className="text-xs">
+                <span className="font-medium text-foreground/80">
+                  {r.from.toUpperCase()} → {r.to.toUpperCase()}
+                </span>{" "}
+                — orchestrator {r.granted ? "GRANTED" : "DECLINED"}: {r.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {run.skippedWorkers?.length ? (
         <div>
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Not invoked</p>
