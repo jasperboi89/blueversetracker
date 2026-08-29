@@ -10,8 +10,9 @@
  * denied.
  */
 
-import { getCapability } from "@/lib/capability/capability-registry";
+import { allCapabilities, getCapability } from "@/lib/capability/capability-registry";
 import { missingPermissions } from "@/lib/capability/capability-permissions";
+import { healthMapFor, type SourceHealthMap } from "@/lib/capability/capability-health";
 import type { HubRole } from "@/lib/auth/authorization.functions";
 import { getExecutableCapability, isExecutable } from "./executable-registry";
 import { checkExecutionControl } from "./kill-switch";
