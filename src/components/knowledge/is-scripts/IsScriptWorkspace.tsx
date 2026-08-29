@@ -41,9 +41,17 @@ export function IsScriptWorkspace() {
           label="Simulator"
           onClick={() => setPane("simulator")}
         />
+        <PaneTab
+          active={pane === "import"}
+          icon={FileUp}
+          label="Script Import"
+          onClick={() => setPane("import")}
+        />
       </div>
 
-      {pane === "simulator" ? (
+      {pane === "import" ? (
+        <IifImportPane />
+      ) : pane === "simulator" ? (
         <SimulatorPane />
       ) : pane === "cortex" ? (
         <DependencyCortexPane />
@@ -60,6 +68,7 @@ export function IsScriptWorkspace() {
     </div>
   );
 }
+
 
 function PaneTab({
   active,
