@@ -1,3 +1,4 @@
+import { attachCloudSync } from "@/lib/cloud-sync/blob-sync";
 import { createPersistedStore, useStoreValue } from "./_persist";
 
 /**
@@ -31,6 +32,19 @@ export const shiftMarkersStore = createPersistedStore<ShiftMarkersState>(
   "aih:settings:shift-markers:v1",
   DEFAULT_SHIFT_MARKERS,
 );
+
+// Markers are a per-operator preference, so they ride the same user-scoped
+// blob sync every other Settings store uses. Sign-out purges the "aih:" local
+// mirror for workstation hygiene; the cloud copy re-hydrates on next sign-in.
+attachCloudSync<ShiftMarkersState>({
+  storeKey: "settings:shift-markers",
+  subscribe: shiftMarkersStore.subscribe,
+  getSnapshot: () => shiftMarkersStore.get(),
+  applyServerSnapshot: (next) => shiftMarkersStore.applyServerSnapshot(next),
+  // An empty local set must never be uploaded over a saved cloud set: the
+  // one-time local import only runs when there is genuinely something to keep.
+  isEmpty: (s) => !s.markers || s.markers.length === 0,
+});
 
 export function useShiftMarkers(): ShiftMarker[] {
   return useStoreValue(shiftMarkersStore, DEFAULT_SHIFT_MARKERS).markers;
