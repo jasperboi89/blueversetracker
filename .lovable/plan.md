@@ -35,31 +35,47 @@ A **Review** is the unit of work: one account, a set of uploaded sources, one re
 Layered so evidence never gets laundered:
 
 ```
-sources (IIF / script PDF / account docs)
-  → adapters (parse + redact + coverage, per format)
+uploaded source (kept intact in private server-side storage)
+  → adapters parse the ORIGINAL, full-fidelity source
   → ScriptModel (screens, elements, branches, fields, actions, SQL calls)
       every node carries provenance + confidence
-  → LogicLens rules (deterministic) → findings
+  → LogicLens rules (deterministic) run against the full model
+  → minimization layer builds a redacted derivative for AI only
   → AI pass (labelled inferred) → requirement extraction, question wording
-  → Question Engine → answers → Account Knowledge Profile → re-run
+  → Question Engine → answers → Account Knowledge → re-run
 ```
+
+### Sensitive-data handling
+
+The original source is never destroyed or degraded, and parsing and deterministic rules operate on it directly — accuracy depends on that. Redaction is a **derivative built at the AI boundary**, not a gate on ingestion:
+
+- A minimization step produces an AI-safe projection of only the fragments a given AI call needs. The full source, and the full model, never leave the server for AI convenience.
+- Sensitive values are replaced with **stable pseudonyms** (e.g. `CONTACT_A`, `PHONE_3`) held in a server-side, per-review mapping table. The same real value always maps to the same token, so AI can still reason that a value appears in several places without ever seeing it.
+- Pseudonyms are re-hydrated server-side before findings and questions are shown to the operator.
+- Every AI call records which minimized projection it received, so the evidence trail stays auditable.
 
 ## Data model
 
-New tables, all user-scoped with RLS and grants:
+Records are **workspace-scoped, not personally owned**. A `scriptiq_workspaces` table plus `scriptiq_workspace_members` (member + role, seeded from `authorized_users`) lets one administrator work alone today and several authorized AnSer users share accounts, knowledge and reviews later without a schema change. Every table carries `workspace_id` plus audit fields (`created_by`, `updated_by`). RLS scopes every policy to membership of the row's workspace through a security-definer `is_workspace_member()` helper — never a direct `auth.uid() = user_id` check — so cross-workspace isolation stays strict.
 
+Tables:
+
+- `scriptiq_workspaces`, `scriptiq_workspace_members` — sharing boundary and roles.
 - `scriptiq_accounts` — account number, name, notes.
-- `scriptiq_account_knowledge` — versioned JSON profile: directory fields, statuses, contact methods, contact order, shared fields, Select Contact / Copy Field conventions, SQL connections, tables, stored procedures, confirmed exceptions. Each entry records who confirmed it and when, and whether it is account-scoped or promoted to a call-center rule.
+- `scriptiq_account_knowledge` — one row per knowledge item, not one blob: `key`, `value` (JSON), `scope` (`account` | `call_center`), `confirmed_by`, `confirmed_at`, `origin_review_id`, `origin_source_id`, `last_verified_at`, `status` (`active` | `needs_reverification` | `superseded`), `superseded_by`, `supersedes`. Nothing is edited in place — a change writes a new row and supersedes the old one, so the history of what was believed and when is intact.
+- `scriptiq_knowledge_invalidation` — the rules that mark items `needs_reverification`: a new IIF or script version, a changed directory or SQL answer, or a re-uploaded source that materially touches the fields an item depends on. Each item records the model/source fingerprints it was confirmed against; when those change, the item is flagged (never silently deleted) and the Question Engine re-asks it.
 - `scriptiq_reviews` — account, title, status, parse/coverage summary.
-- `scriptiq_sources` — one row per uploaded file: kind (iif / script_pdf / account_doc), storage path, size, hash, parse status, coverage report.
-- `scriptiq_script_model` — the reconstructed model JSON per review, with a model version.
+- `scriptiq_source_kinds` — an open registry, not a fixed enum. The first release registers `iif`, `script_pdf`, `account_doc`; `sql_schema`, `stored_procedure`, `sql_query` and `supporting_document` are declared as future kinds with no UI yet. Each kind names its adapter, accepted MIME types and capabilities, so a new source type is a registry entry plus an adapter, not a schema migration.
+- `scriptiq_sources` — one row per uploaded file: `kind` (FK to the registry), storage path, size, content hash, parse status, coverage report.
+- `scriptiq_pseudonym_map` — per-review token ↔ original value mapping, server-only, never selectable from the browser.
+- `scriptiq_script_model` — reconstructed model JSON per review, with a model version and source fingerprints.
 - `scriptiq_findings` — type (confirmed defect / probable defect / local policy question / data dependency question / intentional / unresolved), severity, evidence refs, recommended change, impact, test instructions, status.
-- `scriptiq_questions` — question text, what was observed, missing evidence, answer, resolution, link to the profile entry it wrote.
-- `scriptiq_tests` — generated TestBench scenarios and their pass/fail state.
+- `scriptiq_questions` — what was observed, missing evidence, answer, resolution, link to the knowledge item it wrote or re-verified.
+- `scriptiq_tests` — generated TestBench scenarios and their state.
 
-**Migration, no data loss.** Nothing is deleted. `is_manuals` / `is_manual_pages` stay and are re-surfaced as ScriptIQ reference documents (a nullable `account_id` is added). `is_script_entries` stays with the Knowledge Vault. `script_versions` rows are retained read-only as history; new work writes to `scriptiq_*`.
+**Migration, no data loss.** Nothing is deleted. `is_manuals` / `is_manual_pages` stay and are re-surfaced as ScriptIQ reference documents (a nullable account link is added). `is_script_entries` stays with the Knowledge Vault. `script_versions` rows are retained read-only as history; new work writes to `scriptiq_*`.
 
-Storage: a new private `scriptiq-sources` bucket, owner-scoped RLS on `storage.objects`, signed URLs only, size and MIME validation on upload. No production SQL credentials are ever stored — the SQL model records logical shape only.
+Storage: a new private `scriptiq-sources` bucket, workspace-scoped RLS on `storage.objects`, signed short-lived URLs only, size and MIME validation on upload. No production SQL credentials are ever stored — the SQL model records logical shape only.
 
 ## Modules
 
