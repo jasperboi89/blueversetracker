@@ -82,7 +82,7 @@ Storage: a new private `scriptiq-sources` bucket, workspace-scoped RLS on `stora
 - **IIF adapter** — an adapter registry keyed by detected dialect, extending the existing construct registry. Every construct declares its support level; anything unrecognised becomes an explicit unknown in the coverage report. Nothing is invented to complete the model. Coverage is shown on the review dashboard as a first-class number.
 - **PDF / Word ingestion** — page-level text plus heading/question detection for the script PDF; requirement extraction from account documents (AI-assisted, every extracted requirement labelled inferred until a human confirms it).
 - **LogicLens** — deterministic rule engine over the model graph: unreachable branches, no exit, paths that never reach Save or Proof Read, fields used before population, shared-field overwrite and stale reuse, missing Copy Field mappings that later logic depends on, contradictory conditions, SQL inputs never populated, outputs never consumed. Every finding names the rule and its evidence.
-- **Question Engine** — fires when a rule's confidence depends on operational knowledge. Each question states what was observed, why it matters, what evidence is missing, and what answer is needed. Answers persist into the Account Knowledge Profile so a question is asked once per account.
+- **Question Engine** — fires when a rule's confidence depends on operational knowledge, and again when a knowledge item is flagged for re-verification. Each question states what was observed, why it matters, what evidence is missing, and what answer is needed. Answers write a new knowledge row (superseding the old one) so a settled question is not re-asked — unless the evidence it rested on has changed.
 - **ModeMap** — models enter → filter → branch → nested child → return/merge. Detects missing return points, unreachable required fields, hidden questions referenced later, duplicate questions, paths bypassing Proof Read or Save.
 - **ClientMatch** — compares extracted client requirements against modelled behaviour; mismatches become blue findings with an "is this an account exception?" question.
 - **FlowTrace / DataTrace / DatabaseTrace** — three views over the same graph: caller path, field lineage (Select Contact → Copy Fields → shared fields → downstream), and script → connection → procedure → table → column → back. A scenario picker highlights one route.
@@ -96,7 +96,7 @@ No module ever shows fabricated findings. A module with no real analysis yet ren
 
 1. **Foundation** — routes, shell, accounts, reviews, uploads, storage + RLS, evidence model, source list with parse status. Retire Twin/Simulator from the UI.
 2. **Ingestion** — IIF adapter refactor, script PDF extraction, account-document requirement extraction, coverage reporting.
-3. **Account knowledge** — Directory, Shared Field, Select Contact / Copy Field, and SQL interviews writing to the profile.
+3. **Account knowledge** — Directory, Shared Field, Select Contact / Copy Field, and SQL interviews writing versioned knowledge items, plus the re-verification flagging rules.
 4. **LogicLens + Questions** — rule engine, findings list, question queue, answer-and-re-run loop. **This completes the first usable release.**
 5. ModeMap and FlowTrace visualisation.
 6. DataTrace and DatabaseTrace.
@@ -105,7 +105,7 @@ No module ever shows fabricated findings. A module with no real analysis yet ren
 
 ## Testing
 
-Unit tests per rule with fixture models; adapter tests asserting unknowns are reported rather than dropped; redaction tests proving no PII reaches analysis or AI; persistence tests for profile answers surviving logout; RLS tests for cross-user isolation. The existing suite must stay green — Twin tests are removed with the Twin, not deleted around it.
+Unit tests per rule with fixture models; adapter tests asserting unknowns are reported rather than dropped; minimization tests proving no original sensitive value can reach an AI call and that pseudonyms stay stable across occurrences; knowledge-lifecycle tests for supersede and re-verification flagging; RLS tests for cross-workspace isolation. The existing suite must stay green — Twin tests are removed with the Twin, not deleted around it.
 
 ## Risks and unknowns
 
@@ -116,4 +116,4 @@ Unit tests per rule with fixture models; adapter tests asserting unknowns are re
 
 ## First release is done when
 
-An account can be created, an IIF plus script PDF plus account document uploaded, parse coverage honestly reported, a script model reconstructed from what was genuinely parsed, LogicLens findings produced with evidence and recommended changes, questions raised and answered into a profile that survives re-review, and no module anywhere shows invented analysis.
+An account can be created, an IIF plus script PDF plus account document uploaded, parse coverage honestly reported, a script model reconstructed from what was genuinely parsed, LogicLens findings produced with evidence and recommended changes, questions raised and answered into versioned knowledge that survives re-review and re-opens when its evidence changes, every AI call demonstrably receiving only a minimized pseudonymous projection, and no module anywhere showing invented analysis.
